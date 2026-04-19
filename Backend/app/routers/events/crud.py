@@ -17,16 +17,7 @@ def create_event(
         school_id = _require_school_scope(current_user)
         payload_fields_set = _get_payload_fields_set(event)
 
-        zone = get_event_timezone()
-
-        def _normalize_local_naive(value: datetime) -> datetime:
-            localized = value.replace(tzinfo=zone) if value.tzinfo is None else value.astimezone(zone)
-            return localized.replace(tzinfo=None, microsecond=0)
-
-        start_local = _normalize_local_naive(event.start_datetime)
-        end_local = _normalize_local_naive(event.end_datetime)
-
-        if start_local >= end_local:
+        if event.start_datetime >= event.end_datetime:
             raise HTTPException(status_code=400, detail="End datetime must be after start datetime")
 
         validate_event_geolocation_fields(
@@ -76,13 +67,13 @@ def create_event(
                     "sign_out_grace_minutes."
                 ),
             )
-        now_local = datetime.now(zone).replace(tzinfo=None, microsecond=0)
+        now_local = datetime.now(get_event_timezone()).replace(tzinfo=None, microsecond=0)
         (
             present_until_override_at,
             late_until_override_at,
         ) = _resolve_near_start_attendance_override_window(
-            start_datetime=start_local,
-            end_datetime=end_local,
+            start_datetime=event.start_datetime,
+            end_datetime=event.end_datetime,
             early_check_in_minutes=effective_early_check_in_minutes,
             late_threshold_minutes=effective_late_threshold_minutes,
             current_time=now_local,
@@ -103,8 +94,8 @@ def create_event(
             sign_out_open_delay_minutes=effective_sign_out_open_delay_minutes,
             present_until_override_at=present_until_override_at,
             late_until_override_at=late_until_override_at,
-            start_datetime=start_local,
-            end_datetime=end_local,
+            start_datetime=event.start_datetime,
+            end_datetime=event.end_datetime,
             status=ModelEventStatus[event.status.value.upper()],
         )
         db.add(db_event)
@@ -145,6 +136,7 @@ def create_event(
             auto_sync_result and auto_sync_result.attendance_finalized
         ):
             finalize_completed_event_attendance(db, db_event)
+            generate_sanctions_for_completed_event(db, db_event)
 
         db.commit()
         db.refresh(db_event)
@@ -346,6 +338,7 @@ def update_event(
             auto_sync_result and auto_sync_result.attendance_finalized
         ):
             finalize_completed_event_attendance(db, db_event)
+            generate_sanctions_for_completed_event(db, db_event)
 
         db.commit()
         db.refresh(db_event)

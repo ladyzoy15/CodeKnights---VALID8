@@ -1,3 +1,7 @@
+/**
+ * |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+ * Purpose: Global Theme Management and Dark Mode Logic
+ */
 import { ref } from 'vue'
 const defaultSchoolLogo = '/logos/aura.png'
 

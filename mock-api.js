@@ -1,3 +1,7 @@
+/**
+ * |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+ * Purpose: Local Mock Backend for Development and Testing
+ */
 import { existsSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -256,9 +260,99 @@ app.get('/governance/ssg/setup', (req, res) => res.json({
   unit: (db.data.governance_units || []).find(u => String(u.unit_type).toUpperCase() === 'SSG') || null,
   total_imported_students: 0
 }));
-app.get('/governance/access/me', (req, res) => res.json({ units: db.data.governance_units || [] }));
+app.get('/governance/access/me', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  // Filter units by school_id
+  const units = (db.data.governance_units || [])
+    .filter(u => String(u.school_id) === String(user.school_id))
+    .map(u => ({
+      ...u,
+      governance_unit_id: u.id,
+      permission_codes: [
+        'manage_events',
+        'manage_announcements',
+        'manage_attendance',
+        'manage_students',
+        'view_students',
+        'manage_members',
+        'assign_permissions',
+        'create_sg',
+        'create_org'
+      ]
+    }));
+
+  res.json({
+    user_id: user.id,
+    school_id: user.school_id,
+    permission_codes: [],
+    units
+  });
+});
 app.get('/governance/units', (req, res) => res.json(db.data.governance_units || []));
+
+app.get('/governance/units/:id', (req, res) => {
+  const { id } = req.params;
+  const unit = (db.data.governance_units || []).find(u => String(u.id) === String(id));
+  if (!unit) return res.status(404).json({ error: 'Unit not found' });
+  const members = (db.data.governance_members || []).filter(m => String(m.governance_unit_id) === String(id));
+  res.json({ ...unit, governance_unit_id: unit.id, members });
+});
+
+app.post('/governance/units', async (req, res) => {
+  await parseBody(req);
+  const nextId = Math.max(0, ...(db.data.governance_units || []).map(u => Number(u.id) || 0)) + 1;
+  const newUnit = { ...req.body, id: nextId, is_active: true, created_at: new Date().toISOString() };
+  db.data.governance_units = [...(db.data.governance_units || []), newUnit];
+  await db.write();
+  res.status(201).json(newUnit);
+});
+
+app.get('/governance/units/:id/members', (req, res) => {
+  const { id } = req.params;
+  const members = (db.data.governance_members || []).filter(m => String(m.governance_unit_id) === String(id));
+  res.json(members);
+});
+
 app.get('/attendance/summary', (req, res) => res.json({ summary: [], total: 0 }));
+app.get('/governance/units/:id/announcements', (req, res) => {
+  const { id } = req.params;
+  const list = (db.data.announcements || []).filter(a => String(a.governance_unit_id) === String(id));
+  res.json(list);
+});
+app.post('/governance/units/:id/announcements', async (req, res) => {
+  const { id } = req.params;
+  await parseBody(req);
+  const nextId = Math.max(0, ...(db.data.announcements || []).map(a => Number(a.id) || 0)) + 1;
+  const newAnn = {
+    ...req.body,
+    id: nextId,
+    governance_unit_id: Number(id),
+    created_at: new Date().toISOString(),
+  };
+  db.data.announcements = [...(db.data.announcements || []), newAnn];
+  await db.write();
+  res.status(201).json(newAnn);
+});
+app.patch('/governance/announcements/:id', async (req, res) => {
+  const { id } = req.params;
+  await parseBody(req);
+  const ann = db.data.announcements.find(a => String(a.id) === String(id));
+  if (ann) {
+    Object.assign(ann, req.body);
+    await db.write();
+    res.json(ann);
+  } else {
+    res.status(404).json({ error: 'Announcement not found' });
+  }
+});
+app.delete('/governance/announcements/:id', async (req, res) => {
+  const { id } = req.params;
+  db.data.announcements = (db.data.announcements || []).filter(a => String(a.id) !== String(id));
+  await db.write();
+  res.status(204).end();
+});
 
 app.post('/token', async (req, res) => {
   await parseBody(req);
@@ -344,6 +438,61 @@ app.get('/governance/settings/me', (req, res) => {
     auto_delete_enabled: false,
     updated_at: new Date().toISOString()
   });
+});
+
+// ─── Aura AI Assistant Mock Endpoints ────────────────────────────────────────
+
+app.get('/conversations', (req, res) => {
+  console.log(`[GET] /assistant/conversations`);
+  res.json(db.data.assistant_conversations || []);
+});
+
+app.get('/conversations/:id', (req, res) => {
+  const { id } = req.params;
+  console.log(`[GET] /assistant/conversations/${id}`);
+  const convo = (db.data.assistant_conversations || []).find(c => String(c.conversation_id) === String(id));
+  if (!convo) return res.status(404).json({ detail: 'Conversation not found' });
+  
+  const messages = (db.data.assistant_messages || []).filter(m => String(m.conversation_id) === String(id));
+  res.json({ ...convo, messages });
+});
+
+app.post('/chat/stream', async (req, res) => {
+  console.log(`[POST] /assistant/chat/stream`);
+  await parseBody(req);
+  const { message, conversation_id } = req.body;
+  
+  const convoId = conversation_id || `mock-convo-${Date.now()}`;
+  
+  // Set headers for SSE-like streaming
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const mockResponse = `I am Aura, your campus AI assistant. You asked about: "${message}". In this mock mode, I can help you visualize attendance patterns or manage school events. How else can I assist you?`;
+  const chunks = mockResponse.split(' ');
+
+  for (const chunk of chunks) {
+    const data = JSON.stringify({
+      event: 'message',
+      data: chunk + ' ',
+      conversation_id: convoId
+    });
+    res.write(`data: ${data}\n\n`);
+    await new Promise(r => setTimeout(r, 50));
+  }
+
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+
+app.delete('/conversations/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(`[DELETE] /assistant/conversations/${id}`);
+  db.data.assistant_conversations = (db.data.assistant_conversations || []).filter(c => String(c.conversation_id) !== String(id));
+  db.data.assistant_messages = (db.data.assistant_messages || []).filter(m => String(m.conversation_id) !== String(id));
+  await db.write();
+  res.status(204).end();
 });
 
 app.put('/governance/settings/me', async (req, res) => {

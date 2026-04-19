@@ -1,3 +1,7 @@
+/**
+ * |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+ * Purpose: Role-based Routing and Navigation Logic
+ */
 import { createRouter, createWebHistory } from 'vue-router'
 import {
     clearDashboardSession,
@@ -5,6 +9,7 @@ import {
     hasSessionToken,
     initializeDashboardSession,
     isAdminSession,
+    isGovernanceSession,
     isPrivilegedSession,
     isSchoolItSession,
     sessionNeedsFaceRegistration,
@@ -51,6 +56,7 @@ const SgAnnouncementsView = dashboardView('SgAnnouncementsView')
 const SgCreateUnitView = dashboardView('SgCreateUnitView')
 const SgEventsView = dashboardView('SgEventsView')
 const SgAttendanceView = dashboardView('SgAttendanceView')
+const AuraChatView = reusableView('AuraChatView')
 
 const routes = [
     // Auth routes (no layout)
@@ -176,6 +182,11 @@ const routes = [
                 component: AdminWorkspaceView,
                 props: { section: 'profile' },
             },
+            {
+                path: 'chat',
+                name: 'AdminChat',
+                component: AuraChatView,
+            },
         ],
     },
     {
@@ -296,6 +307,11 @@ const routes = [
                 path: 'profile',
                 name: 'SchoolItProfile',
                 component: ProfileView,
+            },
+            {
+                path: 'chat',
+                name: 'SchoolItChat',
+                component: AuraChatView,
             },
         ],
     },
@@ -437,7 +453,7 @@ const routes = [
         meta: {
             requiresAuth: true,
             allowWithoutFaceEnrollment: true,
-            primaryNavContext: 'dashboard',
+            primaryNavContext: 'sg',
             workspaceContext: 'sg',
         },
         children: [
@@ -481,13 +497,23 @@ const routes = [
                 name: 'SgAttendance',
                 component: SgAttendanceView,
             },
+            {
+                path: 'profile',
+                name: 'SgProfile',
+                component: ProfileView,
+            },
+            {
+                path: 'chat',
+                name: 'SgChat',
+                component: AuraChatView,
+            },
         ],
     },
     {
         path: '/exposed/sg',
         component: AppLayout,
         meta: {
-            primaryNavContext: 'dashboard_preview',
+            primaryNavContext: 'sg_preview',
             workspaceContext: 'sg_preview',
         },
         children: [
@@ -538,6 +564,11 @@ const routes = [
                 path: 'analytics',
                 name: 'Analytics',
                 component: AnalyticsView,
+            },
+            {
+                path: 'chat',
+                name: 'Chat',
+                component: AuraChatView,
             },
         ],
     },
@@ -636,6 +667,7 @@ router.beforeEach(async (to) => {
             const adminSession = isAdminSession()
             const privilegedSession = isPrivilegedSession()
             const schoolItSession = isSchoolItSession()
+            const governanceSession = isGovernanceSession()
             const needsFaceRegistration = sessionNeedsFaceRegistration()
             if (needsFaceRegistration && !to.meta.allowWithoutFaceEnrollment) {
                 return { name: 'FaceRegistration' }
@@ -658,7 +690,7 @@ router.beforeEach(async (to) => {
             if (!schoolItSession && to.path.startsWith('/workspace')) {
                 return defaultRoute
             }
-            if (privilegedSession && to.path.startsWith('/dashboard')) {
+            if (privilegedSession && !governanceSession && to.path.startsWith('/dashboard')) {
                 return defaultRoute
             }
             if (!privilegedSession && to.name === 'PrivilegedDashboard') {

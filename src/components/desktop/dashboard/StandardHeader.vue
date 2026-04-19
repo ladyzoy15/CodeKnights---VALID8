@@ -1,3 +1,7 @@
+<!--
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Purpose: Common Dashboard Header with User Info and Logout
+-->
 <template>
   <header ref="headerEl" class="standard-header">
     <button
@@ -47,21 +51,45 @@
         <Moon :size="18" :stroke-width="2" :color="isDarkMode ? 'var(--color-primary)' : 'currentColor'" />
       </button>
 
-      <button
-        class="standard-header__action-btn"
-        type="button"
-        aria-label="Notifications"
-        @click="emit('toggle-notifications')"
-      >
-        <Bell :size="18" :stroke-width="2" />
-      </button>
+      <div class="standard-header__action-wrap">
+        <button
+          class="standard-header__action-btn"
+          type="button"
+          aria-label="Notifications"
+          @click="toggleNotifications"
+        >
+          <Bell :size="18" :stroke-width="2" />
+          <span v-if="hasUnread" class="standard-header__unread-dot" />
+        </button>
+
+        <Transition name="notif-dropdown">
+          <div v-if="showNotifications" class="standard-header__notif-dropdown">
+            <div class="notif-header">
+              <span class="notif-title">Notifications</span>
+              <button class="notif-mark-read" @click="markAllRead">Mark all read</button>
+            </div>
+            <div class="notif-list">
+              <div v-for="notif in notifications" :key="notif.id" class="notif-item" :class="{ 'notif-item--unread': !notif.read }">
+                <div class="notif-icon-wrap" :style="{ background: notif.iconBg }">
+                  <component :is="notif.icon" :size="14" />
+                </div>
+                <div class="notif-content">
+                  <p class="notif-text">{{ notif.title }}</p>
+                  <p class="notif-meta">{{ notif.time }}</p>
+                </div>
+              </div>
+              <p v-if="!notifications.length" class="notif-empty">No notifications</p>
+            </div>
+          </div>
+        </Transition>
+      </div>
     </div>
   </header>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Bell, LogOut, Moon } from 'lucide-vue-next'
+import { Bell, LogOut, Moon, Calendar, Megaphone, CheckCircle, Clock } from 'lucide-vue-next'
 import { isDarkMode, toggleDarkMode } from '@/config/theme.js'
 
 const props = defineProps({
@@ -84,6 +112,44 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['logout', 'toggle-notifications'])
+
+const showNotifications = ref(false)
+const notifications = ref([
+  {
+    id: 1,
+    title: 'New Student Batch Imported',
+    time: '1 hour ago',
+    read: false,
+    icon: CheckCircle,
+    iconBg: 'rgba(0, 200, 100, 0.15)',
+  },
+  {
+    id: 2,
+    title: 'System update scheduled for 12 AM',
+    time: '4 hours ago',
+    read: false,
+    icon: Clock,
+    iconBg: 'rgba(255, 140, 0, 0.15)',
+  },
+  {
+    id: 3,
+    title: 'Orientation reminder sent to Engineering',
+    time: '2 days ago',
+    read: true,
+    icon: Megaphone,
+    iconBg: 'rgba(255, 212, 0, 0.2)',
+  },
+])
+
+const hasUnread = computed(() => notifications.value.some(n => !n.read))
+
+function toggleNotifications() {
+  showNotifications.value = !showNotifications.value
+}
+
+function markAllRead() {
+  notifications.value = notifications.value.map(n => ({ ...n, read: true }))
+}
 
 const isExpanded = ref(false)
 const headerEl = ref(null)
@@ -127,12 +193,26 @@ function abbreviateSchoolName(value) {
   return `${sourceWords.map((word) => word[0].toUpperCase()).join('.')}.`
 }
 
+function handleClickOutside(event) {
+  if (showNotifications.value) {
+    const actions = headerEl.value?.querySelector('.standard-header__actions')
+    if (actions && !actions.contains(event.target)) {
+      showNotifications.value = false
+    }
+  }
+  if (!isExpanded.value) return
+  const profile = profileEl.value
+  if (profile instanceof HTMLElement && event.target instanceof Node && !profile.contains(event.target)) {
+    isExpanded.value = false
+  }
+}
+
 onMounted(() => {
-  window.addEventListener('pointerdown', collapseExpanded, true)
+  window.addEventListener('pointerdown', handleClickOutside, true)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('pointerdown', collapseExpanded, true)
+  window.removeEventListener('pointerdown', handleClickOutside, true)
 })
 </script>
 
@@ -174,4 +254,22 @@ onBeforeUnmount(() => {
   .standard-header__action-btn{width:40px;height:40px}
   .standard-header__actions{gap:6px}
 }
+.standard-header__action-wrap{position:relative}
+.standard-header__unread-dot{position:absolute;top:8px;right:8px;width:8px;height:8px;border-radius:999px;background:var(--color-primary);border:2px solid var(--color-surface)}
+.standard-header__notif-dropdown{position:absolute;top:calc(100% + 12px);right:0;width:320px;max-height:420px;border-radius:20px;background:var(--color-surface);border:1px solid var(--aura-glass-border);box-shadow:var(--aura-shadow-premium);overflow:hidden;z-index:1000}
+.notif-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--color-surface-border)}
+.notif-title{font-size:14px;font-weight:700;color:var(--color-text-primary)}
+.notif-mark-read{font-size:12px;font-weight:600;color:var(--color-primary);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:8px}
+.notif-list{max-height:340px;overflow-y:auto;padding:8px}
+.notif-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;cursor:pointer;transition:background .15s ease}
+.notif-item:hover{background:var(--color-field-surface)}
+.notif-item--unread{background:color-mix(in srgb,var(--color-primary) 6%,transparent)}
+.notif-icon-wrap{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.notif-content{flex:1;min-width:0}
+.notif-text{font-size:13px;font-weight:600;color:var(--color-text-primary);line-height:1.4;margin:0}
+.notif-meta{font-size:11px;font-weight:500;color:var(--color-text-muted);margin:4px 0 0}
+.notif-empty{text-align:center;font-size:13px;font-weight:500;color:var(--color-text-muted);padding:32px 16px}
+.notif-dropdown-enter-active{transition:all .25s cubic-bezier(.16,1,.3,1)}
+.notif-dropdown-leave-active{transition:all .2s ease}
+.notif-dropdown-enter-from,.notif-dropdown-leave-to{opacity:0;transform:translateY(-8px) scale(.96)}
 </style>

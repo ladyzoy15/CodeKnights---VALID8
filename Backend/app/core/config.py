@@ -14,14 +14,31 @@ except ImportError:  # pragma: no cover - optional in runtime envs
 from dataclasses import dataclass
 
 
-def _get_env_candidate_paths(config_file: Path | None = None) -> list[Path]:
+def _get_backend_root(config_file: Path | None = None) -> Path:
     resolved_config_file = config_file or Path(__file__).resolve()
-    backend_root = resolved_config_file.parents[2]
-    repo_root = resolved_config_file.parents[3]
+    return resolved_config_file.parents[2]
+
+
+def _get_repo_root(config_file: Path | None = None) -> Path:
+    resolved_config_file = config_file or Path(__file__).resolve()
+    return resolved_config_file.parents[3]
+
+
+def _get_env_candidate_paths(config_file: Path | None = None) -> list[Path]:
+    backend_root = _get_backend_root(config_file)
+    repo_root = _get_repo_root(config_file)
     return [
         backend_root / ".env",
         repo_root / ".env",
     ]
+
+
+def _normalize_storage_path(value: str, config_file: Path | None = None) -> str:
+    normalized_value = value.strip()
+    path_value = Path(normalized_value).expanduser()
+    if path_value.is_absolute():
+        return str(path_value.resolve())
+    return str((_get_repo_root(config_file) / path_value).resolve())
 
 
 def _load_env_files() -> None:
@@ -87,12 +104,16 @@ class Settings:
     secret_key: str
     jwt_algorithm: str
     access_token_expire_minutes: int
-    auth_enable_mfa: bool
+    face_scan_bypass_all: bool
     face_scan_bypass_emails: list[str]
-    face_match_threshold: float
-    liveness_min_score: float
+    face_threshold_single: float
+    face_threshold_group: float
+    face_threshold_mfa: float
+    face_warmup_on_startup: bool
+    face_embedding_dim: int
+    face_embedding_dtype: str
+    liveness_threshold: float
     allow_liveness_bypass_when_model_missing: bool
-    face_verification_bypass: bool
     anti_spoof_scale: float
     anti_spoof_model_path: str
     geo_max_allowed_accuracy_m: float
@@ -120,6 +141,12 @@ class Settings:
     email_from_email: str
     email_from_name: str
     email_reply_to: str
+    smtp_host: str
+    smtp_port: int
+    smtp_username: str
+    smtp_password: str
+    smtp_use_tls: bool
+    smtp_use_starttls: bool
     email_google_account_type: str
     email_google_allow_custom_from: bool
     google_oauth_client_id: str
@@ -154,19 +181,20 @@ def get_settings() -> Settings:
         secret_key=os.getenv("SECRET_KEY", "change-this-secret-in-production"),
         jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
         access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
-        auth_enable_mfa=_as_bool(os.getenv("AUTH_ENABLE_MFA"), True),
+        face_scan_bypass_all=_as_bool(os.getenv("FACE_SCAN_BYPASS_ALL"), False),
         face_scan_bypass_emails=_as_email_list(
             os.getenv("FACE_SCAN_BYPASS_EMAILS"),
             [],
         ),
-        face_match_threshold=float(os.getenv("FACE_MATCH_THRESHOLD", "0.5")),
-        liveness_min_score=float(os.getenv("LIVENESS_MIN_SCORE", "0.85")),
+        face_threshold_single=float(os.getenv("FACE_THRESHOLD_SINGLE", "0.40")),
+        face_threshold_group=float(os.getenv("FACE_THRESHOLD_GROUP", "0.40")),
+        face_threshold_mfa=float(os.getenv("FACE_THRESHOLD_MFA", "0.35")),
+        face_warmup_on_startup=_as_bool(os.getenv("FACE_WARMUP_ON_STARTUP"), True),
+        face_embedding_dim=max(1, int(os.getenv("FACE_EMBEDDING_DIM", "512"))),
+        face_embedding_dtype=(os.getenv("FACE_EMBEDDING_DTYPE", "float32").strip().lower() or "float32"),
+        liveness_threshold=float(os.getenv("LIVENESS_THRESHOLD", "0.85")),
         allow_liveness_bypass_when_model_missing=_as_bool(
             os.getenv("ALLOW_LIVENESS_BYPASS_WHEN_MODEL_MISSING"),
-            False,
-        ),
-        face_verification_bypass=_as_bool(
-            os.getenv("FACE_VERIFICATION_BYPASS"),
             False,
         ),
         anti_spoof_scale=float(os.getenv("ANTI_SPOOF_SCALE", "2.7")),
@@ -197,7 +225,9 @@ def get_settings() -> Settings:
         tenant_database_prefix=(os.getenv("TENANT_DATABASE_PREFIX") or "school").strip() or "school",
         import_max_file_size_mb=int(os.getenv("IMPORT_MAX_FILE_SIZE_MB", "50")),
         import_chunk_size=max(1, int(os.getenv("IMPORT_CHUNK_SIZE", "5000"))),
-        import_storage_dir=os.getenv("IMPORT_STORAGE_DIR", "/tmp/valid8_imports"),
+        import_storage_dir=_normalize_storage_path(
+            os.getenv("IMPORT_STORAGE_DIR") or "/tmp/valid8_imports",
+        ),
         import_rate_limit_count=max(1, int(os.getenv("IMPORT_RATE_LIMIT_COUNT", "3"))),
         import_rate_limit_window_seconds=max(1, int(os.getenv("IMPORT_RATE_LIMIT_WINDOW_SECONDS", "300"))),
         celery_broker_url=os.getenv("CELERY_BROKER_URL", redis_url),
@@ -212,9 +242,15 @@ def get_settings() -> Settings:
         email_from_name=_get_first_env_value(
             "EMAIL_FROM_NAME",
             "SMTP_FROM_NAME",
-            default="VALID8 Notifications",
+            default="Aura Notifications",
         ).strip(),
         email_reply_to=_get_first_env_value("EMAIL_REPLY_TO", "SMTP_REPLY_TO").strip(),
+        smtp_host=_get_first_env_value("SMTP_HOST", default="localhost").strip(),
+        smtp_port=max(1, int(_get_first_env_value("SMTP_PORT", default="1025"))),
+        smtp_username=_get_first_env_value("SMTP_USERNAME").strip(),
+        smtp_password=_get_first_env_value("SMTP_PASSWORD").strip(),
+        smtp_use_tls=_as_bool(_get_first_env_value("SMTP_USE_TLS"), False),
+        smtp_use_starttls=_as_bool(_get_first_env_value("SMTP_USE_STARTTLS"), False),
         email_google_account_type=_get_first_env_value(
             "EMAIL_GOOGLE_ACCOUNT_TYPE",
             "SMTP_GOOGLE_ACCOUNT_TYPE",
@@ -253,7 +289,9 @@ def get_settings() -> Settings:
             False,
         ),
         login_url=os.getenv("LOGIN_URL", "http://localhost:5173"),
-        school_logo_storage_dir=os.getenv("SCHOOL_LOGO_STORAGE_DIR", "/tmp/valid8_school_logos"),
+        school_logo_storage_dir=_normalize_storage_path(
+            os.getenv("SCHOOL_LOGO_STORAGE_DIR") or "/tmp/valid8_school_logos",
+        ),
         school_logo_max_file_size_mb=max(1, int(os.getenv("SCHOOL_LOGO_MAX_FILE_SIZE_MB", "2"))),
         school_logo_public_prefix=os.getenv("SCHOOL_LOGO_PUBLIC_PREFIX", "/media/school-logos"),
         cors_allowed_origins=_as_csv_list(

@@ -1,3 +1,7 @@
+<!--
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Purpose: Breadcrumb Navigation Component
+-->
 <template>
   <nav class="breadcrumbs" aria-label="Breadcrumb">
     <ol class="breadcrumbs__list">

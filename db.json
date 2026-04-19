@@ -104,6 +104,54 @@
       "is_active": true,
       "school_id": 4,
       "created_at": "2026-04-05T06:54:07.376Z"
+    },
+    {
+      "id": "8",
+      "email": "sg@example.com",
+      "password": "password123",
+      "first_name": "Juan",
+      "last_name": "SG",
+      "roles": [
+        "governance"
+      ],
+      "is_active": true,
+      "school_id": 1
+    },
+    {
+      "id": "9",
+      "email": "sg-north@example.com",
+      "password": "password123",
+      "first_name": "Maria",
+      "last_name": "SG",
+      "roles": [
+        "governance"
+      ],
+      "is_active": true,
+      "school_id": 2
+    },
+    {
+      "id": "10",
+      "email": "sg-south@example.com",
+      "password": "password123",
+      "first_name": "Pedro",
+      "last_name": "SG",
+      "roles": [
+        "governance"
+      ],
+      "is_active": true,
+      "school_id": 3
+    },
+    {
+      "id": "11",
+      "email": "sg-dapitan@example.com",
+      "password": "password123",
+      "first_name": "Elena",
+      "last_name": "SG",
+      "roles": [
+        "governance"
+      ],
+      "is_active": true,
+      "school_id": 4
     }
   ],
   "schools": [
@@ -312,10 +360,69 @@
       "description": "North Campus student governing body",
       "school_id": 2,
       "is_active": true
+    },
+    {
+      "id": "3",
+      "unit_code": "SI-SSG-2026",
+      "unit_name": "South Institute SSG",
+      "unit_type": "SSG",
+      "description": "South Institute student governing body",
+      "school_id": 3,
+      "is_active": true
+    },
+    {
+      "id": "4",
+      "unit_code": "DSU-SSG-2026",
+      "unit_name": "Dapitan University SSG",
+      "unit_type": "SSG",
+      "description": "Dapitan State University student governing body",
+      "school_id": 4,
+      "is_active": true
     }
   ],
   "audit_logs": [],
   "notification_logs": [],
   "governance_requests": [],
-  "$schema": "./node_modules/json-server/schema.json"
+  "announcements": [],
+  "$schema": "./node_modules/json-server/schema.json",
+  "governance_members": [
+    {
+      "id": 1,
+      "governance_unit_id": 1,
+      "user_id": 4,
+      "position_title": "President",
+      "permission_codes": [
+        "manage_events",
+        "manage_announcements",
+        "manage_members",
+        "manage_students",
+        "assign_permissions"
+      ]
+    },
+    {
+      "id": 2,
+      "governance_unit_id": 1,
+      "user_id": 5,
+      "position_title": "Secretary",
+      "permission_codes": [
+        "manage_announcements",
+        "view_students"
+      ]
+    },
+    {
+      "id": 3,
+      "governance_unit_id": 2,
+      "user_id": 6,
+      "position_title": "President",
+      "permission_codes": [
+        "manage_events",
+        "manage_announcements",
+        "manage_members",
+        "manage_students",
+        "assign_permissions"
+      ]
+    }
+  ],
+  "assistant_conversations": [],
+  "assistant_messages": []
 }

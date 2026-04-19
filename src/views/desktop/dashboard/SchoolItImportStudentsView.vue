@@ -1,3 +1,7 @@
+<!--
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Purpose: Student Account Bulk Import and Validation
+-->
 <template>
   <section class="school-it-import">
     <div class="school-it-import__shell">

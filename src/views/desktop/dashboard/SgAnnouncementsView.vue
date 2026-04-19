@@ -1,3 +1,7 @@
+<!--
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Purpose: Announcement and Notification Management
+-->
 <template>
   <section class="sg-sub-page">
     <header class="sg-sub-header dashboard-enter dashboard-enter--1">
@@ -97,6 +101,8 @@
 </template>
 
 <script setup>
+import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ArrowLeft, Plus, SquarePen, Trash2 } from 'lucide-vue-next'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { useSgDashboard } from '@/composables/useSgDashboard.js'

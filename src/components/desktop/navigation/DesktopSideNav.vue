@@ -37,96 +37,8 @@
             />
           </button>
         </div>
-
-        <div ref="pillRef" class="relative w-[40px] h-[74px] mx-2 mb-1.5 z-50">
-          <div
-            class="absolute top-0 left-0 flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-lg origin-left"
-            :class="isMiniOpen
-              ? 'w-[300px] h-[190px] rounded-[32px] cursor-default'
-              : 'w-[40px] h-[74px] rounded-[26px] cursor-pointer hover:brightness-110 hover:scale-105 active:scale-95'"
-            style="background: var(--color-primary);"
-            @click="!isMiniOpen ? openPill() : null"
-          >
-            <div
-              class="absolute inset-0 flex flex-col items-center justify-center gap-1 transition-opacity duration-300"
-              :class="isMiniOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'"
-            >
-              <img :src="activeAuraLogo" alt="Aura" class="w-6 h-6 object-contain opacity-90" />
-              <span
-                class="text-[8px] font-extrabold text-center leading-snug transition-colors duration-200"
-                style="color: var(--color-banner-text);"
-              >
-                Talk to<br>Aura Ai
-              </span>
-            </div>
-
-            <div
-              class="absolute inset-0 flex flex-col p-3 transition-opacity duration-300 delay-100"
-              :class="isMiniOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-            >
-              <div class="flex items-center justify-between mb-2">
-                <img
-                  :src="activeAuraLogo"
-                  alt="Aura"
-                  class="w-7 h-7 object-contain opacity-90 cursor-pointer transition-transform hover:scale-110"
-                  title="Collapse chat"
-                  @click.stop="closeMini"
-                />
-
-                <button
-                  class="p-1.5 hover:bg-black/10 rounded-full transition-colors"
-                  aria-label="Expand chat to full window"
-                  title="Open full chat"
-                  @click.stop="expandToFull"
-                >
-                  <Maximize2 :size="15" :color="'var(--color-banner-text)'" />
-                </button>
-              </div>
-
-              <div class="mini-messages flex-1 overflow-y-auto scrollbar-hide pb-1">
-                <TransitionGroup name="mini-bubble" tag="div" class="mini-messages-inner">
-                  <div
-                    v-for="msg in messages"
-                    :key="msg.id"
-                    :class="msg.sender === 'ai' ? 'mini-bubble mini-bubble--ai' : 'mini-bubble mini-bubble--user'"
-                  >
-                    {{ msg.text }}
-                  </div>
-
-                  <div v-if="isTyping" key="typing" class="mini-bubble mini-bubble--ai mini-bubble--typing">
-                    <div class="w-1.5 h-1.5 rounded-full bg-black/40 animate-bounce" style="animation-delay:0ms" />
-                    <div class="w-1.5 h-1.5 rounded-full bg-black/40 animate-bounce" style="animation-delay:150ms" />
-                    <div class="w-1.5 h-1.5 rounded-full bg-black/40 animate-bounce" style="animation-delay:300ms" />
-                  </div>
-                </TransitionGroup>
-              </div>
-
-              <div class="mt-1">
-                <div
-                  class="h-[36px] rounded-full border border-black/20 flex items-center px-3 gap-2 bg-black/5"
-                  :style="{ borderColor: 'var(--color-banner-text)' }"
-                >
-                  <input
-                    v-model="inputText"
-                    type="text"
-                    class="bg-transparent outline-none text-[11px] w-full placeholder-black/40 font-medium"
-                    :style="{ color: 'var(--color-banner-text)' }"
-                    placeholder="Ask Aura..."
-                    :disabled="isTyping"
-                    @keyup.enter="sendMessage"
-                  />
-                  <button
-                    class="cursor-pointer transition-opacity hover:opacity-100 disabled:opacity-40 flex-shrink-0"
-                    :class="inputText.trim() ? 'opacity-100' : 'opacity-60'"
-                    :disabled="!inputText.trim() || isTyping"
-                    @click="sendMessage"
-                  >
-                    <Send :size="14" :color="'var(--color-banner-text)'" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="nav-rail__ai">
+          <AuraChatPill />
         </div>
       </div>
     </div>
@@ -138,24 +50,10 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Maximize2, Send } from 'lucide-vue-next'
-import { activeAuraLogo } from '@/config/theme.js'
-import { useChat } from '@/composables/useChat.js'
-import AuraChatWindow from '@/components/desktop/ui/AuraChatWindow.vue'
 import { getNavigationItemsForRoute } from '@/components/desktop/navigation/navigationItems.js'
+import AuraChatPill from '@/components/desktop/ai/AuraChatPill.vue'
+import AuraChatWindow from '@/components/desktop/ai/AuraChatWindow.vue'
 
-const {
-  messages,
-  inputText,
-  isTyping,
-  isMiniOpen,
-  sendMessage,
-  openPill,
-  closeMini,
-  expandToFull,
-} = useChat()
-
-const pillRef = ref(null)
 const router = useRouter()
 const route = useRoute()
 const navItems = computed(() => getNavigationItemsForRoute(route))
@@ -165,12 +63,6 @@ const navRailStyle = computed(() => ({
   height: `${railHeight.value}px`,
   top: `calc(50vh - ${railHeight.value / 2}px)`,
 }))
-
-function handleOutsideClick(event) {
-  if (isMiniOpen.value && pillRef.value && !pillRef.value.contains(event.target)) {
-    closeMini()
-  }
-}
 
 function isActive(item) {
   const path = item?.route
@@ -195,9 +87,6 @@ function navigate(path) {
   if (route.path === path) return
   router.push(path)
 }
-
-onMounted(() => document.addEventListener('mousedown', handleOutsideClick))
-onUnmounted(() => document.removeEventListener('mousedown', handleOutsideClick))
 </script>
 
 <style scoped>
@@ -265,6 +154,15 @@ onUnmounted(() => document.removeEventListener('mousedown', handleOutsideClick))
   padding: 18px 0 12px;
   gap: 2px;
   flex: 1;
+}
+
+.nav-rail__ai {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .nav-rail__button {

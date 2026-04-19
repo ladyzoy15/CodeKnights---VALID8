@@ -1,3 +1,7 @@
+<!--
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Purpose: Student Government Attendance Management
+-->
 <template>
   <section class="sg-sub-page">
     <header class="sg-sub-header dashboard-enter dashboard-enter--1">

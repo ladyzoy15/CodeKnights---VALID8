@@ -1,3 +1,7 @@
+/**
+ * |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+ * Purpose: Global Session and State Management
+ */
 import { computed, reactive, readonly } from 'vue'
 import { applyTheme, loadTheme, configureThemeForUser } from '@/config/theme.js'
 import {
@@ -244,7 +248,7 @@ function hasRole(user, roleName) {
 }
 
 function isPrivilegedFaceUser(user) {
-    return hasRole(user, 'admin') || hasRole(user, 'school_IT')
+    return hasRole(user, 'admin') || hasRole(user, 'school_IT') || hasRole(user, 'governance')
 }
 
 function isSchoolItUser(user) {
@@ -733,11 +737,17 @@ export function isAdminSession(user = state.user) {
     return isAdminUser(user)
 }
 
+export function isGovernanceSession(user = state.user) {
+    return hasRole(user, 'governance')
+}
+
 export function getDefaultAuthenticatedRoute(user = state.user) {
     return isSchoolItSession(user)
         ? { name: 'SchoolItHome' }
         : isAdminSession(user)
         ? { name: 'AdminHome' }
+        : isGovernanceSession(user)
+        ? { name: 'SgDashboard' }
         : isPrivilegedSession(user)
         ? { name: 'PrivilegedDashboard' }
         : { name: 'Home' }
@@ -777,6 +787,7 @@ export function useDashboardSession() {
         isPrivilegedSession,
         isSchoolItSession,
         isAdminSession,
+        isGovernanceSession,
         getDefaultAuthenticatedRoute,
         sessionNeedsFaceRegistration,
     }

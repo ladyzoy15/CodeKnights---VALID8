@@ -1,3 +1,7 @@
+<!--
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Purpose: School IT Branding and Preview Settings
+-->
 <template>
   <section class="school-it-settings">
     <div class="school-it-settings__shell">

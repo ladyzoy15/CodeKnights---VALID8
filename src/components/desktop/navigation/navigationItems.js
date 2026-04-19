@@ -2,6 +2,7 @@ import {
     Building2,
     CalendarDays,
     House,
+    Megaphone,
     PieChart,
     Settings,
     ShieldCheck,
@@ -58,8 +59,9 @@ export const exposedAdminNavigationItems = [
 export const sgNavigationItems = [
     { name: 'Home', route: '/sg', icon: House },
     { name: 'Events', route: '/sg/events', icon: CalendarDays },
+    { name: 'Announcements', route: '/sg/announcements', icon: Megaphone },
     { name: 'Members', route: '/sg/members', icon: UsersRound },
-    { name: 'Profile', route: '/dashboard/profile', icon: UserRound },
+    { name: 'Profile', route: '/sg/profile', icon: UserRound },
 ]
 
 export const exposedSgNavigationItems = [
@@ -97,7 +99,7 @@ function resolveNavigationContextFromPath(path = '') {
         return 'workspace_preview'
     }
     if (normalizedPath.startsWith('/exposed/sg')) {
-        return 'dashboard_preview'
+        return 'sg_preview'
     }
     if (normalizedPath.startsWith('/exposed/dashboard')) {
         return 'dashboard_preview'
@@ -109,7 +111,7 @@ function resolveNavigationContextFromPath(path = '') {
         return 'workspace'
     }
     if (normalizedPath.startsWith('/sg')) {
-        return 'dashboard'
+        return 'sg'
     }
 
     return 'dashboard'

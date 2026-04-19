@@ -83,6 +83,15 @@ SENSITIVE_WILDCARD_TABLES = {
     "student_profiles",
 }
 
+MCP_READ_ONLY_TABLES = {
+    "event_sanction_configs",
+    "sanction_records",
+    "sanction_items",
+    "sanction_delegations",
+    "sanction_compliance_history",
+    "clearance_deadlines",
+}
+
 
 def _resolve_roles(body: QueryRequest) -> list[str]:
     combined = [*body.roles]
@@ -300,6 +309,11 @@ def run_query(body: QueryRequest) -> Dict[str, Any]:
                     table = _extract_table_from_update(body.sql)
                 if not table:
                     raise HTTPException(status_code=400, detail="could not detect table for write query")
+                if table in MCP_READ_ONLY_TABLES:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"write is not allowed through MCP for table: {table}",
+                    )
                 if table not in policy.allowed_write_tables:
                     raise HTTPException(status_code=403, detail=f"write not allowed for table: {table}")
 

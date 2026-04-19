@@ -1,3 +1,7 @@
+/**
+ * |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+ * Purpose: Core Backend API Integration
+ */
 import {
     isNgrokApiBaseUrl,
     resolveAbsoluteApiBaseUrl,
@@ -482,7 +486,7 @@ export async function getGovernanceUnitDetail(baseUrl, token, governanceUnitId) 
     }))
 }
 
-async function getGovernanceUnits(baseUrl, token) {
+export async function getGovernanceUnits(baseUrl, token) {
     const payload = await request(baseUrl, '/api/governance/units', {
         method: 'GET',
         token,

@@ -1,3 +1,7 @@
+<!--
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Purpose: Desktop Top Navigation Bar and Theme Toggle
+-->
 <template>
   <header class="flex items-center justify-between px-0 pt-5 pb-2 md:px-0 md:pt-6">
     <!-- Profile Card (Expands on Hover or Tap) -->

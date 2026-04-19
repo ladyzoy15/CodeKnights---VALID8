@@ -27,5 +27,12 @@ useProtectedShellSession()
   margin-left: 80px;
   padding-bottom: 32px;
 }
+
+.desktop-app-layout__ai-trigger {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 100;
+}
 </style>
 
