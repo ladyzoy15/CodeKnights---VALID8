@@ -1,17 +1,24 @@
 import { createApp } from 'vue'
 import { Capacitor } from '@capacitor/core'
+import { createPinia } from 'pinia'
 import router from '@/router/index.js'
 import App from './App.vue'
 import './assets/css/main.css'
+import 'katex/dist/katex.min.css'
+import 'highlight.js/styles/github-dark.css'
 
 import { loadTheme, applyTheme } from '@/config/theme.js'
 import { clearDashboardSession, initializeDashboardSession } from '@/composables/useDashboardSession.js'
 import { installAppErrorHandling, scheduleNonCriticalStartupTask } from '@/services/appBootstrap.js'
+import { installConsoleNoiseFilters } from '@/services/consoleNoise.js'
 import { startDocumentBrandingSync } from '@/services/documentBranding.js'
 import { getStoredAuthMeta, hasPrivilegedPendingFace } from '@/services/localAuth.js'
 import { registerAuraServiceWorker, startMobileFullscreenSync } from '@/services/mobileFullscreen.js'
 import { startPwaInstallSync } from '@/services/pwaInstall.js'
+import { bootstrapStoredSessionPersistence, hasStoredSessionToken } from '@/services/sessionPersistence.js'
 import { SESSION_EXPIRED_EVENT } from '@/services/sessionExpiry.js'
+import { initializeStoredFontSize } from '@/services/userPreferences.js'
+import { initializeDeviceStore } from '@/stores/device.js'
 
 function resolveBootstrapThemeSettings() {
   const authMeta = getStoredAuthMeta()
@@ -39,9 +46,16 @@ function resolveBootstrapThemeSettings() {
   }
 }
 
+bootstrapStoredSessionPersistence()
+initializeStoredFontSize()
 applyTheme(loadTheme(resolveBootstrapThemeSettings()))
+installConsoleNoiseFilters()
 
 const app = createApp(App)
+const pinia = createPinia()
+
+app.use(pinia)
+initializeDeviceStore(pinia)
 app.use(router)
 installAppErrorHandling(app, router)
 app.mount('#app')
@@ -63,7 +77,7 @@ if (typeof window !== 'undefined') {
 }
 
 // Pre-initialize session if token exists
-if (localStorage.getItem('aura_token') && !hasPrivilegedPendingFace()) {
+if (hasStoredSessionToken() && !hasPrivilegedPendingFace()) {
   scheduleNonCriticalStartupTask(() => initializeDashboardSession().catch(() => null), {
     timeoutMs: 500,
   })
@@ -71,12 +85,6 @@ if (localStorage.getItem('aura_token') && !hasPrivilegedPendingFace()) {
 
 // --- Capacitor Native Initialization ---
 if (Capacitor.isNativePlatform()) {
-  // Status bar styling
-  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
-    StatusBar.setStyle({ style: Style.Light }).catch(() => null)
-    StatusBar.setBackgroundColor({ color: '#EBEBEB' }).catch(() => null)
-  }).catch(() => null)
-
   // Splash screen (auto-hides via config, but ensure it hides)
   import('@capacitor/splash-screen').then(({ SplashScreen }) => {
     setTimeout(() => {
@@ -97,7 +105,7 @@ if (Capacitor.isNativePlatform()) {
 
     // Re-sync session when app returns to foreground
     CapApp.addListener('appStateChange', ({ isActive }) => {
-      if (isActive && localStorage.getItem('aura_token')) {
+      if (isActive && hasStoredSessionToken()) {
         initializeDashboardSession().catch(() => null)
       }
     })

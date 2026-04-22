@@ -5,6 +5,7 @@ Role: Service layer. It keeps business logic out of the route files.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import json
 import logging
 import os
@@ -42,6 +43,9 @@ from app.models.school import School
 
 
 logger = logging.getLogger(__name__)
+
+_MAX_IMPORT_PASSWORD_HASH_WORKERS = 8
+_MAX_IMPORT_PASSWORD_GENERATION_ATTEMPTS = 16
 
 
 class StudentImportService:
@@ -125,6 +129,7 @@ class StudentImportService:
     def _process_streaming(self, job_id: str) -> str | None:
         settings = self.settings
         start_time = datetime.utcnow()
+        used_temporary_passwords: set[str] = set()
 
         with SessionLocal() as db:
             repo = ImportRepository(db)
@@ -146,8 +151,6 @@ class StudentImportService:
             )
 
         validation_context = self._build_validation_context(target_school_id)
-        temporary_password, shared_password_hash = self._build_shared_import_password_credentials()
-
         failed_report_dir = Path(settings.import_storage_dir) / "reports"
         failed_report_dir.mkdir(parents=True, exist_ok=True)
 
@@ -206,12 +209,14 @@ class StudentImportService:
                     row_buffer.append(transformed)
 
                 if len(row_buffer) >= settings.import_chunk_size:
+                    self._attach_import_password_credentials_batch(
+                        row_buffer,
+                        used_temporary_passwords=used_temporary_passwords,
+                    )
                     batch_success_count, batch_failed_count, batch_errors = self._flush_batch(
                         job_id=job_id,
                         row_buffer=row_buffer,
                         student_role_id=student_role_id,
-                        temporary_password=temporary_password,
-                        shared_password_hash=shared_password_hash,
                     )
                     success_count += batch_success_count
                     failed_count += batch_failed_count
@@ -242,12 +247,14 @@ class StudentImportService:
                     )
 
             if row_buffer:
+                self._attach_import_password_credentials_batch(
+                    row_buffer,
+                    used_temporary_passwords=used_temporary_passwords,
+                )
                 batch_success_count, batch_failed_count, batch_errors = self._flush_batch(
                     job_id=job_id,
                     row_buffer=row_buffer,
                     student_role_id=student_role_id,
-                    temporary_password=temporary_password,
-                    shared_password_hash=shared_password_hash,
                 )
                 success_count += batch_success_count
                 failed_count += batch_failed_count
@@ -293,6 +300,7 @@ class StudentImportService:
         start_time: datetime,
     ) -> str | None:
         settings = self.settings
+        used_temporary_passwords: set[str] = set()
         failed_report_dir = Path(settings.import_storage_dir) / "reports"
         failed_report_dir.mkdir(parents=True, exist_ok=True)
 
@@ -315,8 +323,6 @@ class StudentImportService:
 
         row_buffer: List[dict] = []
         error_buffer: List[dict] = []
-        temporary_password, shared_password_hash = self._build_shared_import_password_credentials()
-
         processed_rows = 0
         success_count = 0
         failed_count = 0
@@ -336,12 +342,14 @@ class StudentImportService:
             processed_rows += 1
 
             if len(row_buffer) >= settings.import_chunk_size:
+                self._attach_import_password_credentials_batch(
+                    row_buffer,
+                    used_temporary_passwords=used_temporary_passwords,
+                )
                 batch_success_count, batch_failed_count, batch_errors = self._flush_batch(
                     job_id=job_id,
                     row_buffer=row_buffer,
                     student_role_id=student_role_id,
-                    temporary_password=temporary_password,
-                    shared_password_hash=shared_password_hash,
                     trust_preview=True,
                 )
                 success_count += batch_success_count
@@ -373,12 +381,14 @@ class StudentImportService:
                 )
 
         if row_buffer:
+            self._attach_import_password_credentials_batch(
+                row_buffer,
+                used_temporary_passwords=used_temporary_passwords,
+            )
             batch_success_count, batch_failed_count, batch_errors = self._flush_batch(
                 job_id=job_id,
                 row_buffer=row_buffer,
                 student_role_id=student_role_id,
-                temporary_password=temporary_password,
-                shared_password_hash=shared_password_hash,
                 trust_preview=True,
             )
             success_count += batch_success_count
@@ -450,8 +460,6 @@ class StudentImportService:
         job_id: str,
         row_buffer: List[dict],
         student_role_id: int,
-        temporary_password: str,
-        shared_password_hash: str,
         trust_preview: bool = False,
     ) -> tuple[int, int, List[dict]]:
         with SessionLocal() as db:
@@ -459,7 +467,6 @@ class StudentImportService:
             success_rows, batch_errors = repo.bulk_insert_students(
                 row_buffer,
                 student_role_id,
-                shared_password_hash=shared_password_hash,
                 trust_preview=trust_preview,
             )
             db.commit()
@@ -470,7 +477,7 @@ class StudentImportService:
                 user_id=row["user_id"],
                 email=row["email"],
                 first_name=row.get("first_name"),
-                temporary_password=temporary_password,
+                temporary_password=row["temporary_password"],
             )
 
         return len(success_rows), len(batch_errors), batch_errors
@@ -535,8 +542,8 @@ class StudentImportService:
             error_message = str(exc)
             if publish_error_message:
                 error_message = (
-                    f"Celery publish failed: {publish_error_message}. "
-                    f"Inline delivery failed: {error_message}"
+                    f"Task publish failed: {publish_error_message}; "
+                    f"inline send failed: {error_message}"
                 )
             logger.warning(
                 "Inline onboarding email delivery failed for import job %s and user %s.",
@@ -586,11 +593,60 @@ class StudentImportService:
             )
             db.commit()
 
-    def _build_shared_import_password_credentials(self) -> tuple[str, str]:
-        # Imported accounts still share one generated password per job so the import
-        # path avoids one bcrypt hash per user while emails can include real credentials.
-        temporary_password = generate_secure_password(min_length=10, max_length=14)
-        return temporary_password, hash_password_bcrypt(temporary_password)
+    def _generate_unique_import_password(self, used_temporary_passwords: set[str] | None = None) -> str:
+        seen_passwords = used_temporary_passwords if used_temporary_passwords is not None else set()
+        for _ in range(_MAX_IMPORT_PASSWORD_GENERATION_ATTEMPTS):
+            candidate = generate_secure_password(min_length=10, max_length=14)
+            if candidate not in seen_passwords:
+                seen_passwords.add(candidate)
+                return candidate
+
+        while True:
+            candidate = f"{generate_secure_password(min_length=10, max_length=14)}{os.urandom(2).hex()}"
+            if candidate not in seen_passwords:
+                seen_passwords.add(candidate)
+                return candidate
+
+    def _resolve_password_hash_workers(self, row_count: int) -> int:
+        if row_count <= 1:
+            return 1
+        return max(
+            1,
+            min(
+                _MAX_IMPORT_PASSWORD_HASH_WORKERS,
+                row_count,
+                os.cpu_count() or 1,
+            ),
+        )
+
+    def _attach_import_password_credentials(self, row: dict, *, used_temporary_passwords: set[str] | None = None) -> None:
+        temporary_password = self._generate_unique_import_password(used_temporary_passwords)
+        row["temporary_password"] = temporary_password
+        row["password_hash"] = hash_password_bcrypt(temporary_password)
+
+    def _attach_import_password_credentials_batch(
+        self,
+        rows: List[dict],
+        *,
+        used_temporary_passwords: set[str] | None = None,
+    ) -> None:
+        if not rows:
+            return
+
+        passwords = [
+            self._generate_unique_import_password(used_temporary_passwords)
+            for _ in rows
+        ]
+        worker_count = self._resolve_password_hash_workers(len(rows))
+        if worker_count == 1:
+            hashes = [hash_password_bcrypt(password) for password in passwords]
+        else:
+            with ThreadPoolExecutor(max_workers=worker_count) as executor:
+                hashes = list(executor.map(hash_password_bcrypt, passwords))
+
+        for row, temporary_password, password_hash in zip(rows, passwords, hashes):
+            row["temporary_password"] = temporary_password
+            row["password_hash"] = password_hash
 
     def _build_validation_context(self, target_school_id: int) -> ValidationContext:
         with SessionLocal() as db:

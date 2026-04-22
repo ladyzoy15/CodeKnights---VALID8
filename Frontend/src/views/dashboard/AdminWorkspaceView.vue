@@ -126,6 +126,50 @@
             </div>
           </article>
         </section>
+
+        <section class="admin-view__grid admin-view__grid--reports">
+          <article class="admin-view__card">
+            <div class="admin-view__card-head">
+              <div>
+                <p class="admin-view__mini">Subscriptions</p>
+                <h2>School Spread</h2>
+              </div>
+            </div>
+
+            <div v-if="subscriptionChartData.labels.length" class="admin-view__chart">
+              <ReportsBarChart :data="subscriptionChartData" :options="chartOptions.bar" />
+            </div>
+            <p v-else class="admin-view__muted">No school subscription data yet.</p>
+          </article>
+
+          <article class="admin-view__card">
+            <div class="admin-view__card-head">
+              <div>
+                <p class="admin-view__mini">Operations</p>
+                <h2>Audit + Notification Trend</h2>
+              </div>
+            </div>
+
+            <div v-if="activityTrendChartData.labels.length" class="admin-view__chart">
+              <ReportsLineChart :data="activityTrendChartData" :options="chartOptions.line" />
+            </div>
+            <p v-else class="admin-view__muted">Recent operational activity will appear here.</p>
+          </article>
+
+          <article class="admin-view__card">
+            <div class="admin-view__card-head">
+              <div>
+                <p class="admin-view__mini">Governance</p>
+                <h2>Queue Status</h2>
+              </div>
+            </div>
+
+            <div v-if="requestStatusChartData.labels.length" class="admin-view__chart">
+              <ReportsPieChart :data="requestStatusChartData" :options="chartOptions.pie" />
+            </div>
+            <p v-else class="admin-view__muted">No governance requests are waiting right now.</p>
+          </article>
+        </section>
       </div>
 
       <div v-else-if="section === 'schools'" class="admin-view__stack">
@@ -297,6 +341,83 @@
         </section>
       </div>
 
+      <div v-else-if="section === 'reports'" class="admin-view__stack">
+        <section class="admin-view__metrics">
+          <article v-for="card in reportSummaryCards" :key="card.id" class="admin-view__metric" :class="{ 'admin-view__metric--primary': card.primary }">
+            <p>{{ card.label }}</p>
+            <strong>{{ card.value }}</strong>
+            <span>{{ card.meta }}</span>
+          </article>
+        </section>
+
+        <section class="admin-view__grid admin-view__grid--reports">
+          <article class="admin-view__card">
+            <div class="admin-view__card-head">
+              <div><p class="admin-view__mini">Subscriptions</p><h2>School Spread</h2></div>
+            </div>
+            <div v-if="subscriptionChartData.labels.length" class="admin-view__chart">
+              <ReportsBarChart :data="subscriptionChartData" :options="chartOptions.bar" />
+            </div>
+            <p v-else class="admin-view__muted">No school subscription data yet.</p>
+          </article>
+
+          <article class="admin-view__card">
+            <div class="admin-view__card-head">
+              <div><p class="admin-view__mini">Operations</p><h2>Audit + Notification Trend</h2></div>
+            </div>
+            <div v-if="activityTrendChartData.labels.length" class="admin-view__chart">
+              <ReportsLineChart :data="activityTrendChartData" :options="chartOptions.line" />
+            </div>
+            <p v-else class="admin-view__muted">Recent operational activity will appear here.</p>
+          </article>
+
+          <article class="admin-view__card">
+            <div class="admin-view__card-head">
+              <div><p class="admin-view__mini">Governance</p><h2>Queue Status</h2></div>
+            </div>
+            <div v-if="requestStatusChartData.labels.length" class="admin-view__chart">
+              <ReportsPieChart :data="requestStatusChartData" :options="chartOptions.pie" />
+            </div>
+            <p v-else class="admin-view__muted">No governance requests are waiting right now.</p>
+          </article>
+        </section>
+
+        <section class="admin-view__grid">
+          <article class="admin-view__card">
+            <div class="admin-view__card-head">
+              <div><p class="admin-view__mini">School Report</p><h2>School health table</h2></div>
+            </div>
+            <div class="admin-view__list">
+              <article v-for="row in schoolHealthRows" :key="row.school_id" class="admin-view__row">
+                <div>
+                  <h3>{{ row.school_name }}</h3>
+                  <p>{{ row.meta }}</p>
+                </div>
+                <div class="admin-view__badges">
+                  <span class="admin-view__badge">{{ row.subscription_label }}</span>
+                  <span class="admin-view__badge admin-view__badge--muted">{{ row.active_label }}</span>
+                </div>
+              </article>
+            </div>
+          </article>
+
+          <article class="admin-view__card">
+            <div class="admin-view__card-head">
+              <div><p class="admin-view__mini">Activity Feed</p><h2>Recent platform activity</h2></div>
+            </div>
+            <div class="admin-view__list">
+              <article v-for="item in recentPlatformActivity" :key="item.key" class="admin-view__row">
+                <div>
+                  <h3>{{ item.title }}</h3>
+                  <p>{{ item.meta }}</p>
+                </div>
+                <span class="admin-view__badge admin-view__badge--muted">{{ item.badge }}</span>
+              </article>
+            </div>
+          </article>
+        </section>
+      </div>
+
       <div v-else class="admin-view__grid">
         <article class="admin-view__card">
           <div class="admin-view__card-head">
@@ -304,11 +425,27 @@
             <span class="admin-view__badge admin-view__badge--muted">Admin</span>
           </div>
           <div class="admin-view__profile">
-            <div><span>Email</span><strong>{{ activeUser?.email || 'platform.admin@valid8.local' }}</strong></div>
+            <div><span>Email</span><strong>{{ activeUser?.email || 'platform.admin@aura.local' }}</strong></div>
             <div><span>Scope</span><strong>Platform-wide</strong></div>
             <div><span>Schools</span><strong>{{ schools.length }}</strong></div>
             <div><span>Campus Admins</span><strong>{{ activeCampusAccountCount }}</strong></div>
           </div>
+          <button
+            class="admin-view__preference"
+            type="button"
+            :aria-pressed="isDarkMode"
+            aria-label="Toggle dark mode"
+            @click="toggleDarkMode"
+          >
+            <span class="admin-view__preference-copy">
+              <span class="admin-view__mini admin-view__mini--inline">Appearance</span>
+              <strong>Dark Mode</strong>
+              <small>Apply the theme across every workspace for this device.</small>
+            </span>
+            <span class="admin-view__settings-toggle" :class="{ 'admin-view__settings-toggle--on': isDarkMode }">
+              <span class="admin-view__settings-toggle-knob" />
+            </span>
+          </button>
         </article>
 
         <article class="admin-view__card">
@@ -331,11 +468,16 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, BellRing, Building2, Check, History, KeyRound, LoaderCircle, Plus, RefreshCw, Search, ShieldCheck, UserRoundX, X } from 'lucide-vue-next'
 import SchoolItTopHeader from '@/components/dashboard/SchoolItTopHeader.vue'
+import ReportsBarChart from '@/components/reports/ReportsBarChart.vue'
+import ReportsLineChart from '@/components/reports/ReportsLineChart.vue'
+import ReportsPieChart from '@/components/reports/ReportsPieChart.vue'
+import { isDarkMode, toggleDarkMode } from '@/config/theme.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useAdminWorkspaceData } from '@/composables/useAdminWorkspaceData.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
 import { adminDashboardPreviewData } from '@/data/adminDashboardPreview.js'
+import { buildBarChartData, buildLineChartData, buildPieChartData, buildTrailingDayLabels } from '@/services/dashboardReportCharts.js'
 
 const props = defineProps({
   preview: { type: Boolean, default: false },
@@ -390,6 +532,7 @@ const sectionMetaMap = {
   schools: { title: 'Schools', description: 'Provision campuses, create school accounts, and control activation and subscription states.', searchPlaceholder: 'Search schools', actionLabel: 'Create School', actionIcon: Plus },
   accounts: { title: 'Campus Admin Accounts', description: 'Manage school-scoped admin accounts and rotate credentials cleanly.', searchPlaceholder: 'Search campus-admin accounts', actionLabel: 'Oversight', actionIcon: ShieldCheck },
   oversight: { title: 'Oversight', description: 'Review audit activity, dispatch notifications, and manage governance retention.', searchPlaceholder: 'Search logs and requests', actionLabel: 'Refresh', actionIcon: RefreshCw },
+  reports: { title: 'Reports', description: 'Review platform-wide school health, operational trends, and governance queue reporting in one place.', searchPlaceholder: 'Search schools and activity', actionLabel: 'Refresh', actionIcon: RefreshCw },
   profile: { title: 'Admin Profile', description: 'Review the current platform-admin session and module coverage.', searchPlaceholder: 'Search summary', actionLabel: 'Schools', actionIcon: Building2 },
 }
 
@@ -401,7 +544,7 @@ const displayName = computed(() => {
 })
 const avatarUrl = computed(() => activeUser.value?.avatar_url || '')
 const initials = computed(() => abbreviate(displayName.value, 2))
-const platformLabel = computed(() => 'VALID8 Platform')
+const platformLabel = computed(() => 'Aura Platform')
 const activeSchoolCount = computed(() => schools.value.filter((item) => item.active_status).length)
 const suspendedSchoolCount = computed(() => schools.value.filter((item) => item.subscription_status === 'suspended').length)
 const activeCampusAccountCount = computed(() => campusAccounts.value.filter((item) => item.is_active).length)
@@ -423,9 +566,145 @@ const oversightLogFeed = computed(() => [
   ...filteredAuditLogs.value.slice(0, 4).map((item) => ({ kind: 'audit', id: item.id, title: prettify(item.action), meta: `${resolveSchoolName(item.school_id)} • ${formatDateTime(item.created_at)}`, badge: prettify(item.status) })),
   ...filteredNotificationLogs.value.slice(0, 4).map((item) => ({ kind: 'notification', id: item.id, title: item.subject, meta: `${resolveSchoolName(item.school_id)} • ${formatDateTime(item.created_at)}`, badge: prettify(item.status) })),
 ])
+const reportSummaryCards = computed(() => [
+  { id: 'schools', label: 'Schools In Scope', value: filteredSchools.value.length, meta: 'School records after the current scope and search filters.', primary: true },
+  { id: 'active-campuses', label: 'Active Campuses', value: activeSchoolCount.value, meta: 'Schools currently marked active.' },
+  { id: 'campus-admins', label: 'Campus Admins', value: activeCampusAccountCount.value, meta: 'Active school-scoped admin accounts.' },
+  { id: 'audit-logs', label: 'Audit Logs', value: scopedAuditLogs.value.length, meta: 'Operational audit rows in the current scope.' },
+  { id: 'notifications', label: 'Notifications', value: scopedNotificationLogs.value.length, meta: 'Notification log entries available for reporting.' },
+  { id: 'pending-queue', label: 'Pending Requests', value: pendingRequestCount.value, meta: 'Governance requests still awaiting review.' },
+])
+const schoolHealthRows = computed(() => filteredSchools.value.map((school) => {
+  const relatedCampusAdmins = campusAccounts.value.filter((item) => Number(item?.school_id) === Number(school.school_id))
+  return {
+    school_id: school.school_id,
+    school_name: school.school_name,
+    subscription_label: formatSubscriptionLabel(school.subscription_status),
+    active_label: school.active_status ? 'Active' : 'Inactive',
+    meta: `${school.school_code || 'No code'} • ${relatedCampusAdmins.length} campus admin${relatedCampusAdmins.length === 1 ? '' : 's'} • ${resolveCampusAdminEmail(school.school_id)}`,
+  }
+}))
+const recentPlatformActivity = computed(() => {
+  return [
+    ...scopedAuditLogs.value.map((item) => ({
+      key: `audit-${item.id}`,
+      timestamp: new Date(item?.created_at || 0).getTime(),
+      title: prettify(item.action),
+      meta: `${resolveSchoolName(item.school_id)} • ${formatDateTime(item.created_at)}`,
+      badge: prettify(item.status),
+    })),
+    ...scopedNotificationLogs.value.map((item) => ({
+      key: `notification-${item.id}`,
+      timestamp: new Date(item?.created_at || 0).getTime(),
+      title: item.subject || prettify(item.category),
+      meta: `${resolveSchoolName(item.school_id)} • ${formatDateTime(item.created_at)}`,
+      badge: prettify(item.status),
+    })),
+  ]
+    .sort((left, right) => right.timestamp - left.timestamp)
+    .slice(0, 10)
+})
+
+const scopedAuditLogs = computed(() => selectedSchoolId.value
+  ? auditLogs.value.filter((item) => Number(item?.school_id) === Number(selectedSchoolId.value))
+  : auditLogs.value
+)
+const scopedNotificationLogs = computed(() => selectedSchoolId.value
+  ? notificationLogs.value.filter((item) => Number(item?.school_id) === Number(selectedSchoolId.value))
+  : notificationLogs.value
+)
+const scopedGovernanceRequests = computed(() => selectedSchoolId.value
+  ? governanceRequests.value.filter((item) => Number(item?.school_id) === Number(selectedSchoolId.value))
+  : governanceRequests.value
+)
+
+const subscriptionChartData = computed(() => {
+  const counts = {
+    active: 0,
+    trial: 0,
+    suspended: 0,
+  }
+
+  for (const school of schools.value) {
+    const key = String(school?.subscription_status || 'trial').toLowerCase()
+    if (Object.hasOwn(counts, key)) counts[key] += 1
+  }
+
+  return buildBarChartData([
+    { label: 'Active', value: counts.active },
+    { label: 'Trial', value: counts.trial },
+    { label: 'Suspended', value: counts.suspended },
+  ], {
+    label: 'Schools',
+    backgroundColor: 'rgba(0,87,184,0.82)',
+  })
+})
+
+const activityTrendChartData = computed(() => {
+  const labels = buildTrailingDayLabels(7)
+  const buckets = new Map(labels.map((item) => [item.key, { audits: 0, notifications: 0 }]))
+
+  for (const item of scopedAuditLogs.value) {
+    const key = String(item?.created_at || '').slice(0, 10)
+    if (buckets.has(key)) buckets.get(key).audits += 1
+  }
+
+  for (const item of scopedNotificationLogs.value) {
+    const key = String(item?.created_at || '').slice(0, 10)
+    if (buckets.has(key)) buckets.get(key).notifications += 1
+  }
+
+  return buildLineChartData(
+    labels.map((item) => item.label),
+    [
+      { label: 'Audit Logs', data: labels.map((item) => buckets.get(item.key).audits), borderColor: 'rgba(0,87,184,0.88)' },
+      { label: 'Notifications', data: labels.map((item) => buckets.get(item.key).notifications), borderColor: 'rgba(16,185,129,0.88)' },
+    ]
+  )
+})
+
+const requestStatusChartData = computed(() => {
+  const grouped = new Map()
+  for (const item of scopedGovernanceRequests.value) {
+    const status = prettify(item?.status || 'pending')
+    grouped.set(status, (grouped.get(status) || 0) + 1)
+  }
+
+  return buildPieChartData(Array.from(grouped.entries()).map(([label, value]) => ({ label, value })))
+})
+
+const chartOptions = {
+  bar: {
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          precision: 0,
+        },
+      },
+    },
+  },
+  line: {
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          precision: 0,
+        },
+      },
+    },
+  },
+  pie: {
+    plugins: {
+      legend: {
+        position: 'bottom',
+      },
+    },
+  },
+}
 
 usePreviewTheme(() => props.preview, computed(() => ({
-  school_name: 'VALID8 Platform',
+  school_name: 'Aura Platform',
   primary_color: schools.value[0]?.primary_color || '#AAFF00',
   secondary_color: schools.value[0]?.secondary_color || '#64748B',
   logo_url: schools.value[0]?.logo_url || null,
@@ -450,7 +729,7 @@ onMounted(async () => {
 })
 
 async function handleLogout() { await logout() }
-function handlePrimaryAction() { if (props.section === 'schools') { showCreateForm.value = !showCreateForm.value; return }; if (props.section === 'accounts') { goToSection('oversight'); return }; if (props.section === 'oversight') { initializeAdminWorkspaceData({ force: true }).catch(() => null); return }; goToSection('schools') }
+function handlePrimaryAction() { if (props.section === 'schools') { showCreateForm.value = !showCreateForm.value; return }; if (props.section === 'accounts') { goToSection('oversight'); return }; if (props.section === 'oversight' || props.section === 'reports') { initializeAdminWorkspaceData({ force: true }).catch(() => null); return }; goToSection('schools') }
 function goToSection(section) { const base = props.preview ? '/exposed/admin' : '/admin'; const next = section === 'overview' ? base : `${base}/${section}`; if (route.path !== next) router.push(next) }
 async function submitCreateSchool() { try { const created = await createAdminSchool({ ...createForm, school_code: createForm.school_code || undefined, school_it_middle_name: createForm.school_it_middle_name || undefined, school_it_password: createForm.school_it_password || undefined }); pushFeedback('success', `Created ${created?.school?.school_name || createForm.school_name}.`); Object.assign(createForm, createDefaultSchoolForm()); showCreateForm.value = false } catch (error) { pushFeedback('error', error?.message || 'Unable to create the school.') } }
 function handleCreateLogoChange(event) { createForm.logo = event?.target?.files?.[0] || null }
@@ -513,6 +792,8 @@ const subscriptionOptions = ['active', 'trial', 'suspended']
 .admin-view__metric strong{font-size:56px;line-height:.9;letter-spacing:-.06em}
 .admin-view__soft-button{margin-top:auto;align-self:flex-start;padding-left:8px;background:#0A0A0A;color:#fff}
 .admin-view__card{padding:22px}
+.admin-view__grid--reports{grid-template-columns:repeat(3,minmax(0,1fr))}
+.admin-view__chart{min-height:260px}
 .admin-view__card h2,.admin-view__row h3{margin:0;color:var(--color-text-primary);line-height:1.05;letter-spacing:-.04em}
 .admin-view__card h2{font-size:28px}
 .admin-view__muted,.admin-view__row p{margin:6px 0 0;font-size:14px;line-height:1.5;color:var(--color-text-secondary)}
@@ -534,9 +815,18 @@ const subscriptionOptions = ['active', 'trial', 'suspended']
 .admin-view__profile{grid-template-columns:repeat(2,minmax(0,1fr))}
 .admin-view__profile div{display:flex;flex-direction:column;gap:6px;padding:16px 18px;border-radius:22px;background:var(--color-field-surface)}
 .admin-view__profile strong{font-size:15px;color:var(--color-text-primary)}
+.admin-view__preference{width:100%;margin-top:16px;padding:16px 18px;border:none;border-radius:24px;background:var(--color-field-surface);display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;color:var(--color-text-primary);font:inherit;cursor:pointer}
+.admin-view__preference-copy{display:flex;flex-direction:column;gap:4px}
+.admin-view__preference-copy strong{font-size:15px;line-height:1.1;color:var(--color-text-primary)}
+.admin-view__preference-copy small{font-size:13px;line-height:1.45;color:var(--color-text-secondary)}
+.admin-view__mini--inline{margin:0}
+.admin-view__settings-toggle{position:relative;flex-shrink:0;width:44px;height:26px;border-radius:999px;background:color-mix(in srgb,var(--color-text-primary) 12%, transparent);transition:background-color .22s ease}
+.admin-view__settings-toggle--on{background:var(--color-primary)}
+.admin-view__settings-toggle-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:999px;background:var(--color-surface);transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+.admin-view__settings-toggle--on .admin-view__settings-toggle-knob{transform:translateX(18px)}
 .admin-view__spinner{animation:admin-view-spin .9s linear infinite}
 @keyframes admin-view-spin{to{transform:rotate(360deg)}}
-@media (max-width:1100px){.admin-view__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1100px){.admin-view__metrics,.admin-view__grid--reports{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:767px){.admin-view{padding:26px 18px 118px}.admin-view__hero,.admin-view__toolbar,.admin-view__row,.admin-view__card-head,.admin-view__actions,.admin-view__footer{flex-direction:column;align-items:stretch}.admin-view__toolbar{grid-template-columns:1fr}.admin-view__pill,.admin-view__soft-button{width:100%}.admin-view__metrics,.admin-view__grid,.admin-view__form-grid,.admin-view__profile{grid-template-columns:1fr}}
 @media (max-width:420px){.admin-view__metric,.admin-view__card{border-radius:28px}.admin-view__card h2{font-size:24px}}
 </style>

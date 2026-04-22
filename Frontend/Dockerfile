@@ -1,16 +1,9 @@
-FROM node:22-alpine AS build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# Make npm installs more resilient in flaky networks and faster in CI/builds.
-ENV npm_config_audit=false \
-    npm_config_fund=false \
-    npm_config_fetch_retries=5 \
-    npm_config_fetch_retry_mintimeout=10000 \
-    npm_config_fetch_retry_maxtimeout=120000
-
-RUN npm ci --no-audit --no-fund
+RUN npm ci
 
 COPY . .
 
@@ -27,7 +20,8 @@ FROM nginx:1.27-alpine AS runtime
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY runtime-config.js.template /opt/aura/runtime-config.js.template
 COPY docker-entrypoint.d/40-runtime-config.sh /docker-entrypoint.d/40-runtime-config.sh
-RUN chmod +x /docker-entrypoint.d/40-runtime-config.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.d/40-runtime-config.sh \
+    && chmod +x /docker-entrypoint.d/40-runtime-config.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80

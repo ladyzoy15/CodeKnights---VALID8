@@ -5,39 +5,18 @@ Role: Service layer. It keeps business logic out of the route files.
 
 from __future__ import annotations
 
-# --- Standard Python libraries ---
 import base64
 import hashlib
-import importlib
 import io
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Iterable
 
-# --- Third-party libraries ---
 import numpy as np
 from fastapi import HTTPException, status
 from PIL import Image, UnidentifiedImageError
 
-# --- App config ---
 from app.core.config import get_settings
-
-# --- Optional libraries ---
-try:
-    import cv2
-except Exception:  # pragma: no cover - optional dependency
-    cv2 = None
-
-try:
-    import onnxruntime as ort
-except Exception:  # pragma: no cover - optional dependency
-    ort = None
-
-
-# ---------------------------------------------
-# Dataclasses
-# These are simple containers for related data.
-# ---------------------------------------------
+from app.services.face_engine import FaceCrop, LivenessChecker, get_engine
 
 
 @dataclass
@@ -49,7 +28,6 @@ class LivenessResult:
     reason: str | None = None
 
     def to_dict(self) -> dict[str, object]:
-        """Convert the result into a JSON-friendly dictionary."""
         payload: dict[str, object] = {
             "label": self.label,
             "score": round(float(self.score), 6),
@@ -66,6 +44,10 @@ class FaceCandidate:
     identifier: int | str
     label: str
     encoding_bytes: bytes
+    embedding_provider: str | None = None
+    embedding_dtype: str | None = None
+    embedding_dimension: int | None = None
+    embedding_normalized: bool | None = None
 
 
 @dataclass
@@ -90,61 +72,107 @@ class DetectedFaceProbe:
     error_code: str | None = None
 
 
-# ---------------------------------------------
-# Main service class
-# This is where the face logic lives.
-# ---------------------------------------------
-
-
 class FaceRecognitionService:
+    """Facade around the configured single, group, and MFA face engines."""
+
+    CANONICAL_PROVIDERS = {"arcface", "buffalo_l"}
+
     def __init__(self) -> None:
-        # Load thresholds, model paths, and feature flags from app settings.
         self.settings = get_settings()
-
-        # Anti-spoof model state. These are loaded only when first needed.
-        self._anti_spoof_session = None
-        self._anti_spoof_input_name: str | None = None
-        self._anti_spoof_output_name: str | None = None
-        self._anti_spoof_input_size: tuple[int, int] | None = None
-        self._anti_spoof_initialized = False
-
-    # ---------------------------------------------
-    # Helper: find the anti-spoof model path
-    # ---------------------------------------------
-
-    def _default_anti_spoof_model_path(self) -> Path:
-        """Return the configured anti-spoof path or the default model path."""
-        configured = self.settings.anti_spoof_model_path.strip()
-        if configured:
-            return Path(configured)
-        return Path(__file__).resolve().parents[2] / "models" / "MiniFASNetV2.onnx"
-
-    def face_recognition_status(self) -> tuple[bool, str | None]:
-        """Return whether the `face_recognition` runtime is available."""
-        try:
-            self._require_face_recognition_library()
-        except HTTPException:
-            return False, "face_recognition_unavailable"
-        return True, None
+        self.liveness_checker = LivenessChecker(self.settings)
+        self._embedding_dtype = np.dtype(self.settings.face_embedding_dtype)
 
     @staticmethod
-    def _require_face_recognition_library() -> Any:
-        """Load the optional face-recognition runtime only when a face route needs it."""
-        try:
-            return importlib.import_module("face_recognition")
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=(
-                    "Face recognition runtime is unavailable. "
-                    "Install the 'face_recognition' dependency to use face features."
-                ),
-            ) from exc
+    def _fallback_runtime_status(mode: str, *, reason: str) -> dict[str, object]:
+        normalized_mode = mode.strip().lower()
+        return {
+            "state": "failed" if reason == "unsupported_mode" else "initializing",
+            "ready": False,
+            "reason": reason,
+            "last_error": None,
+            "provider_target": "CPUExecutionProvider",
+            "mode": normalized_mode,
+            "initialized_at": None,
+            "warmup_started_at": None,
+            "warmup_finished_at": None,
+            "model_construction_duration_ms": None,
+            "prepare_duration_ms": None,
+            "warmup_duration_ms": None,
+            "init_duration_ms": None,
+        }
 
-    # ---------------------------------------------
-    # Static utilities
-    # These helpers do not need access to self.
-    # ---------------------------------------------
+    def face_runtime_status(self, mode: str = "single") -> dict[str, object]:
+        normalized_mode = mode.strip().lower()
+        try:
+            payload = get_engine(normalized_mode).runtime_status_payload(mode=normalized_mode)
+            reason_value = payload.get("reason")
+            return {
+                "state": str(payload.get("state", "initializing")),
+                "ready": bool(payload.get("ready")),
+                "reason": (
+                    str(reason_value)
+                    if reason_value is not None
+                    else "insightface_warming_up"
+                ),
+                "last_error": (
+                    str(payload.get("last_error"))
+                    if payload.get("last_error") is not None
+                    else None
+                ),
+                "provider_target": str(payload.get("provider_target", "CPUExecutionProvider")),
+                "mode": str(payload.get("mode") or normalized_mode),
+                "initialized_at": payload.get("initialized_at"),
+                "warmup_started_at": payload.get("warmup_started_at"),
+                "warmup_finished_at": payload.get("warmup_finished_at"),
+                "model_construction_duration_ms": payload.get("model_construction_duration_ms"),
+                "prepare_duration_ms": payload.get("prepare_duration_ms"),
+                "warmup_duration_ms": payload.get("warmup_duration_ms"),
+                "init_duration_ms": payload.get("init_duration_ms"),
+            }
+        except ValueError:
+            return self._fallback_runtime_status(normalized_mode, reason="unsupported_mode")
+
+    def initialize_face_runtime(
+        self,
+        *,
+        mode: str = "single",
+        background: bool = True,
+        trigger: str = "manual",
+        force: bool = False,
+    ) -> dict[str, object]:
+        normalized_mode = mode.strip().lower()
+        try:
+            payload = get_engine(normalized_mode).request_runtime_initialization(
+                background=background,
+                trigger=trigger,
+                force=force,
+            )
+        except ValueError:
+            return self._fallback_runtime_status(normalized_mode, reason="unsupported_mode")
+        reason_value = payload.get("reason")
+        return {
+            "state": str(payload.get("state", "initializing")),
+            "ready": bool(payload.get("ready")),
+            "reason": (
+                str(reason_value)
+                if reason_value is not None
+                else "insightface_warming_up"
+            ),
+            "last_error": (
+                str(payload.get("last_error"))
+                if payload.get("last_error") is not None
+                else None
+            ),
+            "provider_target": str(payload.get("provider_target", "CPUExecutionProvider")),
+            "mode": str(payload.get("mode") or normalized_mode),
+            "initialized_at": payload.get("initialized_at"),
+            "warmup_started_at": payload.get("warmup_started_at"),
+            "warmup_finished_at": payload.get("warmup_finished_at"),
+            "model_construction_duration_ms": payload.get("model_construction_duration_ms"),
+            "prepare_duration_ms": payload.get("prepare_duration_ms"),
+            "warmup_duration_ms": payload.get("warmup_duration_ms"),
+            "init_duration_ms": payload.get("init_duration_ms"),
+        }
 
     @staticmethod
     def decode_base64_image(image_base64: str) -> bytes:
@@ -177,217 +205,227 @@ class FaceRecognitionService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Uploaded file is not a valid image.",
             ) from exc
-        return np.array(image)
+        return np.asarray(image, dtype=np.uint8)
 
     @staticmethod
     def compute_image_sha256(image_bytes: bytes) -> str:
         """Return a SHA-256 fingerprint for an image."""
         return hashlib.sha256(image_bytes).hexdigest()
 
-    @staticmethod
-    def encoding_to_bytes(encoding: np.ndarray) -> bytes:
-        """Convert a face encoding array into raw bytes for storage."""
-        normalized = np.asarray(encoding, dtype=np.float64)
-        return normalized.tobytes()
+    def face_recognition_status(self, mode: str = "single") -> tuple[bool, str | None]:
+        """Return whether the configured runtime for one mode is available."""
+        runtime_status = self.face_runtime_status(mode)
+        if runtime_status["ready"]:
+            return True, None
+        reason = runtime_status.get("reason")
+        return False, str(reason) if reason is not None else None
 
-    @staticmethod
-    def encoding_from_bytes(encoding_bytes: bytes) -> np.ndarray:
-        """Convert stored raw bytes back into a face encoding array."""
-        if not encoding_bytes:
-            raise ValueError("Face encoding bytes are empty.")
-        return np.frombuffer(encoding_bytes, dtype=np.float64)
+    def ensure_face_runtime_ready(
+        self,
+        *,
+        mode: str = "single",
+        context: str | None = None,
+    ) -> dict[str, object]:
+        runtime_status = self.face_runtime_status(mode)
+        if runtime_status["ready"]:
+            return runtime_status
 
-    @staticmethod
-    def _softmax(values: np.ndarray) -> np.ndarray:
-        """Convert raw model scores into probabilities."""
-        exp_values = np.exp(values - np.max(values, axis=1, keepdims=True))
-        return exp_values / exp_values.sum(axis=1, keepdims=True)
-
-    @staticmethod
-    def _xyxy_to_xywh(x1: int, y1: int, x2: int, y2: int) -> list[int]:
-        """Convert a box from corner format into x, y, width, height format."""
-        return [int(x1), int(y1), int(x2 - x1), int(y2 - y1)]
-
-    @staticmethod
-    def _crop_face_bgr(
-        image_bgr: np.ndarray,
-        bbox_xywh: list[int],
-        scale: float,
-        out_h: int,
-        out_w: int,
-    ) -> np.ndarray:
-        """Crop the face and resize it to the exact size the model expects."""
-        src_h, src_w = image_bgr.shape[:2]
-        x, y, box_w, box_h = bbox_xywh
-
-        # Scale down when needed so the crop stays inside the image.
-        scale = min((src_h - 1) / max(box_h, 1), (src_w - 1) / max(box_w, 1), scale)
-
-        new_w = box_w * scale
-        new_h = box_h * scale
-        center_x = x + box_w / 2
-        center_y = y + box_h / 2
-
-        left = max(0, int(center_x - new_w / 2))
-        top = max(0, int(center_y - new_h / 2))
-        right = min(src_w - 1, int(center_x + new_w / 2))
-        bottom = min(src_h - 1, int(center_y + new_h / 2))
-
-        cropped = image_bgr[top : bottom + 1, left : right + 1]
-        if cropped.size == 0:
+        reason = str(runtime_status.get("reason") or "insightface_warming_up")
+        state = str(runtime_status.get("state") or "initializing")
+        if reason == "unsupported_mode":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid face crop for liveness detection.",
+                detail={
+                    "code": "unsupported_face_mode",
+                    "message": f"Unsupported face mode: {mode}.",
+                    "face_runtime": runtime_status,
+                },
             )
-        if cv2 is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="opencv-python-headless is required for liveness detection.",
-            )
-        return cv2.resize(cropped, (out_w, out_h))
 
-    # ---------------------------------------------
-    # Anti-spoof and liveness detection
-    # ---------------------------------------------
+        if state == "failed":
+            code = "face_runtime_failed"
+            message = "Face runtime initialization failed."
+        else:
+            code = "face_runtime_initializing"
+            message = "Face runtime is still initializing."
 
-    def _init_anti_spoof(self) -> None:
-        """Load the anti-spoof ONNX model once, the first time it is needed."""
-        if self._anti_spoof_initialized:
-            return
-
-        self._anti_spoof_initialized = True
-        model_path = self._default_anti_spoof_model_path()
-
-        if ort is None or cv2 is None or not model_path.exists():
-            return
-
-        providers = ["CPUExecutionProvider"]
-        try:
-            available = set(ort.get_available_providers())
-            if "CUDAExecutionProvider" in available:
-                providers.insert(0, "CUDAExecutionProvider")
-        except Exception:
-            pass
-
-        session = ort.InferenceSession(str(model_path), providers=providers)
-        input_meta = session.get_inputs()[0]
-        output_meta = session.get_outputs()[0]
-        height = int(input_meta.shape[2])
-        width = int(input_meta.shape[3])
-
-        self._anti_spoof_session = session
-        self._anti_spoof_input_name = input_meta.name
-        self._anti_spoof_output_name = output_meta.name
-        self._anti_spoof_input_size = (height, width)
+        detail: dict[str, object] = {
+            "code": code,
+            "message": message,
+            "face_runtime": runtime_status,
+        }
+        if context:
+            detail["context"] = context
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=detail,
+        )
 
     def anti_spoof_status(self) -> tuple[bool, str | None]:
-        """Return whether the anti-spoof model is ready, plus a reason if not."""
-        self._init_anti_spoof()
-        if self._anti_spoof_session is not None:
-            return True, None
+        """Return whether the anti-spoof model is ready."""
+        return self.liveness_checker.status()
 
-        model_path = self._default_anti_spoof_model_path()
-        if ort is None:
-            return False, "onnxruntime_unavailable"
-        if cv2 is None:
-            return False, "opencv_unavailable"
-        if not model_path.exists():
-            return False, "model_missing"
-        return False, "session_unavailable"
+    def embedding_provider_for_mode(self, mode: str) -> str:
+        """Return the canonical embedding provider string stored in the database."""
+        _ = get_engine(mode)
+        return "arcface"
+
+    def default_threshold_for_mode(self, mode: str) -> float:
+        normalized_mode = mode.strip().lower()
+        if normalized_mode == "single":
+            return float(self.settings.face_threshold_single)
+        if normalized_mode == "group":
+            return float(self.settings.face_threshold_group)
+        if normalized_mode == "mfa":
+            return float(self.settings.face_threshold_mfa)
+        raise ValueError(f"Unsupported face mode: {mode}")
+
+    def embedding_metadata_for_mode(self, mode: str) -> dict[str, object]:
+        """Return the canonical metadata stored with newly enrolled embeddings."""
+        return {
+            "provider": self.embedding_provider_for_mode(mode),
+            "dtype": self.settings.face_embedding_dtype,
+            "dimension": self.settings.face_embedding_dim,
+            "normalized": True,
+        }
 
     def liveness_passed(self, result: LivenessResult) -> bool:
         """Decide if a liveness result counts as passed."""
         if result.label == "Bypassed":
             return True
-        return result.label == "Real" and float(result.score) >= self.settings.liveness_min_score
+        return result.label == "Real" and float(result.score) >= self.settings.liveness_threshold
 
-    def check_liveness(self, rgb_image: np.ndarray) -> LivenessResult:
-        """Run the anti-spoof check and return whether the face is real or fake."""
-        face_recognition_module = self._require_face_recognition_library()
-        ready, reason = self.anti_spoof_status()
-        if not ready:
-            if self.settings.allow_liveness_bypass_when_model_missing:
-                return LivenessResult(
-                    label="Bypassed",
-                    score=1.0,
-                    reason=reason or "model_unavailable",
-                )
-
-            detail = "Liveness model is not available."
-            if reason:
-                detail = f"Liveness model is not available ({reason})."
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=detail,
+    def _normalize_embedding(self, encoding: np.ndarray) -> np.ndarray:
+        normalized = np.asarray(encoding, dtype=np.float32).reshape(-1)
+        if normalized.size != self.settings.face_embedding_dim:
+            raise ValueError(
+                f"Expected embedding dimension {self.settings.face_embedding_dim}, "
+                f"got {normalized.size}."
             )
+        norm = float(np.linalg.norm(normalized))
+        if norm <= 0:
+            raise ValueError("Embedding norm must be greater than zero.")
+        return (normalized / norm).astype(np.float32, copy=False)
 
-        face_locations = face_recognition_module.face_locations(rgb_image)
-        if not face_locations:
+    def encoding_to_bytes(self, encoding: np.ndarray) -> bytes:
+        """Convert one embedding into canonical normalized float32 bytes."""
+        return self._normalize_embedding(encoding).astype(self._embedding_dtype, copy=False).tobytes()
+
+    def encoding_from_bytes(
+        self,
+        encoding_bytes: bytes,
+        *,
+        dtype: str | None = None,
+        dimension: int | None = None,
+        normalized: bool = True,
+    ) -> np.ndarray:
+        """Convert stored raw bytes back into one canonical embedding vector."""
+        if not encoding_bytes:
+            raise ValueError("Face encoding bytes are empty.")
+
+        dtype_name = (dtype or self.settings.face_embedding_dtype).strip().lower()
+        array = np.frombuffer(encoding_bytes, dtype=np.dtype(dtype_name))
+        expected_dimension = dimension or self.settings.face_embedding_dim
+        if array.size != expected_dimension:
+            raise ValueError(
+                f"Expected embedding dimension {expected_dimension}, got {array.size}."
+            )
+        if normalized:
+            return self._normalize_embedding(array)
+        return np.asarray(array, dtype=np.float32)
+
+    def _evaluate_liveness(self, face_crop: FaceCrop) -> LivenessResult:
+        ready, reason = self.anti_spoof_status()
+        if not ready and self.settings.allow_liveness_bypass_when_model_missing:
+            return LivenessResult(
+                label="Bypassed",
+                score=1.0,
+                reason=reason or "model_unavailable",
+            )
+        score = self.liveness_checker.check(
+            face_crop.image_rgb,
+            frame_rgb=face_crop.frame_rgb,
+            location=face_crop.location,
+        )
+        label = "Real" if self.liveness_checker.is_real(score) else "Fake"
+        return LivenessResult(label=label, score=score, reason=reason if label == "Bypassed" else None)
+
+    def check_liveness(self, rgb_image: np.ndarray, *, mode: str = "single") -> LivenessResult:
+        """Run liveness on one detected face and require exactly one face in frame."""
+        self.ensure_face_runtime_ready(mode=mode, context="liveness_check")
+        engine = get_engine(mode)
+        face_crops = engine.detect(rgb_image)
+        if not face_crops:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No face detected for liveness verification.",
             )
-        if len(face_locations) != 1:
+        if len(face_crops) != 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Upload an image with exactly one face for liveness verification.",
             )
+        return self._evaluate_liveness(face_crops[0])
 
-        return self._check_liveness_for_location(rgb_image, face_locations[0])
-
-    def _check_liveness_for_location(
+    def analyze_faces_from_bytes(
         self,
-        rgb_image: np.ndarray,
-        face_location: tuple[int, int, int, int],
-    ) -> LivenessResult:
-        """Run anti-spoof against a specific detected face location."""
-        ready, reason = self.anti_spoof_status()
-        if not ready:
-            if self.settings.allow_liveness_bypass_when_model_missing:
-                return LivenessResult(
-                    label="Bypassed",
-                    score=1.0,
-                    reason=reason or "model_unavailable",
-                )
-
-            detail = "Liveness model is not available."
-            if reason:
-                detail = f"Liveness model is not available ({reason})."
+        image_bytes: bytes,
+        *,
+        enforce_liveness: bool = False,
+        max_faces: int | None = None,
+        mode: str = "single",
+    ) -> list[DetectedFaceProbe]:
+        """Detect all faces in one probe image and return per-face liveness and embeddings."""
+        self.ensure_face_runtime_ready(mode=mode, context="face_analysis")
+        engine = get_engine(mode)
+        rgb_image = self.load_rgb_from_bytes(image_bytes)
+        face_crops = engine.detect(rgb_image)
+        if not face_crops:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=detail,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No face detected in image.",
+            )
+        if max_faces is not None and len(face_crops) > max_faces:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Too many faces detected in one frame. Maximum allowed is {max_faces}.",
             )
 
-        top, right, bottom, left = face_location
-        bbox_xywh = self._xyxy_to_xywh(left, top, right, bottom)
-        image_bgr = rgb_image[:, :, ::-1].copy()
-        input_height, input_width = self._anti_spoof_input_size or (80, 80)
-        face_crop = self._crop_face_bgr(
-            image_bgr,
-            bbox_xywh,
-            self.settings.anti_spoof_scale,
-            input_height,
-            input_width,
-        )
+        probes: list[DetectedFaceProbe] = []
+        for index, face_crop in enumerate(face_crops):
+            if enforce_liveness:
+                liveness = self._evaluate_liveness(face_crop)
+            else:
+                liveness = LivenessResult(
+                    label="Bypassed",
+                    score=1.0,
+                    reason="not_requested",
+                )
 
-        # The ONNX model expects a batch in channel-first format.
-        model_input = face_crop.astype(np.float32)
-        model_input = np.transpose(model_input, (2, 0, 1))
-        model_input = np.expand_dims(model_input, axis=0)
+            error_code = None
+            encoding = None
+            if not enforce_liveness or self.liveness_passed(liveness):
+                try:
+                    encoding = engine.embed(face_crop)
+                except ValueError as exc:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=str(exc),
+                    ) from exc
+            else:
+                error_code = "spoof_detected"
 
-        logits = self._anti_spoof_session.run(
-            [self._anti_spoof_output_name],
-            {self._anti_spoof_input_name: model_input},
-        )[0]
-        probabilities = self._softmax(logits)
-        label_index = int(np.argmax(probabilities))
-        score = float(probabilities[0, label_index])
-        label = "Real" if label_index == 1 else "Fake"
-        return LivenessResult(label=label, score=score)
+            probes.append(
+                DetectedFaceProbe(
+                    index=index,
+                    location=face_crop.location,
+                    liveness=liveness,
+                    encoding=encoding,
+                    error_code=error_code,
+                )
+            )
 
-    # ---------------------------------------------
-    # Core face recognition methods
-    # ---------------------------------------------
+        return probes
 
     def extract_encoding_from_bytes(
         self,
@@ -395,11 +433,13 @@ class FaceRecognitionService:
         *,
         require_single_face: bool = True,
         enforce_liveness: bool = False,
+        mode: str = "single",
     ) -> tuple[np.ndarray, LivenessResult]:
-        """Load an image, optionally run liveness, then return its face encoding."""
+        """Load an image, optionally run liveness, then return one face embedding."""
         probes = self.analyze_faces_from_bytes(
             image_bytes,
             enforce_liveness=enforce_liveness,
+            mode=mode,
         )
         if require_single_face and len(probes) != 1:
             raise HTTPException(
@@ -418,70 +458,28 @@ class FaceRecognitionService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Unable to compute a face encoding from the image.",
             )
+        return np.asarray(probe.encoding, dtype=np.float32), probe.liveness
 
-        return np.asarray(probe.encoding, dtype=np.float64), probe.liveness
+    def _candidate_is_compatible(self, candidate: FaceCandidate) -> bool:
+        provider = (candidate.embedding_provider or "").strip().lower()
+        if provider and provider not in self.CANONICAL_PROVIDERS:
+            return False
 
-    def analyze_faces_from_bytes(
-        self,
-        image_bytes: bytes,
-        *,
-        enforce_liveness: bool = False,
-        max_faces: int | None = None,
-    ) -> list[DetectedFaceProbe]:
-        """Detect all faces in a probe image and return per-face liveness and encodings."""
-        face_recognition_module = self._require_face_recognition_library()
-        rgb_image = self.load_rgb_from_bytes(image_bytes)
-        face_locations = face_recognition_module.face_locations(rgb_image)
-        if not face_locations:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No face detected in image.",
-            )
+        dtype_name = (candidate.embedding_dtype or "").strip().lower()
+        if dtype_name and dtype_name != self.settings.face_embedding_dtype:
+            return False
 
-        if max_faces is not None and len(face_locations) > max_faces:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Too many faces detected in one frame. Maximum allowed is {max_faces}.",
-            )
+        if (
+            candidate.embedding_dimension is not None
+            and int(candidate.embedding_dimension) != self.settings.face_embedding_dim
+        ):
+            return False
 
-        encodings = face_recognition_module.face_encodings(
-            rgb_image,
-            known_face_locations=face_locations,
-        )
-        if len(encodings) != len(face_locations):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Unable to compute encodings for all detected faces.",
-            )
+        if candidate.embedding_normalized is False:
+            return False
 
-        probes: list[DetectedFaceProbe] = []
-        for index, location in enumerate(face_locations):
-            if enforce_liveness:
-                liveness = self._check_liveness_for_location(rgb_image, location)
-            else:
-                liveness = LivenessResult(
-                    label="Bypassed",
-                    score=1.0,
-                    reason="not_requested",
-                )
-
-            error_code = None
-            encoding = np.asarray(encodings[index], dtype=np.float64)
-            if enforce_liveness and not self.liveness_passed(liveness):
-                error_code = "spoof_detected"
-                encoding = None
-
-            probes.append(
-                DetectedFaceProbe(
-                    index=index,
-                    location=location,
-                    liveness=liveness,
-                    encoding=encoding,
-                    error_code=error_code,
-                )
-            )
-
-        return probes
+        expected_bytes = self.settings.face_embedding_dim * self._embedding_dtype.itemsize
+        return len(candidate.encoding_bytes) == expected_bytes
 
     def compare_encodings(
         self,
@@ -489,43 +487,57 @@ class FaceRecognitionService:
         reference_encoding: np.ndarray,
         *,
         threshold: float | None = None,
+        mode: str = "single",
     ) -> FaceMatchResult:
-        """Compare two face encodings and return a structured match result."""
-        distance = float(np.linalg.norm(probe_encoding - reference_encoding))
+        """Compare two embeddings using cosine distance and return a structured result."""
+        probe = self._normalize_embedding(probe_encoding)
+        reference = self._normalize_embedding(reference_encoding)
         effective_threshold = float(
-            self.settings.face_match_threshold if threshold is None else threshold
+            self.default_threshold_for_mode(mode) if threshold is None else threshold
         )
-        confidence = max(0.0, 1.0 - distance)
+        cosine_similarity = float(np.clip(np.dot(probe, reference), -1.0, 1.0))
+        cosine_distance = float(max(0.0, 1.0 - cosine_similarity))
 
         return FaceMatchResult(
-            matched=distance <= effective_threshold,
+            matched=cosine_distance <= effective_threshold,
             threshold=effective_threshold,
-            distance=distance,
-            confidence=confidence,
+            distance=cosine_distance,
+            confidence=cosine_similarity,
         )
 
-    def find_best_match(
+    def match(
         self,
-        probe_encoding: np.ndarray,
+        embedding: np.ndarray,
         candidates: Iterable[FaceCandidate],
         *,
         threshold: float | None = None,
+        mode: str = "single",
     ) -> FaceMatchResult:
-        """Compare a probe face against many candidates and return the closest match."""
-        best_candidate: FaceCandidate | None = None
-        best_distance = float("inf")
-
-        for candidate in candidates:
-            reference_encoding = self.encoding_from_bytes(candidate.encoding_bytes)
-            distance = float(np.linalg.norm(probe_encoding - reference_encoding))
-            if distance < best_distance:
-                best_distance = distance
-                best_candidate = candidate
-
+        """Compare one probe against many compatible candidates with batch cosine scoring."""
+        probe = self._normalize_embedding(embedding)
         effective_threshold = float(
-            self.settings.face_match_threshold if threshold is None else threshold
+            self.default_threshold_for_mode(mode) if threshold is None else threshold
         )
-        if best_candidate is None:
+
+        compatible_candidates: list[FaceCandidate] = []
+        reference_vectors: list[np.ndarray] = []
+        for candidate in candidates:
+            if not self._candidate_is_compatible(candidate):
+                continue
+            try:
+                reference_vectors.append(
+                    self.encoding_from_bytes(
+                        candidate.encoding_bytes,
+                        dtype=candidate.embedding_dtype,
+                        dimension=candidate.embedding_dimension,
+                        normalized=(candidate.embedding_normalized is not False),
+                    )
+                )
+                compatible_candidates.append(candidate)
+            except ValueError:
+                continue
+
+        if not compatible_candidates:
             return FaceMatchResult(
                 matched=False,
                 threshold=effective_threshold,
@@ -534,22 +546,50 @@ class FaceRecognitionService:
                 candidate=None,
             )
 
+        references = np.stack(reference_vectors).astype(np.float32, copy=False)
+        similarities = np.clip(references @ probe, -1.0, 1.0)
+        distances = np.maximum(0.0, 1.0 - similarities)
+        best_index = int(np.argmin(distances))
+
         return FaceMatchResult(
-            matched=best_distance <= effective_threshold,
+            matched=float(distances[best_index]) <= effective_threshold,
             threshold=effective_threshold,
-            distance=best_distance,
-            confidence=max(0.0, 1.0 - best_distance),
-            candidate=best_candidate,
+            distance=float(distances[best_index]),
+            confidence=float(similarities[best_index]),
+            candidate=compatible_candidates[best_index],
+        )
+
+    def find_best_match(
+        self,
+        probe_encoding: np.ndarray,
+        candidates: Iterable[FaceCandidate],
+        *,
+        threshold: float | None = None,
+        mode: str = "single",
+    ) -> FaceMatchResult:
+        """Backward-compatible alias for batch cosine matching."""
+        return self.match(
+            probe_encoding,
+            candidates,
+            threshold=threshold,
+            mode=mode,
         )
 
 
 def is_face_scan_bypass_enabled_for_email(email: str | None) -> bool:
+    """Return True when the email is explicitly allowed to bypass live face matching."""
+    settings = get_settings()
+    if settings.face_scan_bypass_all:
+        return True
     if not email:
         return False
-    settings = get_settings()
     normalized_email = email.strip().lower()
     return normalized_email in set(settings.face_scan_bypass_emails)
 
 
 def is_face_scan_bypass_enabled_for_user(user: Any) -> bool:
+    """Convenience wrapper for checking bypass rules from a user object."""
+    settings = get_settings()
+    if settings.face_scan_bypass_all:
+        return True
     return is_face_scan_bypass_enabled_for_email(getattr(user, "email", None))

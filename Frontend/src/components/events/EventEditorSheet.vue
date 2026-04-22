@@ -193,6 +193,55 @@
             Require students to be inside the event geofence to sign in.
           </label>
 
+          <section v-if="showSanctionsPanels" class="event-editor__sanctions">
+            <p class="event-editor__section-label">Sanctions Management</p>
+
+            <div class="event-editor__sanctions-toggle">
+              <p class="event-editor__sanctions-toggle-label">Sanctions Setup</p>
+              <button
+                class="event-editor__sanctions-toggle-button"
+                :class="{ 'event-editor__sanctions-toggle-button--enabled': canConfigureEventSanctions && isEditSanctionsEnabled }"
+                type="button"
+                :disabled="saving || !canConfigureEventSanctions"
+                @click="toggleEditSanctionsEnabled"
+              >
+                {{
+                  canConfigureEventSanctions
+                    ? (isEditSanctionsEnabled ? 'Disable' : 'Enable')
+                    : 'No Access'
+                }}
+              </button>
+            </div>
+            <p v-if="!canConfigureEventSanctions" class="event-editor__sanctions-hint">
+              Requires an active <strong>SSG/SG/ORG</strong> governance role or sanctions permission.
+            </p>
+
+            <p v-if="sanctionsLoading" class="event-editor__sanctions-loading">
+              Loading sanctions settings...
+            </p>
+
+            <EventSanctionConfigPanel
+              v-if="canConfigureEventSanctions && isEditSanctionsEnabled"
+              v-model="sanctionConfigDraft"
+              :disabled="saving || sanctionsLoading"
+              :show-enabled-toggle="false"
+            />
+
+            <EventDelegationConfigPanel
+              v-if="canConfigureEventSanctions && isEditSanctionsEnabled"
+              v-model="delegationDraft"
+              :governance-units="governanceUnits"
+              :disabled="saving || sanctionsLoading"
+            />
+
+            <p
+              v-if="sanctionsErrorMessage"
+              class="event-editor__feedback event-editor__feedback--error"
+            >
+              {{ sanctionsErrorMessage }}
+            </p>
+          </section>
+
           <p class="event-editor__note">
             This form updates the real backend event fields supported by `PATCH /api/events/{id}`.
           </p>
@@ -232,6 +281,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { X } from 'lucide-vue-next'
+import EventSanctionConfigPanel from '@/components/events/EventSanctionConfigPanel.vue'
+import EventDelegationConfigPanel from '@/components/events/EventDelegationConfigPanel.vue'
 import {
   buildEventUpdatePayloadFromDraft,
   createEventEditorDraft,
@@ -267,11 +318,48 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  showSanctionsPanels: {
+    type: Boolean,
+    default: false,
+  },
+  canConfigureEventSanctions: {
+    type: Boolean,
+    default: true,
+  },
+  sanctionsConfig: {
+    type: Object,
+    default: () => ({
+      sanctions_enabled: false,
+      items: [],
+    }),
+  },
+  sanctionsDelegations: {
+    type: Array,
+    default: () => [],
+  },
+  governanceUnits: {
+    type: Array,
+    default: () => [],
+  },
+  sanctionsLoading: {
+    type: Boolean,
+    default: false,
+  },
+  sanctionsErrorMessage: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['close', 'save'])
 
 const draft = ref(createEventEditorDraft())
+const sanctionConfigDraft = ref({
+  sanctions_enabled: false,
+  items: [],
+})
+const delegationDraft = ref([])
+const isEditSanctionsEnabled = ref(false)
 const localError = ref('')
 
 const statusOptions = EVENT_STATUS_OPTIONS
@@ -280,22 +368,116 @@ const feedbackMessage = computed(() => localError.value || props.errorMessage)
 const feedbackTone = computed(() => (localError.value || props.errorMessage ? 'error' : 'info'))
 
 watch(
-  () => [props.isOpen, props.event],
+  () => [props.isOpen, props.event, props.sanctionsConfig, props.sanctionsDelegations],
   ([isOpen]) => {
     if (!isOpen) return
     draft.value = createEventEditorDraft(props.event)
+    sanctionConfigDraft.value = normalizeSanctionConfigValue(props.sanctionsConfig)
+    delegationDraft.value = normalizeSanctionDelegations(props.sanctionsDelegations)
+    isEditSanctionsEnabled.value = Boolean(
+      props.showSanctionsPanels
+      && props.canConfigureEventSanctions
+      && (
+        sanctionConfigDraft.value.sanctions_enabled
+        || delegationDraft.value.length > 0
+      )
+    )
     localError.value = ''
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 )
+
+function normalizeSanctionConfigValue(value = null) {
+  const items = Array.isArray(value?.items)
+    ? value.items.map((item) => ({
+      item_code: String(item?.item_code || '').trim(),
+      item_name: String(item?.item_name || '').trim(),
+      item_description: String(item?.item_description || '').trim(),
+    }))
+    : []
+
+  return {
+    sanctions_enabled: Boolean(value?.sanctions_enabled),
+    items,
+  }
+}
+
+function normalizeSanctionDelegations(value = []) {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => ({
+      delegated_to_governance_unit_id: Number(item?.delegated_to_governance_unit_id),
+      scope_type: String(item?.scope_type || 'unit').toLowerCase(),
+      is_active: item?.is_active !== false,
+      scope_json: item?.scope_json && typeof item.scope_json === 'object'
+        ? item.scope_json
+        : null,
+    }))
+    .filter((item) => Number.isFinite(item.delegated_to_governance_unit_id))
+}
+
+function createEmptySanctionItem() {
+  return {
+    item_code: '',
+    item_name: '',
+    item_description: '',
+  }
+}
+
+function enableEditSanctionsDraft() {
+  const currentConfig = normalizeSanctionConfigValue(sanctionConfigDraft.value)
+  sanctionConfigDraft.value = {
+    sanctions_enabled: true,
+    items: currentConfig.items.length ? currentConfig.items : [createEmptySanctionItem()],
+  }
+}
 
 function handleSubmit() {
   try {
     localError.value = ''
-    emit('save', buildEventUpdatePayloadFromDraft(draft.value))
+    const sanctionsPayload = props.showSanctionsPanels && props.canConfigureEventSanctions
+      ? (
+        isEditSanctionsEnabled.value
+          ? {
+            sanctionConfig: {
+              ...normalizeSanctionConfigValue(sanctionConfigDraft.value),
+              sanctions_enabled: true,
+            },
+            sanctionsDelegations: normalizeSanctionDelegations(delegationDraft.value),
+          }
+          : {
+            sanctionConfig: {
+              sanctions_enabled: false,
+              items: [],
+            },
+            sanctionsDelegations: [],
+          }
+      )
+      : null
+    emit(
+      'save',
+      buildEventUpdatePayloadFromDraft(draft.value),
+      sanctionsPayload
+    )
   } catch (error) {
     localError.value = error?.message || 'Unable to prepare the event update.'
   }
+}
+
+function toggleEditSanctionsEnabled() {
+  if (props.saving || !props.canConfigureEventSanctions) return
+  isEditSanctionsEnabled.value = !isEditSanctionsEnabled.value
+  if (isEditSanctionsEnabled.value) {
+    enableEditSanctionsDraft()
+    return
+  }
+
+  sanctionConfigDraft.value = {
+    sanctions_enabled: false,
+    items: [],
+  }
+  delegationDraft.value = []
 }
 </script>
 
@@ -318,6 +500,15 @@ function handleSubmit() {
 .event-editor__checkbox input{display:none}
 .event-editor__checkbox-mark{position:relative;flex-shrink:0;width:22px;height:22px;border-radius:999px;border:1.5px solid rgba(17,24,39,.14);background:#fff}
 .event-editor__checkbox input:checked + .event-editor__checkbox-mark::after{content:'';position:absolute;inset:5px;border-radius:999px;background:var(--color-primary,#3b82f6)}
+.event-editor__sanctions{display:grid;gap:12px}
+.event-editor__section-label{margin:0;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-text-muted,#6b7280)}
+.event-editor__sanctions-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.event-editor__sanctions-toggle-label{margin:0;font-size:12px;font-weight:700;color:var(--color-text-secondary,#6b7280)}
+.event-editor__sanctions-hint{margin:0;font-size:12px;color:var(--color-text-muted,#6b7280)}
+.event-editor__sanctions-toggle-button{border:1px solid rgba(17,24,39,.16);border-radius:999px;background:transparent;color:var(--color-text-always-dark,#111827);font-size:12px;font-weight:800;min-height:34px;padding:0 14px;cursor:pointer}
+.event-editor__sanctions-toggle-button--enabled{background:var(--color-primary,#3b82f6);color:var(--color-primary-text,#fff);border-color:transparent}
+.event-editor__sanctions-toggle-button:disabled{opacity:.6;cursor:not-allowed}
+.event-editor__sanctions-loading{margin:0;font-size:13px;font-weight:700;color:var(--color-text-muted,#6b7280)}
 .event-editor__note{margin:0;font-size:12px;line-height:1.6;color:var(--color-text-secondary,#6b7280)}
 .event-editor__feedback{margin:0;padding:12px 14px;border-radius:16px;background:rgba(37,99,235,.08);font-size:13px;font-weight:700;color:#1d4ed8}
 .event-editor__feedback--error{background:rgba(220,38,38,.08);color:#b91c1c}

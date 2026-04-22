@@ -39,6 +39,17 @@ class UserNotificationPreference(Base):
     user = relationship("User")
 
 
+class UserAppPreference(Base):
+    __tablename__ = "user_app_preferences"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    dark_mode_enabled = Column(Boolean, nullable=False, default=False)
+    font_size_percent = Column(Integer, nullable=False, default=100)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User")
+
+
 class NotificationLog(Base):
     __tablename__ = "notification_logs"
 
@@ -74,7 +85,7 @@ class UserFaceProfile(Base):
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     face_encoding = Column(LargeBinary, nullable=False)
-    provider = Column(String(50), nullable=False, default="face_recognition")
+    provider = Column(String(50), nullable=False, default="arcface")
     reference_image_sha256 = Column(String(64), nullable=True)
     last_verified_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

@@ -5,7 +5,9 @@ Role: Router layer. It receives HTTP requests, checks access rules, and returns 
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from datetime import datetime
+from typing import Callable
 
 from jose import JWTError, jwt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -33,24 +35,57 @@ from app.schemas.face_recognition import (
 )
 from app.schemas.security import (
     LoginHistoryItem,
-    MfaStatusResponse,
-    MfaStatusUpdate,
     RevokeSessionResponse,
     UserSessionItem,
 )
 from app.services.auth_session import issue_full_access_token_response
 from app.services.security_service import (
-    get_or_create_security_setting,
     list_active_sessions,
     list_login_history_for_actor,
     record_login_history,
     revoke_other_sessions,
     revoke_session,
 )
+from app.services.user_preference_service import get_or_create_user_security_setting
 from app.services.face_recognition import FaceRecognitionService
 
 router = APIRouter(prefix="/auth/security", tags=["security"])
 face_service = FaceRecognitionService()
+FACE_STATUS_TIMEOUT_SECONDS = 1.5
+_face_runtime_status_executor = ThreadPoolExecutor(
+    max_workers=1,
+    thread_name_prefix="face-runtime-status",
+)
+_anti_spoof_status_executor = ThreadPoolExecutor(
+    max_workers=1,
+    thread_name_prefix="anti-spoof-status",
+)
+_StatusProbe = Callable[[], tuple[bool, str | None]]
+_RuntimeStatusProbe = Callable[[], dict[str, object]]
+
+
+def _runtime_status_fallback(
+    *,
+    mode: str,
+    state: str,
+    reason: str,
+    last_error: str | None = None,
+) -> dict[str, object]:
+    return {
+        "state": state,
+        "ready": False,
+        "reason": reason,
+        "last_error": last_error,
+        "provider_target": "CPUExecutionProvider",
+        "mode": mode,
+        "initialized_at": None,
+        "warmup_started_at": None,
+        "warmup_finished_at": None,
+        "model_construction_duration_ms": None,
+        "prepare_duration_ms": None,
+        "warmup_duration_ms": None,
+        "init_duration_ms": None,
+    }
 
 
 def _extract_current_jti(token: str) -> str | None:
@@ -62,40 +97,87 @@ def _extract_current_jti(token: str) -> str | None:
         return None
 
 
-@router.get("/mfa-status", response_model=MfaStatusResponse)
-def get_mfa_status(
-    current_user: User = Depends(get_current_application_user),
-    db: Session = Depends(get_db),
-):
-    setting = get_or_create_security_setting(db, current_user)
-    db.commit()
-    db.refresh(setting)
-    return MfaStatusResponse(
-        user_id=current_user.id,
-        mfa_enabled=setting.mfa_enabled,
-        trusted_device_days=setting.trusted_device_days,
-        updated_at=setting.updated_at,
-    )
+def _require_current_mfa_reference(profile: UserFaceRecognitionProfile) -> None:
+    """Reject legacy admin face references that were enrolled with the old provider."""
+    expected_provider = face_service.embedding_provider_for_mode("mfa")
+    if (profile.provider or "").strip().lower() != expected_provider:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Your saved face reference uses a legacy provider. "
+                "Delete it and enroll a new ArcFace reference before verifying."
+            ),
+        )
 
 
-@router.put("/mfa-status", response_model=MfaStatusResponse)
-def update_mfa_status(
-    payload: MfaStatusUpdate,
-    current_user: User = Depends(get_current_application_user),
-    db: Session = Depends(get_db),
-):
-    setting = get_or_create_security_setting(db, current_user)
-    setting.mfa_enabled = payload.mfa_enabled
-    if payload.trusted_device_days is not None:
-        setting.trusted_device_days = payload.trusted_device_days
-    db.commit()
-    db.refresh(setting)
-    return MfaStatusResponse(
-        user_id=current_user.id,
-        mfa_enabled=setting.mfa_enabled,
-        trusted_device_days=setting.trusted_device_days,
-        updated_at=setting.updated_at,
-    )
+def _run_status_probe_with_timeout(
+    probe: _StatusProbe,
+    *,
+    executor: ThreadPoolExecutor,
+    timeout_reason: str,
+    error_reason: str,
+) -> tuple[bool, str | None]:
+    """Return one status probe result without letting the route hang."""
+    future = executor.submit(probe)
+    try:
+        ready, reason = future.result(timeout=FACE_STATUS_TIMEOUT_SECONDS)
+        return bool(ready), reason
+    except FutureTimeoutError:
+        future.cancel()
+        return False, timeout_reason
+    except Exception:
+        future.cancel()
+        return False, error_reason
+
+
+def _run_runtime_status_probe_with_timeout(
+    probe: _RuntimeStatusProbe,
+    *,
+    executor: ThreadPoolExecutor,
+    mode: str,
+) -> dict[str, object]:
+    future = executor.submit(probe)
+    try:
+        payload = future.result(timeout=FACE_STATUS_TIMEOUT_SECONDS)
+        reason_value = payload.get("reason")
+        return {
+            "state": str(payload.get("state", "initializing")),
+            "ready": bool(payload.get("ready")),
+            "reason": (
+                str(reason_value)
+                if reason_value is not None
+                else "insightface_warming_up"
+            ),
+            "last_error": (
+                str(payload.get("last_error"))
+                if payload.get("last_error") is not None
+                else None
+            ),
+            "provider_target": str(payload.get("provider_target", "CPUExecutionProvider")),
+            "mode": str(payload.get("mode") or mode),
+            "initialized_at": payload.get("initialized_at"),
+            "warmup_started_at": payload.get("warmup_started_at"),
+            "warmup_finished_at": payload.get("warmup_finished_at"),
+            "model_construction_duration_ms": payload.get("model_construction_duration_ms"),
+            "prepare_duration_ms": payload.get("prepare_duration_ms"),
+            "warmup_duration_ms": payload.get("warmup_duration_ms"),
+            "init_duration_ms": payload.get("init_duration_ms"),
+        }
+    except FutureTimeoutError:
+        future.cancel()
+        return _runtime_status_fallback(
+            mode=mode,
+            state="initializing",
+            reason="insightface_warming_up",
+        )
+    except Exception:
+        future.cancel()
+        return _runtime_status_fallback(
+            mode=mode,
+            state="failed",
+            reason="insightface_initialization_failed",
+            last_error="runtime_status_probe_error",
+        )
 
 
 @router.get("/sessions", response_model=list[UserSessionItem])
@@ -183,24 +265,56 @@ def get_face_status(
     current_user: User = Depends(get_current_admin_or_campus_admin),
     db: Session = Depends(get_db),
 ):
+    security_setting = get_or_create_user_security_setting(db, user=current_user)
     profile = (
         db.query(UserFaceRecognitionProfile)
         .filter(UserFaceRecognitionProfile.user_id == current_user.id)
         .first()
     )
-    face_runtime_ready, face_runtime_reason = face_service.face_recognition_status()
-    anti_spoof_ready, anti_spoof_reason = face_service.anti_spoof_status()
-    if not face_runtime_ready:
-        anti_spoof_ready = False
-        anti_spoof_reason = face_runtime_reason
+    runtime_status = _run_runtime_status_probe_with_timeout(
+        lambda: face_service.face_runtime_status(mode="mfa"),
+        executor=_face_runtime_status_executor,
+        mode="mfa",
+    )
+    face_runtime_ready = bool(runtime_status["ready"])
+    face_runtime_reason = str(runtime_status.get("reason") or "insightface_warming_up")
+    anti_spoof_ready, anti_spoof_reason = _run_status_probe_with_timeout(
+        face_service.anti_spoof_status,
+        executor=_anti_spoof_status_executor,
+        timeout_reason="session_unavailable",
+        error_reason="session_unavailable",
+    )
     return SecurityFaceStatusResponse(
         user_id=current_user.id,
-        face_verification_required=True,
+        face_verification_required=bool(security_setting.mfa_enabled),
         face_reference_enrolled=profile is not None,
-        provider=(profile.provider if profile is not None else "face_recognition"),
+        provider=(
+            profile.provider
+            if profile is not None
+            else face_service.embedding_provider_for_mode("mfa")
+        ),
         updated_at=(profile.updated_at if profile is not None else None),
         last_verified_at=(profile.last_verified_at if profile is not None else None),
         liveness_enabled=True,
+        face_runtime_ready=face_runtime_ready,
+        face_runtime_reason=face_runtime_reason,
+        face_runtime_state=str(runtime_status["state"]),
+        face_runtime_last_error=(
+            str(runtime_status["last_error"])
+            if runtime_status.get("last_error") is not None
+            else None
+        ),
+        face_runtime_provider_target=str(runtime_status["provider_target"]),
+        face_runtime_mode=str(runtime_status["mode"]) if runtime_status.get("mode") is not None else None,
+        face_runtime_initialized_at=runtime_status.get("initialized_at"),
+        face_runtime_warmup_started_at=runtime_status.get("warmup_started_at"),
+        face_runtime_warmup_finished_at=runtime_status.get("warmup_finished_at"),
+        face_runtime_model_construction_duration_ms=runtime_status.get(
+            "model_construction_duration_ms"
+        ),
+        face_runtime_prepare_duration_ms=runtime_status.get("prepare_duration_ms"),
+        face_runtime_warmup_duration_ms=runtime_status.get("warmup_duration_ms"),
+        face_runtime_init_duration_ms=runtime_status.get("init_duration_ms"),
         anti_spoof_ready=anti_spoof_ready,
         anti_spoof_reason=anti_spoof_reason,
         live_capture_required=True,
@@ -212,9 +326,10 @@ def check_face_liveness(
     payload: Base64ImageRequest,
     current_user: User = Depends(get_current_admin_or_campus_admin),
 ):
+    face_service.ensure_face_runtime_ready(mode="mfa", context="security_face_liveness")
     image_bytes = face_service.decode_base64_image(payload.image_base64)
     rgb_image = face_service.load_rgb_from_bytes(image_bytes)
-    liveness = face_service.check_liveness(rgb_image)
+    liveness = face_service.check_liveness(rgb_image, mode="mfa")
     return SecurityFaceLivenessResponse(**liveness.to_dict())
 
 
@@ -224,11 +339,13 @@ def save_face_reference(
     current_user: User = Depends(get_current_admin_or_campus_admin),
     db: Session = Depends(get_db),
 ):
+    face_service.ensure_face_runtime_ready(mode="mfa", context="security_face_reference")
     image_bytes = face_service.decode_base64_image(payload.image_base64)
     encoding, liveness = face_service.extract_encoding_from_bytes(
         image_bytes,
         require_single_face=True,
         enforce_liveness=True,
+        mode="mfa",
     )
 
     profile = (
@@ -240,12 +357,13 @@ def save_face_reference(
         profile = UserFaceRecognitionProfile(
             user_id=current_user.id,
             face_encoding=face_service.encoding_to_bytes(encoding),
-            provider="face_recognition",
+            provider=face_service.embedding_provider_for_mode("mfa"),
             reference_image_sha256=face_service.compute_image_sha256(image_bytes),
         )
         db.add(profile)
     else:
         profile.face_encoding = face_service.encoding_to_bytes(encoding)
+        profile.provider = face_service.embedding_provider_for_mode("mfa")
         profile.reference_image_sha256 = face_service.compute_image_sha256(image_bytes)
 
     db.commit()
@@ -284,6 +402,7 @@ def verify_face_reference(
     current_user: User = Depends(get_current_admin_or_campus_admin),
     db: Session = Depends(get_db),
 ):
+    face_service.ensure_face_runtime_ready(mode="mfa", context="security_face_verify")
     profile = (
         db.query(UserFaceRecognitionProfile)
         .filter(UserFaceRecognitionProfile.user_id == current_user.id)
@@ -294,17 +413,25 @@ def verify_face_reference(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No face reference is enrolled for this account.",
         )
+    _require_current_mfa_reference(profile)
 
     image_bytes = face_service.decode_base64_image(payload.image_base64)
     encoding, liveness = face_service.extract_encoding_from_bytes(
         image_bytes,
         require_single_face=True,
         enforce_liveness=True,
+        mode="mfa",
     )
     comparison = face_service.compare_encodings(
         encoding,
-        face_service.encoding_from_bytes(bytes(profile.face_encoding)),
+        face_service.encoding_from_bytes(
+            bytes(profile.face_encoding),
+            dtype=face_service.settings.face_embedding_dtype,
+            dimension=face_service.settings.face_embedding_dim,
+            normalized=True,
+        ),
         threshold=payload.threshold,
+        mode="mfa",
     )
     token_data = decode_token_to_token_data(token)
     issued_session: dict[str, object | None] | None = None
@@ -316,6 +443,7 @@ def verify_face_reference(
                 db=db,
                 user=current_user,
                 request=request,
+                expires_minutes=token_data.session_duration_minutes,
             )
             record_login_history(
                 db,

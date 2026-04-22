@@ -4,15 +4,18 @@ import {
     House,
     PieChart,
     Settings,
+    ShieldAlert,
     ShieldCheck,
     UserRound,
     UsersRound,
 } from 'lucide-vue-next'
+import { getGovernanceNavigationItems } from '@/data/governanceNavigation.js'
 
 export const dashboardNavigationItems = [
     { name: 'Home', route: '/dashboard', icon: House },
     { name: 'Schedule', route: '/dashboard/schedule', icon: CalendarDays },
-    { name: 'Analytics', route: '/dashboard/analytics', icon: PieChart },
+    { name: 'Reports', route: '/dashboard/analytics', icon: PieChart },
+    { name: 'Sanctions', route: '/dashboard/sanctions', icon: ShieldAlert },
     { name: 'Profile', route: '/dashboard/profile', icon: UserRound },
 ]
 
@@ -20,6 +23,7 @@ export const schoolItNavigationItems = [
     { name: 'Home', route: '/workspace', icon: House },
     { name: 'Users', route: '/workspace/users', icon: UsersRound, matchPrefixes: ['/workspace/student-council'] },
     { name: 'Schedule', route: '/workspace/schedule', icon: CalendarDays },
+    { name: 'Reports', route: '/workspace/schedule/reports', icon: PieChart },
     { name: 'Settings', route: '/workspace/settings', icon: Settings },
     { name: 'Profile', route: '/workspace/profile', icon: UserRound },
 ]
@@ -28,6 +32,7 @@ export const exposedSchoolItNavigationItems = [
     { name: 'Home', route: '/exposed/workspace', icon: House },
     { name: 'Users', route: '/exposed/workspace/users', icon: UsersRound, matchPrefixes: ['/exposed/workspace/student-council'] },
     { name: 'Schedule', route: '/exposed/workspace/schedule', icon: CalendarDays },
+    { name: 'Reports', route: '/exposed/workspace/schedule/reports', icon: PieChart },
     { name: 'Settings', route: '/exposed/workspace/settings', icon: Settings },
     { name: 'Profile', route: '/exposed/workspace/profile', icon: UserRound },
 ]
@@ -35,7 +40,8 @@ export const exposedSchoolItNavigationItems = [
 export const exposedDashboardNavigationItems = [
     { name: 'Home', route: '/exposed/dashboard', icon: House },
     { name: 'Schedule', route: '/exposed/dashboard/schedule', icon: CalendarDays },
-    { name: 'Analytics', route: '/exposed/dashboard/analytics', icon: PieChart },
+    { name: 'Reports', route: '/exposed/dashboard/analytics', icon: PieChart },
+    { name: 'Sanctions', route: '/exposed/dashboard/sanctions', icon: ShieldAlert },
     { name: 'Profile', route: '/exposed/dashboard/profile', icon: UserRound },
 ]
 
@@ -44,6 +50,7 @@ export const adminNavigationItems = [
     { name: 'Schools', route: '/admin/schools', icon: Building2 },
     { name: 'Accounts', route: '/admin/accounts', icon: UsersRound },
     { name: 'Oversight', route: '/admin/oversight', icon: ShieldCheck },
+    { name: 'Reports', route: '/admin/reports', icon: PieChart },
     { name: 'Profile', route: '/admin/profile', icon: UserRound },
 ]
 
@@ -52,22 +59,16 @@ export const exposedAdminNavigationItems = [
     { name: 'Schools', route: '/exposed/admin/schools', icon: Building2 },
     { name: 'Accounts', route: '/exposed/admin/accounts', icon: UsersRound },
     { name: 'Oversight', route: '/exposed/admin/oversight', icon: ShieldCheck },
+    { name: 'Reports', route: '/exposed/admin/reports', icon: PieChart },
     { name: 'Profile', route: '/exposed/admin/profile', icon: UserRound },
 ]
 
-export const sgNavigationItems = [
-    { name: 'Home', route: '/sg', icon: House },
-    { name: 'Events', route: '/sg/events', icon: CalendarDays },
-    { name: 'Members', route: '/sg/members', icon: UsersRound },
-    { name: 'Profile', route: '/dashboard/profile', icon: UserRound },
-]
+export const governanceNavigationItems = getGovernanceNavigationItems()
 
-export const exposedSgNavigationItems = [
-    { name: 'Home', route: '/exposed/sg', icon: House },
-    { name: 'Events', route: '/exposed/sg/events', icon: CalendarDays },
-    { name: 'Members', route: '/exposed/sg/members', icon: UsersRound },
-    { name: 'Profile', route: '/exposed/dashboard/profile', icon: UserRound },
-]
+export const exposedGovernanceNavigationItems = getGovernanceNavigationItems(true)
+
+export const sgNavigationItems = governanceNavigationItems
+export const exposedSgNavigationItems = exposedGovernanceNavigationItems
 
 const NAVIGATION_CONTEXT_ITEMS = {
     dashboard: dashboardNavigationItems,
@@ -76,8 +77,10 @@ const NAVIGATION_CONTEXT_ITEMS = {
     workspace_preview: exposedSchoolItNavigationItems,
     admin: adminNavigationItems,
     admin_preview: exposedAdminNavigationItems,
-    sg: sgNavigationItems,
-    sg_preview: exposedSgNavigationItems,
+    governance: governanceNavigationItems,
+    governance_preview: exposedGovernanceNavigationItems,
+    sg: governanceNavigationItems,
+    sg_preview: exposedGovernanceNavigationItems,
 }
 
 function normalizeNavigationContext(value = '') {
@@ -96,8 +99,8 @@ function resolveNavigationContextFromPath(path = '') {
     if (normalizedPath.startsWith('/exposed/workspace')) {
         return 'workspace_preview'
     }
-    if (normalizedPath.startsWith('/exposed/sg')) {
-        return 'dashboard_preview'
+    if (normalizedPath.startsWith('/exposed/governance') || normalizedPath.startsWith('/exposed/sg')) {
+        return 'governance_preview'
     }
     if (normalizedPath.startsWith('/exposed/dashboard')) {
         return 'dashboard_preview'
@@ -108,8 +111,8 @@ function resolveNavigationContextFromPath(path = '') {
     if (normalizedPath.startsWith('/workspace')) {
         return 'workspace'
     }
-    if (normalizedPath.startsWith('/sg')) {
-        return 'dashboard'
+    if (normalizedPath.startsWith('/governance') || normalizedPath.startsWith('/sg')) {
+        return 'governance'
     }
 
     return 'dashboard'

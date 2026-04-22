@@ -21,16 +21,6 @@ function notifyAuthMetaChanged() {
     window.dispatchEvent(new CustomEvent(AUTH_META_CHANGED_EVENT))
 }
 
-function normalizeRoleName(role) {
-    const normalized = String(role || '')
-        .trim()
-        .toLowerCase()
-        .replace(/_/g, '-')
-
-    if (normalized === 'campus-admin') return 'school-it'
-    return normalized
-}
-
 function normalizeRoles(roles) {
     if (!Array.isArray(roles)) return []
 
@@ -131,15 +121,12 @@ export function needsStoredPasswordChange() {
 }
 
 export function hasPrivilegedPendingFace(meta = getStoredAuthMeta()) {
-    const roles = normalizeRoles(meta?.roles).map(normalizeRoleName)
-    const hasPrivilegedRole = roles.includes('admin') || roles.includes('school-it')
+    const roleKeys = normalizeRoles(meta?.roles)
+        .map((role) => String(role).trim().toLowerCase().replace(/_/g, '-'))
+        .map((role) => role === 'campus-admin' ? 'school-it' : role)
 
-    return Boolean(
-        hasPrivilegedRole &&
-        (
-            meta?.tokenType === 'face_pending' ||
-            meta?.faceVerificationPending ||
-            meta?.faceVerificationRequired
-        )
-    )
+    const isPrivilegedUser = roleKeys.includes('admin') || roleKeys.includes('school-it')
+    if (!isPrivilegedUser) return false
+
+    return Boolean(meta?.faceVerificationPending || meta?.faceVerificationRequired)
 }

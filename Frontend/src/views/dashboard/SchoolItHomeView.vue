@@ -82,18 +82,19 @@
                 <div class="school-it-home__ai-shell">
                   <div ref="scrollEl" class="school-it-home__ai-messages">
                     <TransitionGroup name="school-it-bubble" tag="div" class="school-it-home__ai-messages-inner">
-                      <div
-                        v-for="message in messages"
-                        :key="message.id"
-                        :class="[
-                          'school-it-home__bubble',
-                          message.sender === 'ai'
-                            ? 'school-it-home__bubble--ai'
-                            : 'school-it-home__bubble--user',
-                        ]"
-                      >
-                        {{ message.text }}
-                      </div>
+                      <template v-for="message in messages" :key="message.id">
+                        <div
+                          v-if="message.sender === 'user' || (message.text && message.text.trim().length > 0)"
+                          :class="[
+                            'school-it-home__bubble',
+                            message.sender === 'ai'
+                              ? 'school-it-home__bubble--ai'
+                              : 'school-it-home__bubble--user',
+                          ]"
+                        >
+                          <ChatMarkdownMessage :text="message.text" />
+                        </div>
+                      </template>
 
                       <div
                         v-if="isTyping"
@@ -148,11 +149,11 @@
 
             <div class="school-it-home__hero-logo">
               <img
-                v-if="heroLogoSrc && !heroLogoUnavailable"
+                v-if="heroLogoSrc"
+                :key="heroLogoSrc"
                 :src="heroLogoSrc"
                 :alt="`${schoolName} logo`"
                 class="school-it-home__hero-logo-image"
-                @error="handleHeroLogoError"
               >
               <div v-else class="school-it-home__hero-logo-fallback">{{ schoolInitials }}</div>
             </div>
@@ -209,17 +210,75 @@
             </div>
           </section>
         </div>
+
+        <section class="school-it-home__reports dashboard-enter dashboard-enter--8">
+          <article class="school-it-home__report-card school-it-home__report-card--summary">
+            <div class="school-it-home__report-head">
+              <div>
+                <p class="school-it-home__report-kicker">Reports Snapshot</p>
+                <h3 class="school-it-home__report-title">Attendance Pulse</h3>
+              </div>
+              <button class="school-it-home__pill school-it-home__pill--compact" type="button" @click="router.push({ name: reportsRouteName })">
+                <span class="school-it-home__pill-icon"><ArrowRight :size="18" /></span>
+                Open Reports
+              </button>
+            </div>
+
+            <p v-if="reportSyncError" class="school-it-home__report-note">{{ reportSyncError }}</p>
+
+            <div class="school-it-home__report-stats">
+              <article v-for="card in schoolReportCards" :key="card.id" class="school-it-home__report-stat">
+                <span>{{ card.label }}</span>
+                <strong>{{ card.value }}</strong>
+                <small>{{ card.meta }}</small>
+              </article>
+            </div>
+          </article>
+
+          <article class="school-it-home__report-card">
+            <div class="school-it-home__report-head">
+              <div>
+                <p class="school-it-home__report-kicker">Status Mix</p>
+                <h3 class="school-it-home__report-title">School Distribution</h3>
+              </div>
+            </div>
+
+            <div v-if="schoolStatusChartData.labels.length" class="school-it-home__report-chart">
+              <ReportsPieChart :data="schoolStatusChartData" :options="reportChartOptions.pie" />
+            </div>
+            <p v-else class="school-it-home__report-empty">No attendance breakdown yet.</p>
+          </article>
+
+          <article class="school-it-home__report-card">
+            <div class="school-it-home__report-head">
+              <div>
+                <p class="school-it-home__report-kicker">Top Students</p>
+                <h3 class="school-it-home__report-title">Attendance Leaders</h3>
+              </div>
+            </div>
+
+            <div v-if="topStudentsChartData.labels.length" class="school-it-home__report-chart">
+              <ReportsBarChart :data="topStudentsChartData" :options="reportChartOptions.barPercent" />
+            </div>
+            <div v-else class="school-it-home__report-list">
+              <p class="school-it-home__report-empty">Top-student ranking is unavailable right now.</p>
+            </div>
+          </article>
+        </section>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowRight, Search, Send } from 'lucide-vue-next'
 import SchoolItTopHeader from '@/components/dashboard/SchoolItTopHeader.vue'
 import SchoolItMetricRing from '@/components/dashboard/SchoolItMetricRing.vue'
+import ReportsBarChart from '@/components/reports/ReportsBarChart.vue'
+import ReportsPieChart from '@/components/reports/ReportsPieChart.vue'
+import ChatMarkdownMessage from '@/components/ui/ChatMarkdownMessage.vue'
 import { schoolItPreviewData } from '@/data/schoolItPreview.js'
 import { secondaryAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'
@@ -228,9 +287,10 @@ import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
 import { useSchoolItWorkspaceData } from '@/composables/useSchoolItWorkspaceData.js'
 import { useStoredAuthMeta } from '@/composables/useStoredAuthMeta.js'
-import { getAttendanceSummary } from '@/services/backendApi.js'
+import { getAttendanceOverview, getAttendanceSummary } from '@/services/backendApi.js'
+import { buildBarChartData, buildPieChartData, toPercent } from '@/services/dashboardReportCharts.js'
 import { hasPrivilegedPendingFace } from '@/services/localAuth.js'
-import { resolveBackendMediaCandidates, withMediaCacheKey } from '@/services/backendMedia.js'
+import { resolveBackendMediaCandidates, resolveLoadableMediaUrl } from '@/services/backendMedia.js'
 import { createSearchFieldAttrs } from '@/services/searchFieldAttrs.js'
 import { filterWorkspaceEntitiesBySchool } from '@/services/workspaceScope.js'
 
@@ -247,11 +307,19 @@ const schoolSearchInputAttrs = createSearchFieldAttrs('school-it-home-search')
 const isAiOpen = ref(false)
 const aiInputEl = ref(null)
 const remoteAttendanceSummary = ref(null)
-const heroLogoUnavailable = ref(false)
-const heroLogoCandidateIndex = ref(0)
-const heroLogoRetryKey = ref(0)
+const remoteAttendanceOverview = ref([])
+const reportSyncError = ref('')
+const heroLogoSrc = ref('')
 
-const { currentUser, schoolSettings, apiBaseUrl, events } = useDashboardSession()
+const {
+  currentUser,
+  schoolSettings,
+  apiBaseUrl,
+  events,
+  token,
+  initializeDashboardSession,
+  refreshSchoolSettings,
+} = useDashboardSession()
 const {
   departments: workspaceDepartments,
   programs: workspacePrograms,
@@ -299,14 +367,6 @@ const avatarUrl = computed(() => activeUser.value?.avatar_url || '')
 const heroLogoCandidates = computed(() => (
   resolveBackendMediaCandidates(rawSchoolLogoCandidates.value, apiBaseUrl.value)
 ))
-const heroLogoSrc = computed(() => (
-  heroLogoUnavailable.value
-    ? null
-    : withMediaCacheKey(
-      heroLogoCandidates.value[heroLogoCandidateIndex.value] || null,
-      heroLogoRetryKey.value || ''
-    )
-))
 
 const displayName = computed(() => {
   const first = activeUser.value?.first_name || ''
@@ -323,6 +383,7 @@ const initials = computed(() => buildInitials(displayName.value))
 const schoolInitials = computed(() => buildInitials(schoolName.value))
 const settingsRouteName = computed(() => props.preview ? 'PreviewSchoolItSettings' : 'SchoolItSettings')
 const scheduleRouteName = computed(() => props.preview ? 'PreviewSchoolItSchedule' : 'SchoolItSchedule')
+const reportsRouteName = computed(() => props.preview ? 'PreviewSchoolItEventReports' : 'SchoolItEventReports')
 
 const activeDepartments = computed(() => props.preview ? schoolItPreviewData.departments : workspaceDepartments.value)
 const activePrograms = computed(() => props.preview ? schoolItPreviewData.programs : workspacePrograms.value)
@@ -353,6 +414,69 @@ const attendanceRateMeta = computed(() => totalAttendanceRecords.value <= 0
 const populationComparisonLabel = computed(() => uniqueStudents.value > 0
   ? `Compared to ${formatInteger(uniqueStudents.value)} enrolled students`
   : 'Compare to total population')
+
+const topStudentsRows = computed(() => props.preview ? buildPreviewTopStudents() : (
+  Array.isArray(remoteAttendanceOverview.value)
+    ? remoteAttendanceOverview.value.slice(0, 5)
+    : []
+))
+
+const schoolReportCards = computed(() => [
+  {
+    id: 'records',
+    label: 'Attendance Records',
+    value: formatInteger(totalAttendanceRecords.value),
+    meta: `${formatInteger(attendedCount.value)} marked attended`,
+  },
+  {
+    id: 'students',
+    label: 'Students Reached',
+    value: formatInteger(uniqueStudents.value),
+    meta: `${formatInteger(attendanceSummary.value.unique_events)} tracked events`,
+  },
+  {
+    id: 'rate',
+    label: 'Attendance Rate',
+    value: `${toPercent(attendanceRate.value, 1)}%`,
+    meta: `${formatInteger(attendanceSummary.value.absent_count)} absent · ${formatInteger(attendanceSummary.value.excused_count)} excused`,
+  },
+])
+
+const schoolStatusChartData = computed(() => buildPieChartData([
+  { label: 'Present', value: attendanceSummary.value.present_count },
+  { label: 'Late', value: attendanceSummary.value.late_count },
+  { label: 'Absent', value: attendanceSummary.value.absent_count },
+  { label: 'Excused', value: attendanceSummary.value.excused_count },
+]))
+
+const topStudentsChartData = computed(() => buildBarChartData(
+  topStudentsRows.value.map((row) => ({
+    label: shortenName(row?.full_name || row?.student_name || row?.student_id || 'Student'),
+    value: Number(row?.attendance_rate || 0),
+  })),
+  {
+    label: 'Attendance Rate (%)',
+    backgroundColor: 'rgba(0,87,184,0.82)',
+  }
+))
+
+const reportChartOptions = {
+  pie: {
+    plugins: {
+      legend: {
+        position: 'bottom',
+      },
+    },
+  },
+  barPercent: {
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+      },
+    },
+  },
+}
 
 const programsByDepartment = computed(() => {
   const lookup = new Map()
@@ -414,8 +538,14 @@ const nextFrame = (callback) => requestAnimationFrame(() => requestAnimationFram
 watch([apiBaseUrl, () => activeUser.value?.id, schoolId, () => props.preview], async ([resolvedApiBaseUrl, userId, , preview]) => {
   if (preview) return
   if (!resolvedApiBaseUrl || !userId) return
-  await initializeSchoolItWorkspaceData()
-  await loadSchoolItHomeData(resolvedApiBaseUrl)
+
+  await Promise.allSettled([
+    initializeSchoolItWorkspaceData({
+      includeUsers: false,
+      includeCouncil: false,
+    }),
+    loadSchoolItHomeData(resolvedApiBaseUrl),
+  ])
 }, { immediate: true })
 
 watch(isAiOpen, (open) => {
@@ -430,24 +560,47 @@ watch(searchActive, (active) => {
   if (active) isAiOpen.value = false
 })
 
-watch(() => heroLogoCandidates.value.join('|'), () => {
-  heroLogoUnavailable.value = false
-  heroLogoCandidateIndex.value = 0
-  heroLogoRetryKey.value = 0
+watch(
+  () => heroLogoCandidates.value.join('|'),
+  async () => {
+    heroLogoSrc.value = await resolveLoadableMediaUrl(heroLogoCandidates.value)
+  },
+  { immediate: true }
+)
+
+onMounted(async () => {
+  if (props.preview) return
+
+  if (!schoolSettings.value) {
+    await initializeDashboardSession().catch(() => null)
+  }
+
+  if (token.value) {
+    await refreshSchoolSettings().catch(() => null)
+  }
 })
 
 async function loadSchoolItHomeData(resolvedApiBaseUrl) {
   const token = localStorage.getItem('aura_token') || ''
+  reportSyncError.value = ''
+
   if (!token || hasPrivilegedPendingFace()) {
     remoteAttendanceSummary.value = null
+    remoteAttendanceOverview.value = []
     return
   }
 
-  const [attendanceSummaryResult] = await Promise.allSettled([
+  const [attendanceSummaryResult, attendanceOverviewResult] = await Promise.allSettled([
     getAttendanceSummary(resolvedApiBaseUrl, token),
+    getAttendanceOverview(resolvedApiBaseUrl, token, { limit: 6 }),
   ])
 
   remoteAttendanceSummary.value = attendanceSummaryResult.status === 'fulfilled' ? attendanceSummaryResult.value : null
+  remoteAttendanceOverview.value = attendanceOverviewResult.status === 'fulfilled' ? attendanceOverviewResult.value : []
+
+  if (attendanceSummaryResult.status === 'rejected' && attendanceOverviewResult.status === 'rejected') {
+    reportSyncError.value = attendanceSummaryResult.reason?.message || attendanceOverviewResult.reason?.message || 'Live report data is unavailable right now.'
+  }
 }
 
 function buildInitials(value) {
@@ -527,6 +680,25 @@ function buildEventAttendanceSummary(items) {
   }
 }
 
+function buildPreviewTopStudents() {
+  return (Array.isArray(schoolItPreviewData.users) ? schoolItPreviewData.users : [])
+    .filter((user) => user?.student_profile)
+    .slice(0, 5)
+    .map((user, index) => ({
+      id: user.student_profile.id || user.id,
+      student_id: user.student_profile.student_id || `Preview-${index + 1}`,
+      full_name: [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || user.email || 'Student',
+      attendance_rate: Math.max(72, 96 - (index * 5)),
+      total_events: 10 + index,
+    }))
+}
+
+function shortenName(value) {
+  const parts = String(value || '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length <= 1) return parts[0] || 'Student'
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`
+}
+
 function countStatus(items, targetStatus) {
   return items.filter((item) => String(item?.status ?? '').toLowerCase() === targetStatus).length
 }
@@ -558,20 +730,6 @@ function formatInteger(value) {
 function formatStatusLabel(status) {
   const normalized = String(status || '').trim().toLowerCase()
   return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : 'Unknown'
-}
-
-function handleHeroLogoError() {
-  if (heroLogoCandidateIndex.value < heroLogoCandidates.value.length - 1) {
-    heroLogoCandidateIndex.value += 1
-    return
-  }
-
-  if (!heroLogoRetryKey.value) {
-    heroLogoRetryKey.value = Date.now()
-    return
-  }
-
-  heroLogoUnavailable.value = true
 }
 
 function openSearchResult(result) {
@@ -719,6 +877,20 @@ async function handleLogout() {
 .school-it-home__status{background:var(--color-surface);padding:12px}
 .school-it-home__status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .school-it-home__status-panel{min-height:222px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 10px 14px}
+.school-it-home__reports{display:grid;gap:18px}
+.school-it-home__report-card{padding:20px;border-radius:28px;background:var(--color-surface);box-shadow:0 18px 36px rgba(15,23,42,.05)}
+.school-it-home__report-card--summary{display:flex;flex-direction:column;gap:14px}
+.school-it-home__report-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.school-it-home__report-kicker{margin:0;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--color-text-muted)}
+.school-it-home__report-title{margin:4px 0 0;font-size:24px;line-height:1.02;letter-spacing:-.05em;font-weight:800;color:var(--color-text-primary)}
+.school-it-home__report-note,.school-it-home__report-empty{margin:0;font-size:12px;line-height:1.5;color:var(--color-text-muted)}
+.school-it-home__report-stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.school-it-home__report-stat{padding:14px;border-radius:20px;background:color-mix(in srgb,var(--color-surface) 88%,var(--color-bg));display:flex;flex-direction:column;gap:6px}
+.school-it-home__report-stat span{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-muted)}
+.school-it-home__report-stat strong{font-size:28px;line-height:1;letter-spacing:-.05em;color:var(--color-primary)}
+.school-it-home__report-stat small{font-size:12px;line-height:1.45;color:var(--color-text-muted)}
+.school-it-home__report-chart{min-height:260px}
+.school-it-home__report-list{display:flex;align-items:center;min-height:260px}
 @media (min-width:768px){
   .school-it-home{padding:40px 36px 56px}
   .school-it-home__body{margin-top:30px;gap:22px}
@@ -733,6 +905,7 @@ async function handleLogout() {
   .school-it-home__rate{grid-area:rate;min-height:266px}
   .school-it-home__status{grid-area:status}
   .school-it-home__status-panel{min-height:252px}
+  .school-it-home__reports{grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr) minmax(280px,1fr)}
 }
 @media (min-width:1100px){
   .school-it-home__cards{grid-template-columns:minmax(0,1.04fr) minmax(360px,.96fr);grid-template-areas:"hero hero" "summary rate" "summary status"}
