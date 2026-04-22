@@ -1,116 +1,102 @@
-# sas-v1
+# Vue 3 + Vite
 
-Valid8 Attendance Recognition System (Dockerized full stack).
+This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
 
-## Stack
-- Backend: FastAPI, SQLAlchemy, Alembic, Celery, Celery Beat, Redis
-- Frontend: Vue 3 + Vite + Tailwind (Capacitor-ready)
-- Assistant: FastAPI (streaming SSE chat API, proxied by the frontend nginx at `/__assistant__/`)
-- Database: PostgreSQL
-- Tools: Docker Compose, pgAdmin
+Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
 
-## Project Structure
-- `Backend/` - FastAPI backend and workers
-- `Frontend/` - Vue frontend (the legacy React UI was moved to `archive/Frontend_legacy_react/`)
-- `Databse/` - project database-related assets
-- `docker-compose.yml` - local multi-service orchestration
+## Docker
 
-## Backend Documentation
-- Main backend merge guide: `Backend/docs/BACKEND_FACE_GEO_MERGE_GUIDE.md`
-- Backend change log: `Backend/docs/BACKEND_CHANGELOG.md`
-- Attendance status guide: `Backend/docs/BACKEND_ATTENDANCE_STATUS_GUIDE.md`
-- Event time status guide: `Backend/docs/BACKEND_EVENT_TIME_STATUS_GUIDE.md`
-- Event auto status guide: `Backend/docs/BACKEND_EVENT_AUTO_STATUS_GUIDE.md`
-- Google email delivery guide: `Backend/docs/BACKEND_GOOGLE_EMAIL_DELIVERY_GUIDE.md`
+This repo ships with a production-style Docker setup so the frontend can be demoed consistently without relying on a local Node install.
 
-## Quick Start
-1. Install Docker Desktop.
-2. From project root, run:
+### Files
 
-### Windows (recommended)
+- `Dockerfile`
+  Builds the Vue app with Vite, then serves the built files from Nginx.
+- `docker-compose.yml`
+  Starts the demo container and maps the app to a local port.
+- `nginx.conf.template`
+  Handles SPA routing and proxies backend requests from `/__backend__` to the configured backend origin.
+- `runtime-config.js.template`
+  Generates the runtime backend configuration file so the same build can point to a different cloud backend later.
+- `public/runtime-config.js`
+  Safe browser fallback for local development when no runtime override is injected.
+- `.env.docker.example`
+  Example runtime configuration for Docker.
 
-This runs Docker in the background and prints the local URLs plus the seeded user credentials in the same terminal output.
+### Container
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/dev-up.ps1
-```
+- `aura-web`
+  Serves the built Aura frontend on port `80`, keeps Vue Router working with `try_files`, forwards API requests to the external backend through `/__backend__`, and injects runtime backend config on container start.
 
-### Any OS
+### Start
+
+1. Copy `.env.docker.example` to `.env.docker`.
+2. Set `BACKEND_ORIGIN` to the backend root URL.
+   Use the host root, not the `/api` suffix.
+   Example: `https://your-ngrok-host.ngrok-free.dev`
+3. Optional:
+   - keep `AURA_API_BASE_URL=/__backend__` to use the built-in nginx proxy
+   - or set `AURA_API_BASE_URL=https://your-cloud-api.example.com` to call the cloud API directly from the browser
+   - if you use a direct cloud URL, make sure the backend allows your frontend origin with CORS
+4. Run:
 
 ```bash
-docker compose up -d --build
+docker compose --env-file .env.docker up --build -d
 ```
 
-### Assistant LLM Key (Required For Real Replies)
+5. Open:
 
-The Assistant service will run without an LLM key, but it will respond with an "LLM is not configured" message until you provide one.
-
-Option A, PowerShell (current session only):
-
-```powershell
-$env:LLM_API_KEY="your_key_here"
-# Optional:
-# $env:LLM_MODEL="gpt-4o-mini"
-# $env:LLM_API_BASE="https://api.openai.com/v1"
-docker compose up -d --build
+```text
+http://localhost:8080
 ```
 
-Option B, repo-root `.env` file (picked up by Docker Compose automatically):
+### Stop
+
+```bash
+docker compose --env-file .env.docker down
+```
+
+### Health Check
+
+The container exposes a simple health endpoint at `/healthz` for Docker health checks.
+
+## Cloud Backend Flexibility
+
+The frontend now resolves the backend in this order:
+
+1. `window.__AURA_RUNTIME_CONFIG__.apiBaseUrl`
+2. `VITE_API_BASE_URL`
+3. default proxy path `/__backend__`
+
+This means you can keep one frontend build and change only runtime config when the backend moves.
+
+### Local Vite development
+
+Use a proxy target in `.env.development.local`:
 
 ```env
-LLM_API_KEY=your_key_here
-# Optional:
-# LLM_MODEL=gpt-4o-mini
-# LLM_API_BASE=https://api.openai.com/v1
+VITE_API_BASE_URL=/__backend__
+VITE_BACKEND_PROXY_TARGET=https://your-cloud-backend.example.com
 ```
 
-3. Open:
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:8000`
-- pgAdmin: `http://localhost:5050`
-- Assistant health (via frontend proxy): `http://localhost:5173/__assistant__/health`
+### Docker demo
 
-To print the seeded demo credentials (the `seed` one-shot container logs):
+Use the nginx proxy:
 
-```bash
-docker compose logs --no-color --tail=200 seed
+```env
+BACKEND_ORIGIN=https://your-cloud-backend.example.com
+AURA_API_BASE_URL=/__backend__
 ```
 
-If you're on Windows and want the URLs + credentials printed in a nicer format:
+### Static / cloud frontend hosting
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/dev-info.ps1
+Publish a `runtime-config.js` alongside the built app with:
+
+```js
+window.__AURA_RUNTIME_CONFIG__ = {
+  apiBaseUrl: 'https://your-cloud-backend.example.com',
+  apiTimeoutMs: 15000,
+}
 ```
 
-## Automated Testing
-
-Backend tests (pytest) run in Docker and use in-memory SQLite fixtures (no DB/Redis needed):
-
-```bash
-docker compose run --rm test_backend
-```
-
-Windows convenience wrapper:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/test-backend.ps1
-```
-
-API-based tester suites (simulated user actions; writes PSV logs under `./cmpj/`):
-
-```powershell
-docker compose --profile test run --rm auto_tests
-```
-
-Windows one-liner wrapper (brings stack up without rebuild, then runs suites):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/run-auto-tests.ps1
-```
-
-## Environment Notes
-- Backend mail example values are in `Backend/.env.example`.
-- Frontend API base URL can be configured via `Frontend/.env.*` (`VITE_API_BASE_URL`, `VITE_API_TIMEOUT_MS`) and runtime config (`AURA_API_BASE_URL`, `AURA_API_TIMEOUT_MS`).
-- Assistant replies require an LLM key (set `LLM_API_KEY` or `OPENAI_API_KEY` for the assistant service in Compose).
-- Compose defaults backend DB/Celery settings for local Docker networking.
-- Event auto-status scheduler can be configured with `EVENT_STATUS_SYNC_ENABLED` and `EVENT_STATUS_SYNC_INTERVAL_SECONDS`.
+If your backend root is accidentally configured as `https://host/api`, Aura now normalizes that to the host root automatically to avoid duplicated `/api/api/...` requests.

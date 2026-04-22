@@ -6,7 +6,10 @@ Role: Test layer. It protects the app from regressions.
 import json
 from datetime import datetime, timedelta
 
+from jose import jwt
+
 from app.models import (
+    Attendance,
     Department,
     Event,
     PasswordResetRequest,
@@ -17,11 +20,14 @@ from app.models import (
     SchoolSetting,
     StudentProfile,
     User,
+    UserAppPreference,
     UserRole,
+    UserSession,
 )
+from app.routers import health as health_router
+from app.routers import security_center
 from app.routers import users as users_router
-from app.core.security import create_access_token, verify_password
-from app.services.security_service import create_mfa_challenge
+from app.core.security import ALGORITHM, SECRET_KEY, create_access_token, verify_password
 from app.utils.passwords import hash_password_bcrypt
 
 
@@ -165,35 +171,119 @@ def test_login_does_not_dispatch_gmail_login_notification(client, test_db, monke
     assert payload["email"] == user.email
 
 
-def test_mfa_verify_does_not_dispatch_gmail_login_notification(client, test_db, monkeypatch):
-    school = _create_school(test_db, code="MFA-NOTIFY")
+def test_privileged_login_requires_face_scan_mfa(client, test_db):
+    school = _create_school(test_db, code="LOGIN-FACE")
     user = _create_user_with_role(
         test_db,
-        email="student.mfa.notify@example.com",
-        role_name="student",
-        password="StudentPass123!",
+        email="campus.face.login@example.com",
+        role_name="campus_admin",
+        password="CampusPass123!",
         school_id=school.id,
+        first_name="Campus",
+        last_name="Admin",
     )
-    challenge, code = create_mfa_challenge(test_db, user=user, ttl_minutes=10)
-    test_db.commit()
-
-    def fail_if_called(*args, **kwargs):
-        raise AssertionError("login security notification dispatch should not run")
-
-    monkeypatch.setattr("app.services.auth_task_dispatcher._enqueue_celery_task", fail_if_called)
 
     response = client.post(
-        "/auth/mfa/verify",
+        "/login",
         json={
             "email": user.email,
-            "challenge_id": challenge.id,
-            "code": code,
+            "password": "CampusPass123!",
         },
     )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["email"] == user.email
+    assert payload["face_verification_required"] is True
+    assert payload["face_verification_pending"] is True
+    assert payload["face_reference_enrolled"] is False
+    assert payload["session_id"] is None
+
+    token_payload = jwt.decode(payload["access_token"], SECRET_KEY, algorithms=[ALGORITHM])
+    assert token_payload["face_pending"] is True
+    assert token_payload["user_id"] == user.id
+
+
+def test_token_login_remember_me_extends_session_lifetime(client, test_db):
+    school = _create_school(test_db, code="REMEMBER-TKN")
+    user = _create_user_with_role(
+        test_db,
+        email="remember.token@example.com",
+        role_name="student",
+        password="StudentPass123!",
+        school_id=school.id,
+        first_name="Remember",
+        last_name="Token",
+    )
+
+    response = client.post(
+        "/token",
+        data={
+            "username": user.email,
+            "password": "StudentPass123!",
+            "remember_me": "true",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    token_payload = jwt.decode(payload["access_token"], SECRET_KEY, algorithms=[ALGORITHM])
+    assert token_payload["face_pending"] is False
+    assert token_payload["session_duration_minutes"] == 14 * 24 * 60
+
+    session = (
+        test_db.query(UserSession)
+        .filter(UserSession.user_id == user.id)
+        .order_by(UserSession.created_at.desc())
+        .first()
+    )
+    assert session is not None
+    assert session.expires_at >= datetime.utcnow() + timedelta(days=13)
+
+
+def test_user_app_preferences_routes_create_and_update_preferences(client, test_db):
+    school = _create_school(test_db, code="APP-PREF")
+    user = _create_user_with_role(
+        test_db,
+        email="app.pref@example.com",
+        role_name="student",
+        password="StudentPass123!",
+        school_id=school.id,
+        first_name="App",
+        last_name="Pref",
+    )
+
+    response = client.get(
+        "/api/users/preferences/me",
+        headers=_auth_headers(user),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["dark_mode_enabled"] is False
+    assert payload["font_size_percent"] == 100
+
+    update_response = client.put(
+        "/api/users/preferences/me",
+        headers=_auth_headers(user),
+        json={
+            "dark_mode_enabled": True,
+            "font_size_percent": 123,
+        },
+    )
+
+    assert update_response.status_code == 200
+    updated_payload = update_response.json()
+    assert updated_payload["dark_mode_enabled"] is True
+    assert updated_payload["font_size_percent"] == 125
+
+    persisted = (
+        test_db.query(UserAppPreference)
+        .filter(UserAppPreference.user_id == user.id)
+        .first()
+    )
+    assert persisted is not None
+    assert persisted.dark_mode_enabled is True
+    assert persisted.font_size_percent == 125
 
 
 def test_protected_endpoint(client, test_db):
@@ -231,6 +321,42 @@ def test_protected_endpoint(client, test_db):
     assert response.status_code == 401
 
 
+def test_current_user_profile_ignores_dangling_role_rows(client, test_db):
+    school = _create_school(test_db, code="DANGLING-ROLE")
+    valid_role = Role(name="student")
+    test_db.add(valid_role)
+    test_db.commit()
+
+    user = User(
+        email="dangling.role@example.com",
+        school_id=school.id,
+        first_name="Dangling",
+        last_name="Role",
+        must_change_password=False,
+    )
+    user.set_password("StudentPass123!")
+    test_db.add(user)
+    test_db.commit()
+
+    test_db.add_all(
+        [
+            UserRole(user_id=user.id, role_id=valid_role.id),
+            UserRole(user_id=user.id, role_id=999999),
+        ]
+    )
+    test_db.commit()
+
+    response = client.get(
+        "/api/users/me/",
+        headers=_auth_headers(user),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["email"] == user.email
+    assert payload["roles"] == [{"role": {"id": valid_role.id, "name": "student"}}]
+
+
 def test_users_router_supports_canonical_api_prefix(client, test_db):
     school = _create_school(test_db, code="API-USERS")
     role = Role(name="student")
@@ -261,7 +387,7 @@ def test_users_router_supports_canonical_api_prefix(client, test_db):
     assert response.json()["email"] == "canonical.users@example.com"
 
 
-def test_security_router_supports_canonical_api_prefix(client, test_db):
+def test_security_router_removes_mfa_status_endpoint(client, test_db):
     school = _create_school(test_db, code="API-SECURITY")
     role = Role(name="student")
     test_db.add(role)
@@ -287,10 +413,20 @@ def test_security_router_supports_canonical_api_prefix(client, test_db):
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["user_id"] == user.id
-    assert "mfa_enabled" in payload
+    assert response.status_code == 404
+
+
+def test_auth_mfa_verify_endpoint_is_removed(client):
+    response = client.post(
+        "/auth/mfa/verify",
+        json={
+            "email": "removed@example.com",
+            "challenge_id": "removed-challenge",
+            "code": "123456",
+        },
+    )
+
+    assert response.status_code == 404
 
 
 def test_legacy_users_router_alias_is_removed(client, test_db):
@@ -335,8 +471,35 @@ def test_health_endpoint_reports_pool_status(client):
     payload = response.json()
     assert payload["status"] == "ok"
     assert payload["database"]["ok"] is True
+    assert "face_runtime" in payload
+    assert "readiness" in payload
     assert "pool" in payload
     assert "pool_class" in payload["pool"]
+
+
+def test_health_readiness_endpoint_reports_not_ready_when_face_runtime_initializing(client, monkeypatch):
+    monkeypatch.setattr(
+        health_router.face_service,
+        "face_runtime_status",
+        lambda mode="single": {
+            "state": "initializing",
+            "ready": False,
+            "reason": "insightface_warming_up",
+            "last_error": None,
+            "provider_target": "CPUExecutionProvider",
+            "mode": mode,
+            "initialized_at": None,
+            "warmup_started_at": None,
+            "warmup_finished_at": None,
+        },
+    )
+
+    response = client.get("/health/readiness")
+    assert response.status_code == 503
+    payload = response.json()
+    assert payload["status"] == "not_ready"
+    assert payload["database"]["ok"] is True
+    assert payload["face_runtime"]["state"] == "initializing"
 
 
 def test_student_login_rejects_inactive_school(client, test_db):
@@ -747,6 +910,29 @@ def test_legacy_school_settings_import_route_returns_gone(client, test_db):
     assert "/api/admin/import-students" in detail
 
 
+def test_platform_admin_without_school_assignment_can_get_school_settings(client, test_db):
+    school = _create_school(test_db, code="PLATFORM-ADMIN-SCHOOL-SETTINGS")
+    admin_user = _create_user_with_role(
+        test_db,
+        email="platform.school.settings@example.com",
+        role_name="admin",
+        password="AdminPass123!",
+        school_id=None,
+        first_name="Platform",
+        last_name="Admin",
+    )
+
+    response = client.get(
+        "/school-settings/me",
+        headers=_auth_headers(admin_user),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["school_id"] == school.id
+    assert payload["school_name"] == school.school_name
+
+
 def test_inactive_user_stays_blocked_after_school_reactivation(client, test_db):
     school = _create_school(test_db, code="REACT-INACTIVE-USER")
     admin_user = _create_user_with_role(
@@ -1004,6 +1190,7 @@ def test_create_student_account_api_creates_student_and_sends_welcome_email(
             "first_name": "New",
             "middle_name": "",
             "last_name": "Student",
+            "student_id": "it-2026-001",
             "department_id": department.id,
             "program_id": program.id,
         },
@@ -1014,6 +1201,7 @@ def test_create_student_account_api_creates_student_and_sends_welcome_email(
     assert payload["email"] == "new.student@example.com"
     assert payload["school_id"] == school.id
     assert any(role["role"]["name"] == "student" for role in payload["roles"])
+    assert payload["student_profile"]["student_id"] == "IT-2026-001"
     assert payload["student_profile"]["department_id"] == department.id
     assert payload["student_profile"]["program_id"] == program.id
     assert payload["student_profile"]["year_level"] == 1
@@ -1030,6 +1218,7 @@ def test_create_student_account_api_creates_student_and_sends_welcome_email(
     )
     assert created_profile is not None
     assert created_profile.school_id == school.id
+    assert created_profile.student_id == "IT-2026-001"
     assert created_profile.department_id == department.id
     assert created_profile.program_id == program.id
     assert created_profile.year_level == 1
@@ -1038,6 +1227,85 @@ def test_create_student_account_api_creates_student_and_sends_welcome_email(
     assert sent["temporary_password"] == generated_password
     assert sent["first_name"] == "New"
     assert sent["password_is_temporary"] is True
+
+
+def test_create_student_account_api_rejects_duplicate_student_id_within_school(
+    client,
+    test_db,
+    monkeypatch,
+):
+    school = _create_school(test_db, code="STUDENT-DUP-ID")
+    campus_admin = _create_user_with_role(
+        test_db,
+        email="campus.dup.student@example.com",
+        role_name="campus_admin",
+        password="CampusPass123!",
+        school_id=school.id,
+        first_name="Campus",
+        last_name="Admin",
+    )
+
+    department = Department(school_id=school.id, name="School of Science")
+    program = Program(school_id=school.id, name="BS Biology")
+    department.programs.append(program)
+    test_db.add_all([department, program])
+    test_db.commit()
+
+    existing_user = User(
+        email="existing.student@example.com",
+        school_id=school.id,
+        first_name="Existing",
+        last_name="Student",
+        password_hash="placeholder",
+    )
+    existing_user.set_password("ExistingPass123!")
+    test_db.add(existing_user)
+    test_db.commit()
+    test_db.refresh(existing_user)
+
+    test_db.add(
+        StudentProfile(
+            user_id=existing_user.id,
+            school_id=school.id,
+            student_id="SCI-2026-001",
+            department_id=department.id,
+            program_id=program.id,
+            year_level=1,
+        )
+    )
+    test_db.commit()
+
+    monkeypatch.setattr(
+        users_router,
+        "generate_secure_password",
+        lambda min_length=10, max_length=14: "TempPass123A",
+    )
+
+    def fake_send_welcome_email(**kwargs):
+        raise AssertionError("Welcome email should not be sent when the student ID is duplicated.")
+
+    monkeypatch.setattr(users_router, "send_welcome_email", fake_send_welcome_email)
+
+    response = client.post(
+        f"/api/users/students/",
+        headers=_auth_headers(campus_admin),
+        json={
+            "email": "duplicate.id.student@example.com",
+            "first_name": "Duplicate",
+            "middle_name": "",
+            "last_name": "Student",
+            "student_id": "sci-2026-001",
+            "department_id": department.id,
+            "program_id": program.id,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Student ID already in use"
+    assert (
+        test_db.query(User).filter(User.email == "duplicate.id.student@example.com").first()
+        is None
+    )
 
 
 def test_create_student_account_api_rolls_back_when_welcome_email_fails(
@@ -1081,6 +1349,7 @@ def test_create_student_account_api_rolls_back_when_welcome_email_fails(
             "first_name": "Rollback",
             "middle_name": "",
             "last_name": "Student",
+            "student_id": "BUS-2026-001",
             "department_id": department.id,
             "program_id": program.id,
         },
@@ -1140,6 +1409,231 @@ def test_get_all_users_returns_paged_student_profiles(client, test_db):
     assert listed_student["student_profile"]["department_id"] == department.id
     assert listed_student["student_profile"]["program_id"] == program.id
     assert listed_student["student_profile"]["year_level"] == 3
+
+
+def test_users_endpoints_do_not_expand_student_attendance_history(client, test_db):
+    school = _create_school(test_db, code="USER-LIST-SLIM")
+    admin_user = _create_user_with_role(
+        test_db,
+        email="slim.admin@example.com",
+        role_name="admin",
+        password="AdminPass123!",
+        school_id=school.id,
+    )
+    student_user = _create_user_with_role(
+        test_db,
+        email="slim.student@misamisu.seed.local",
+        role_name="student",
+        password="StudentPass123!",
+        school_id=school.id,
+    )
+
+    department = Department(school_id=school.id, name="School of Computing Slim")
+    program = Program(school_id=school.id, name="BSIT Slim")
+    department.programs.append(program)
+    test_db.add_all([department, program])
+    test_db.commit()
+
+    student_profile = StudentProfile(
+        user_id=student_user.id,
+        school_id=school.id,
+        student_id="BSIT-SLIM-001",
+        department_id=department.id,
+        program_id=program.id,
+        year_level=2,
+    )
+    test_db.add(student_profile)
+    test_db.commit()
+    test_db.refresh(student_profile)
+
+    event = Event(
+        school_id=school.id,
+        name="Slim Payload Event",
+        location="Main Hall",
+        start_datetime=datetime.utcnow() - timedelta(hours=2),
+        end_datetime=datetime.utcnow() - timedelta(hours=1),
+    )
+    test_db.add(event)
+    test_db.commit()
+    test_db.refresh(event)
+
+    # Intentionally use a non-API attendance method value to mirror large seed rows.
+    test_db.add(
+        Attendance(
+            student_id=student_profile.id,
+            event_id=event.id,
+            method="seed_core",
+            status="present",
+            time_in=event.start_datetime,
+            time_out=event.end_datetime,
+        )
+    )
+    test_db.commit()
+
+    list_response = client.get(
+        "/api/users/?skip=0&limit=10",
+        headers=_auth_headers(admin_user),
+    )
+    assert list_response.status_code == 200
+    list_payload = list_response.json()
+    listed_student = next(user for user in list_payload if user["id"] == student_user.id)
+    assert listed_student["student_profile"]["attendances"] == []
+
+    me_response = client.get(
+        "/api/users/me/",
+        headers=_auth_headers(student_user),
+    )
+    assert me_response.status_code == 200
+    me_payload = me_response.json()
+    assert me_payload["student_profile"]["attendances"] == []
+
+
+def test_attendance_with_students_normalizes_legacy_seed_method_values(client, test_db):
+    school = _create_school(test_db, code="ATT-LGCY")
+    campus_admin = _create_user_with_role(
+        test_db,
+        email="attendance.legacy.admin@example.com",
+        role_name="campus_admin",
+        password="CampusPass123!",
+        school_id=school.id,
+    )
+    student_user = _create_user_with_role(
+        test_db,
+        email="attendance.legacy.student@example.com",
+        role_name="student",
+        password="StudentPass123!",
+        school_id=school.id,
+    )
+
+    department = Department(school_id=school.id, name="Attendance Legacy Department")
+    program = Program(school_id=school.id, name="Attendance Legacy Program")
+    department.programs.append(program)
+    test_db.add_all([department, program])
+    test_db.commit()
+
+    student_profile = StudentProfile(
+        user_id=student_user.id,
+        school_id=school.id,
+        student_id="ATT-LGCY-001",
+        department_id=department.id,
+        program_id=program.id,
+        year_level=2,
+    )
+    test_db.add(student_profile)
+    test_db.commit()
+    test_db.refresh(student_profile)
+
+    event = Event(
+        school_id=school.id,
+        name="Attendance Legacy Event",
+        location="Legacy Hall",
+        start_datetime=datetime.utcnow() - timedelta(hours=2),
+        end_datetime=datetime.utcnow() - timedelta(hours=1),
+    )
+    test_db.add(event)
+    test_db.commit()
+    test_db.refresh(event)
+
+    test_db.add(
+        Attendance(
+            student_id=student_profile.id,
+            event_id=event.id,
+            method="seed_duplicate_2",
+            status="present",
+            check_in_status="present",
+            check_out_status="present",
+            time_in=event.start_datetime,
+            time_out=event.end_datetime,
+        )
+    )
+    test_db.commit()
+
+    response = client.get(
+        f"/api/attendance/events/{event.id}/attendances-with-students",
+        headers=_auth_headers(campus_admin),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["attendance"]["method"] == "manual"
+    assert payload[0]["attendance"]["status"] == "present"
+
+
+def test_student_attendance_stats_returns_200_without_event_type_column(client, test_db, monkeypatch):
+    school = _create_school(test_db, code="ATT-STATS")
+    campus_admin = _create_user_with_role(
+        test_db,
+        email="attendance.stats.admin@example.com",
+        role_name="campus_admin",
+        password="CampusPass123!",
+        school_id=school.id,
+    )
+    student_user = _create_user_with_role(
+        test_db,
+        email="attendance.stats.student@example.com",
+        role_name="student",
+        password="StudentPass123!",
+        school_id=school.id,
+    )
+
+    department = Department(school_id=school.id, name="Attendance Stats Department")
+    program = Program(school_id=school.id, name="Attendance Stats Program")
+    department.programs.append(program)
+    test_db.add_all([department, program])
+    test_db.commit()
+
+    student_profile = StudentProfile(
+        user_id=student_user.id,
+        school_id=school.id,
+        student_id="ATT-STATS-001",
+        department_id=department.id,
+        program_id=program.id,
+        year_level=3,
+    )
+    test_db.add(student_profile)
+    test_db.commit()
+    test_db.refresh(student_profile)
+
+    event = Event(
+        school_id=school.id,
+        name="Attendance Stats Event",
+        location="Stats Hall",
+        start_datetime=datetime.utcnow() - timedelta(days=3),
+        end_datetime=datetime.utcnow() - timedelta(days=3, hours=-2),
+    )
+    test_db.add(event)
+    test_db.commit()
+    test_db.refresh(event)
+
+    test_db.add(
+        Attendance(
+            student_id=student_profile.id,
+            event_id=event.id,
+            method="manual",
+            status="present",
+            check_in_status="present",
+            check_out_status="present",
+            time_in=event.start_datetime,
+            time_out=event.end_datetime,
+        )
+    )
+    test_db.commit()
+
+    monkeypatch.setattr(
+        "app.reports.student.queries.list_student_trend_results",
+        lambda *args, **kwargs: [],
+    )
+
+    response = client.get(
+        f"/api/attendance/students/{student_profile.id}/stats?group_by=month",
+        headers=_auth_headers(campus_admin),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "event_type_breakdown" in payload
+    assert payload["event_type_breakdown"][0]["event_type"] == "Regular Events"
 
 
 def test_change_password_accepts_current_password_for_model_hashed_user(client, test_db):
@@ -1435,6 +1929,56 @@ def test_face_pending_user_can_change_password_during_onboarding(client, test_db
     )
 
     assert response.status_code == 200
+
+
+def test_face_pending_user_can_check_face_status_before_password_change(
+    client, test_db, monkeypatch
+):
+    school = _create_school(test_db, code="FACE-STS")
+    campus_admin = _create_user_with_role(
+        test_db,
+        email="campus.face.status@example.com",
+        role_name="campus_admin",
+        password="TempPass123!",
+        school_id=school.id,
+        first_name="Campus",
+        last_name="Admin",
+        must_change_password=True,
+    )
+
+    monkeypatch.setattr(
+        security_center.face_service,
+        "face_runtime_status",
+        lambda mode="mfa": {
+            "state": "ready",
+            "ready": True,
+            "reason": "ready",
+            "last_error": None,
+            "provider_target": "CPUExecutionProvider",
+            "mode": mode,
+            "initialized_at": None,
+            "warmup_started_at": None,
+            "warmup_finished_at": None,
+        },
+    )
+    monkeypatch.setattr(
+        security_center.face_service,
+        "anti_spoof_status",
+        lambda: (True, None),
+    )
+
+    token = create_access_token({"sub": campus_admin.email, "face_pending": True})
+
+    response = client.get(
+        "/api/auth/security/face-status",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["user_id"] == campus_admin.id
+    assert body["face_runtime_ready"] is True
+    assert body["anti_spoof_ready"] is True
 
 
 def test_face_pending_user_can_dismiss_password_change_prompt(client, test_db):

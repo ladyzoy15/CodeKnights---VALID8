@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, inspect
@@ -11,7 +12,10 @@ from policy import BASE_ROLE_POLICIES, PERMISSION_POLICIES
 
 
 def main() -> int:
-    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
+    assistant_env = Path(__file__).resolve().parents[1] / ".env"
+    root_env = Path(__file__).resolve().parents[2] / ".env"
+    load_dotenv(root_env, override=False)
+    load_dotenv(assistant_env, override=False)
 
     db_url = (
         os.getenv("TENANT_DATABASE_URL")

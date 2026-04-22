@@ -1,11 +1,12 @@
 import { computed, reactive, readonly } from 'vue'
-import { applyTheme, loadTheme } from '@/config/theme.js'
+import { applyTheme, loadTheme, setDarkMode } from '@/config/theme.js'
 import {
     getFaceStatus,
     getCurrentUserProfile,
     getEventById,
     getEvents,
     getMyAttendance,
+    getMyUserAppPreferences,
     getSchoolSettings,
     resolveApiBaseUrl,
     updateUser,
@@ -15,7 +16,9 @@ import {
     isResolvedAttendanceRecord,
 } from '@/services/attendanceFlow.js'
 import { resolveBackendMediaUrl } from '@/services/backendMedia.js'
-import { clearStoredAuthMeta, getStoredAuthMeta, patchStoredAuthMeta } from '@/services/localAuth.js'
+import { getStoredAuthMeta, patchStoredAuthMeta } from '@/services/localAuth.js'
+import { clearStoredSessionArtifacts, hasStoredSessionToken, readStoredSessionToken } from '@/services/sessionPersistence.js'
+import { storeFontSizePreference } from '@/services/userPreferences.js'
 
 const DASHBOARD_CACHE_KEY = 'aura_dashboard_cache_v1'
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000
@@ -26,7 +29,7 @@ const DASHBOARD_CACHE_TTL_MS = Number.isFinite(configuredCacheTtl) && configured
 
 const state = reactive({
     apiBaseUrl: resolveApiBaseUrl(),
-    token: localStorage.getItem('aura_token') || '',
+    token: readStoredSessionToken(),
     initializedToken: '',
     user: null,
     schoolSettings: null,
@@ -243,8 +246,12 @@ function hasRole(user, roleName) {
     )
 }
 
+function isStudentUser(user) {
+    return Boolean(user?.student_profile) || hasRole(user, 'student')
+}
+
 function isPrivilegedFaceUser(user) {
-    return hasRole(user, 'admin') || hasRole(user, 'school_IT')
+    return hasRole(user, 'admin') || hasRole(user, 'school_IT') || hasRole(user, 'governance')
 }
 
 function isSchoolItUser(user) {
@@ -260,6 +267,20 @@ function applyActiveTheme() {
         state.schoolSettings
         || buildFallbackSchoolSettings(getStoredAuthMeta())
     ))
+}
+
+import { useChat } from '@/composables/useChat.js'
+
+function applyRemoteAppPreferences(preferences) {
+    if (!preferences || typeof preferences !== 'object') return
+
+    if (Object.prototype.hasOwnProperty.call(preferences, 'dark_mode_enabled')) {
+        setDarkMode(Boolean(preferences.dark_mode_enabled))
+    }
+
+    if (Object.prototype.hasOwnProperty.call(preferences, 'font_size_percent')) {
+        storeFontSizePreference(preferences.font_size_percent)
+    }
 }
 
 function resetDashboardState() {
@@ -375,14 +396,24 @@ async function fetchDashboardData() {
         }
 
         const shouldLoadPrivilegedFaceStatus = isPrivilegedFaceUser(user)
+        const shouldLoadAttendance = isStudentUser(user)
+        // Some deployments answer optional, role-scoped dashboard endpoints with 401
+        // even though the authenticated session is still valid. Suppress the global
+        // expiry handler for these auxiliary requests so students stay signed in.
+        const auxiliaryRequestOptions = {
+            suppressSessionExpiryHandling: true,
+        }
 
-        const [settingsResult, eventsResult, attendanceResult, faceStatusResult] = await Promise.allSettled([
-            getSchoolSettings(state.apiBaseUrl, state.token),
-            getEvents(state.apiBaseUrl, state.token, { limit: 200 }),
-            getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }),
+        const [settingsResult, eventsResult, attendanceResult, faceStatusResult, appPreferencesResult] = await Promise.allSettled([
+            getSchoolSettings(state.apiBaseUrl, state.token, auxiliaryRequestOptions),
+            getEvents(state.apiBaseUrl, state.token, { limit: 200 }, auxiliaryRequestOptions),
+            shouldLoadAttendance
+                ? getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }, auxiliaryRequestOptions)
+                : Promise.resolve([]),
             shouldLoadPrivilegedFaceStatus
-                ? getFaceStatus(state.apiBaseUrl, state.token)
+                ? getFaceStatus(state.apiBaseUrl, state.token, auxiliaryRequestOptions)
                 : Promise.resolve(null),
+            getMyUserAppPreferences(state.apiBaseUrl, state.token).catch(() => null),
         ])
 
         const schoolId = Number(user?.school_id)
@@ -412,6 +443,9 @@ async function fetchDashboardData() {
         syncUserAttendanceRecords()
         syncUserFaceState()
         applyActiveTheme()
+        if (appPreferencesResult.status === 'fulfilled') {
+            applyRemoteAppPreferences(appPreferencesResult.value)
+        }
         persistDashboardSnapshot()
         if (usingFallbackUser) {
             state.error = 'Some backend profile endpoints are failing, so Aura is using a limited session fallback.'
@@ -448,12 +482,12 @@ async function fetchDashboardData() {
 }
 
 export function hasSessionToken() {
-    return Boolean(localStorage.getItem('aura_token'))
+    return hasStoredSessionToken()
 }
 
 export async function initializeDashboardSession(force = false) {
     const resolvedApiBaseUrl = resolveApiBaseUrl()
-    const storedToken = localStorage.getItem('aura_token') || ''
+    const storedToken = readStoredSessionToken()
 
     state.apiBaseUrl = resolvedApiBaseUrl
     state.token = storedToken
@@ -502,6 +536,12 @@ export async function initializeDashboardSession(force = false) {
 
 export async function refreshAttendanceRecords(params = {}) {
     if (!state.token) return []
+    if (!isStudentUser(state.user)) {
+        state.attendanceRecords = []
+        syncUserAttendanceRecords()
+        persistDashboardSnapshot()
+        return state.attendanceRecords
+    }
 
     const records = await getMyAttendance(state.apiBaseUrl, state.token, {
         limit: 200,
@@ -649,12 +689,10 @@ export function applySchoolSettingsSnapshot(nextSchoolSettings) {
 }
 
 export function clearDashboardSession() {
-    localStorage.removeItem('aura_token')
-    localStorage.removeItem('aura_user_roles')
-    clearStoredAuthMeta()
-    clearDashboardSnapshot()
+    clearStoredSessionArtifacts()
     setToken('')
     resetDashboardState()
+    useChat().resetChatState()
 }
 
 export function sessionUsesLimitedMode() {
@@ -729,13 +767,11 @@ export function isAdminSession(user = state.user) {
 }
 
 export function getDefaultAuthenticatedRoute(user = state.user) {
-    return isSchoolItSession(user)
-        ? { name: 'SchoolItHome' }
-        : isAdminSession(user)
-        ? { name: 'AdminHome' }
-        : isPrivilegedSession(user)
-        ? { name: 'PrivilegedDashboard' }
-        : { name: 'Home' }
+    if (isSchoolItSession(user)) return { name: 'SchoolItHome' }
+    if (isAdminSession(user)) return { name: 'AdminHome' }
+    if (sessionHasRole('governance', user)) return { name: 'SgDashboard' }
+    if (isPrivilegedSession(user)) return { name: 'PrivilegedDashboard' }
+    return { name: 'Home' }
 }
 
 export function useDashboardSession() {

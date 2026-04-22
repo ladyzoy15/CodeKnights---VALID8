@@ -17,6 +17,7 @@ from app.models.program import Program
 from app.models.user import StudentProfile, User, User as UserModel
 from app.schemas.attendance import (
     Attendance,
+    AttendanceMethod,
     AttendanceReportResponse,
     AttendanceStatus,
     AttendanceWithStudent,
@@ -44,6 +45,47 @@ from app.services.event_time_status import get_attendance_decision, get_sign_out
 from app.services.event_workflow_status import sync_event_workflow_status
 
 logger = logging.getLogger(__name__)
+_SEEN_UNSUPPORTED_ATTENDANCE_METHODS: set[str] = set()
+_SEEN_UNSUPPORTED_ATTENDANCE_STATUSES: set[str] = set()
+_ALLOWED_ATTENDANCE_METHOD_VALUES = {
+    AttendanceMethod.FACE_SCAN.value,
+    AttendanceMethod.MANUAL.value,
+}
+_ALLOWED_ATTENDANCE_STATUS_VALUES = {status.value for status in AttendanceStatus}
+
+
+def _normalize_attendance_method_for_response(method_value: Any) -> str:
+    """Map legacy/unknown stored method markers into API-safe enum values."""
+    normalized_method = str(method_value or "").strip().lower()
+    if normalized_method in _ALLOWED_ATTENDANCE_METHOD_VALUES:
+        return normalized_method
+
+    method_key = normalized_method or "<empty>"
+    if method_key not in _SEEN_UNSUPPORTED_ATTENDANCE_METHODS:
+        _SEEN_UNSUPPORTED_ATTENDANCE_METHODS.add(method_key)
+        logger.warning(
+            "Unsupported attendance method '%s' encountered; normalizing response method to '%s'.",
+            method_value,
+            AttendanceMethod.MANUAL.value,
+        )
+    return AttendanceMethod.MANUAL.value
+
+
+def _normalize_attendance_status_for_response(status_value: Any) -> str:
+    """Map unexpected status values into API-safe attendance status enums."""
+    normalized_status = normalize_attendance_status(status_value)
+    if normalized_status in _ALLOWED_ATTENDANCE_STATUS_VALUES:
+        return normalized_status
+
+    status_key = normalized_status or "<empty>"
+    if status_key not in _SEEN_UNSUPPORTED_ATTENDANCE_STATUSES:
+        _SEEN_UNSUPPORTED_ATTENDANCE_STATUSES.add(status_key)
+        logger.warning(
+            "Unsupported attendance status '%s' encountered; normalizing response status to '%s'.",
+            status_value,
+            AttendanceStatus.ABSENT.value,
+        )
+    return AttendanceStatus.ABSENT.value
 
 
 def _get_attendance_governance_units(
@@ -52,6 +94,7 @@ def _get_attendance_governance_units(
     current_user: UserModel,
     governance_context: GovernanceUnitType | None,
 ):
+    """Resolve which governance units the actor can use for attendance operations."""
     if has_any_role(current_user, ["admin", "campus_admin"]):
         return []
 
@@ -64,6 +107,7 @@ def _get_attendance_governance_units(
 
 
 def _apply_student_scope_filters(query, governance_units):
+    """Limit a student query to the departments or programs covered by governance units."""
     if not governance_units:
         return query
     if any(unit.department_id is None and unit.program_id is None for unit in governance_units):
@@ -85,6 +129,7 @@ def _apply_student_scope_filters(query, governance_units):
 
 
 def _event_matches_governance_units(event: Event, governance_units) -> bool:
+    """Return True when the event's academic scope fits at least one governance unit."""
     if not governance_units:
         return True
 
@@ -101,11 +146,13 @@ def _event_matches_governance_units(event: Event, governance_units) -> bool:
 
 
 def _ensure_event_in_attendance_scope(event: Event, governance_units) -> None:
+    """Hide events that fall outside the governance attendance scope."""
     if governance_units and not _event_matches_governance_units(event, governance_units):
         raise HTTPException(404, "Event not found")
 
 
 def _ensure_student_in_attendance_scope(student: StudentProfile, governance_units) -> None:
+    """Hide students that fall outside the governance attendance scope."""
     if governance_units and not governance_hierarchy_service.governance_units_match_student_scope(
         governance_units,
         department_id=student.department_id,
@@ -115,6 +162,7 @@ def _ensure_student_in_attendance_scope(student: StudentProfile, governance_unit
 
 
 def _ensure_student_is_event_participant(student: StudentProfile, event: Event) -> None:
+    """Confirm the selected student actually belongs to the event's allowed audience."""
     event_program_ids = {program.id for program in event.programs}
     event_department_ids = {department.id for department in event.departments}
     if event_program_ids and student.program_id not in event_program_ids:
@@ -124,6 +172,7 @@ def _ensure_student_is_event_participant(student: StudentProfile, event: Event) 
 
 
 def _get_event_ids_in_attendance_scope(db: Session, *, school_id: int, governance_units) -> list[int]:
+    """Collect event IDs the actor is allowed to manage attendance for."""
     if not governance_units:
         return [
             event_id
@@ -143,6 +192,7 @@ def _get_event_ids_in_attendance_scope(db: Session, *, school_id: int, governanc
 
 
 def _get_event_in_school_or_404(db: Session, event_id: int, school_id: int) -> Event:
+    """Load one event in the school and refresh its computed workflow status."""
     event = db.query(Event).filter(Event.id == event_id, Event.school_id == school_id).first()
     if not event:
         raise HTTPException(404, "Event not found")
@@ -154,6 +204,7 @@ def _get_event_in_school_or_404(db: Session, event_id: int, school_id: int) -> E
 
 
 def _get_event_attendance_decision(event: Event) -> dict[str, Any]:
+    """Return the current sign-in decision payload for an event."""
     decision = get_attendance_decision(
         start_time=event.start_datetime,
         end_time=event.end_datetime,
@@ -169,6 +220,7 @@ def _get_event_attendance_decision(event: Event) -> dict[str, Any]:
 
 
 def _get_event_sign_out_decision(event: Event) -> dict[str, Any]:
+    """Return the current sign-out decision payload for an event."""
     decision = get_sign_out_decision(
         start_time=event.start_datetime,
         end_time=event.end_datetime,
@@ -184,6 +236,7 @@ def _get_event_sign_out_decision(event: Event) -> dict[str, Any]:
 
 
 def _serialize_attendance_decision(decision) -> dict[str, Any]:
+    """Convert attendance decision objects into JSON-safe dictionaries."""
     payload = decision.to_dict()
     for key, value in list(payload.items()):
         if isinstance(value, datetime):
@@ -192,6 +245,7 @@ def _serialize_attendance_decision(decision) -> dict[str, Any]:
 
 
 def _attendance_display_status_value(attendance: AttendanceModel) -> str:
+    """Resolve the API-facing display status for one attendance record."""
     return resolve_attendance_display_status(
         stored_status=attendance.status,
         time_out=attendance.time_out,
@@ -199,10 +253,12 @@ def _attendance_display_status_value(attendance: AttendanceModel) -> str:
 
 
 def _attendance_completion_state_value(attendance: AttendanceModel) -> str:
+    """Expose whether the attendance is still open or already signed out."""
     return "completed" if is_attendance_completed(time_out=attendance.time_out) else "incomplete"
 
 
 def _attendance_is_valid_value(attendance: AttendanceModel) -> bool:
+    """Return whether the attendance counts as valid after completion rules are applied."""
     return is_completed_attended_status(
         stored_status=attendance.status,
         time_out=attendance.time_out,
@@ -213,6 +269,7 @@ def _attendance_matches_status_filter(
     attendance: AttendanceModel,
     status: AttendanceStatus | None,
 ) -> bool:
+    """Check if one attendance row matches a requested status filter."""
     if status is None:
         return True
 
@@ -220,9 +277,20 @@ def _attendance_matches_status_filter(
 
 
 def _serialize_attendance_model(attendance: AttendanceModel) -> Attendance:
-    payload = Attendance.model_validate(attendance, from_attributes=True)
-    return payload.model_copy(
-        update={
+    """Serialize an attendance ORM row with computed display fields."""
+    return Attendance.model_validate(
+        {
+            "id": attendance.id,
+            "student_id": attendance.student_id,
+            "event_id": attendance.event_id,
+            "time_in": attendance.time_in,
+            "time_out": attendance.time_out,
+            "method": _normalize_attendance_method_for_response(attendance.method),
+            "status": _normalize_attendance_status_for_response(attendance.status),
+            "check_in_status": attendance.check_in_status,
+            "check_out_status": attendance.check_out_status,
+            "verified_by": attendance.verified_by,
+            "notes": attendance.notes,
             "display_status": _attendance_display_status_value(attendance),
             "completion_state": _attendance_completion_state_value(attendance),
             "is_valid_attendance": _attendance_is_valid_value(attendance),
@@ -236,6 +304,7 @@ def _serialize_attendance_with_student(
     student_id: str,
     student_name: str,
 ) -> AttendanceWithStudent:
+    """Attach student identity data to a serialized attendance response."""
     return AttendanceWithStudent(
         attendance=_serialize_attendance_model(attendance),
         student_id=student_id,
@@ -248,6 +317,7 @@ def _build_student_attendance_record(
     *,
     event_name: str,
 ) -> StudentAttendanceRecord:
+    """Build the compact student attendance summary used in listings."""
     duration = None
     if attendance.time_in and attendance.time_out:
         duration = int((attendance.time_out - attendance.time_in).total_seconds() / 60)
@@ -264,13 +334,14 @@ def _build_student_attendance_record(
         display_status=_attendance_display_status_value(attendance),
         completion_state=_attendance_completion_state_value(attendance),
         is_valid_attendance=_attendance_is_valid_value(attendance),
-        method=attendance.method,
+        method=_normalize_attendance_method_for_response(attendance.method),
         notes=attendance.notes,
         duration_minutes=duration,
     )
 
 
 def _build_student_attendance_detail(attendance: AttendanceModel) -> StudentAttendanceDetail:
+    """Build the detailed attendance payload shown on student history screens."""
     duration = None
     if attendance.time_in and attendance.time_out:
         duration = int((attendance.time_out - attendance.time_in).total_seconds() / 60)
@@ -289,7 +360,7 @@ def _build_student_attendance_detail(attendance: AttendanceModel) -> StudentAtte
         display_status=_attendance_display_status_value(attendance),
         completion_state=_attendance_completion_state_value(attendance),
         is_valid_attendance=_attendance_is_valid_value(attendance),
-        method=attendance.method,
+        method=_normalize_attendance_method_for_response(attendance.method),
         notes=attendance.notes,
         duration_minutes=duration,
     )
@@ -301,6 +372,7 @@ def _active_attendance_for_student_event(
     student_profile_id: int,
     event_id: int,
 ) -> AttendanceModel | None:
+    """Fetch the student's most recent open attendance for the event, if any."""
     return (
         db.query(AttendanceModel)
         .filter(
@@ -318,6 +390,7 @@ def _complete_attendance_sign_out(
     *,
     recorded_at: datetime,
 ) -> int:
+    """Close an attendance row and apply the final status matrix after sign-out."""
     attendance.time_out = recorded_at
     attendance.check_out_status = "present"
     attendance.status, final_note = finalize_completed_attendance_status(
@@ -330,6 +403,7 @@ def _complete_attendance_sign_out(
 
 
 def _ensure_attendance_management_access(db: Session, current_user: UserModel) -> None:
+    """Allow attendance tools only for admins or governance members with attendance permission."""
     if has_any_role(current_user, ["admin", "campus_admin"]):
         return
 
@@ -352,14 +426,17 @@ def _ensure_attendance_management_access(db: Session, current_user: UserModel) -
 
 
 def _ensure_event_report_access(db: Session, current_user: UserModel) -> None:
+    """Reuse attendance-management rules for event-level attendance reports."""
     _ensure_attendance_management_access(db, current_user)
 
 
 def _ensure_attendance_report_access(db: Session, current_user: UserModel) -> None:
+    """Reuse attendance-management rules for general attendance reports."""
     _ensure_attendance_management_access(db, current_user)
 
 
 def _ensure_attendance_operator_access(db: Session, current_user: UserModel) -> None:
+    """Reuse attendance-management rules for scan and manual attendance operators."""
     _ensure_attendance_management_access(db, current_user)
 
 

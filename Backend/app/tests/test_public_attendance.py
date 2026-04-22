@@ -20,8 +20,31 @@ def _frame_payload() -> str:
     return "data:image/jpeg;base64," + base64.b64encode(b"public-kiosk-frame").decode("ascii")
 
 
+def _embedding_vector(value: float) -> np.ndarray:
+    vector = np.zeros(512, dtype=np.float32)
+    primary_index = abs(int(round(value * 100))) % 512
+    secondary_index = (primary_index + 113) % 512
+    vector[primary_index] = 0.8
+    vector[secondary_index] = 0.6
+    return vector / np.linalg.norm(vector)
+
+
+def _runtime_status_ready(mode: str = "group") -> dict[str, object]:
+    return {
+        "state": "ready",
+        "ready": True,
+        "reason": "ready",
+        "last_error": None,
+        "provider_target": "CPUExecutionProvider",
+        "mode": mode,
+        "initialized_at": None,
+        "warmup_started_at": None,
+        "warmup_finished_at": None,
+    }
+
+
 def _face_encoding(value: float) -> bytes:
-    return np.asarray([value], dtype=np.float64).tobytes()
+    return _embedding_vector(value).astype(np.float32).tobytes()
 
 
 def _real_probe(index: int, value: float) -> DetectedFaceProbe:
@@ -29,7 +52,7 @@ def _real_probe(index: int, value: float) -> DetectedFaceProbe:
         index=index,
         location=(10 + index, 20 + index, 30 + index, 40 + index),
         liveness=LivenessResult(label="Real", score=0.99),
-        encoding=np.asarray([value], dtype=np.float64),
+        encoding=_embedding_vector(value),
         error_code=None,
     )
 
@@ -108,6 +131,10 @@ def _create_student(
         program_id=program.id if program is not None else None,
         year_level=1,
         face_encoding=_face_encoding(face_value),
+        embedding_provider="arcface",
+        embedding_dtype="float32",
+        embedding_dimension=512,
+        embedding_normalized=True,
         is_face_registered=True,
         registration_complete=True,
     )
@@ -260,6 +287,11 @@ def test_public_multi_face_scan_supports_department_scope_duplicates_and_generic
     monkeypatch,
 ):
     monkeypatch.setattr(public_attendance, "PUBLIC_SCAN_REQUEST_MIN_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr(
+        public_attendance.face_service,
+        "ensure_face_runtime_ready",
+        lambda **_kwargs: _runtime_status_ready(),
+    )
 
     school = _create_school(test_db, code="DEPT", name="Department Campus")
     department_scope = _create_department(test_db, school=school, name="Engineering")
@@ -338,6 +370,11 @@ def test_public_multi_face_scan_supports_department_scope_duplicates_and_generic
 
 def test_public_multi_face_scan_supports_program_scoped_events(client, test_db, monkeypatch):
     monkeypatch.setattr(public_attendance, "PUBLIC_SCAN_REQUEST_MIN_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr(
+        public_attendance.face_service,
+        "ensure_face_runtime_ready",
+        lambda **_kwargs: _runtime_status_ready(),
+    )
 
     school = _create_school(test_db, code="ORG", name="Program Campus")
     department = _create_department(test_db, school=school, name="Engineering")
@@ -414,6 +451,11 @@ def test_public_multi_face_scan_uses_phase_based_sign_in_and_sign_out_rules(
     monkeypatch,
 ):
     monkeypatch.setattr(public_attendance, "PUBLIC_SCAN_REQUEST_MIN_INTERVAL_SECONDS", 0.0)
+    monkeypatch.setattr(
+        public_attendance.face_service,
+        "ensure_face_runtime_ready",
+        lambda **_kwargs: _runtime_status_ready(),
+    )
 
     school = _create_school(test_db, code="PHASE", name="Phase Campus")
     student = _create_student(

@@ -1,14 +1,41 @@
 import { ref } from 'vue'
+import { Capacitor } from '@capacitor/core'
 const defaultSchoolLogo = '/logos/aura.png'
+const DARK_MODE_STORAGE_KEY = 'aura_dark_mode'
+
+function readStoredDarkModePreference() {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+        return false
+    }
+
+    try {
+        return window.localStorage.getItem(DARK_MODE_STORAGE_KEY) === '1'
+    } catch {
+        return false
+    }
+}
+
+function persistDarkModePreference(value) {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+        return
+    }
+
+    try {
+        window.localStorage.setItem(DARK_MODE_STORAGE_KEY, value ? '1' : '0')
+    } catch {
+        // Ignore storage failures and keep theme switching usable.
+    }
+}
 
 /**
  * Global Dark Mode State
  */
-export const isDarkMode = ref(false)
+export const isDarkMode = ref(readStoredDarkModePreference())
 export const activeAuraLogo = ref('/logos/aura_logo_black.png')
 export const surfaceAuraLogo = ref('/logos/aura_logo_black.png')
 export const secondaryAuraLogo = ref('/logos/aura_logo_black.png')
 let currentActiveTheme = null
+let nativeStatusBarSyncPromise = null
 
 function updateDocumentThemeColor(color) {
     if (typeof document === 'undefined') return
@@ -18,6 +45,27 @@ function updateDocumentThemeColor(color) {
     }
 }
 
+function syncNativeStatusBar(color) {
+    if (!Capacitor.isNativePlatform()) return
+    if (!/^#[0-9A-F]{6}$/i.test(String(color || ''))) return
+
+    nativeStatusBarSyncPromise = (
+        nativeStatusBarSyncPromise
+        || import('@capacitor/status-bar').catch(() => null)
+    )
+
+    nativeStatusBarSyncPromise.then((module) => {
+        if (!module?.StatusBar || !module?.Style) return
+
+        const preferredStyle = getContrastYIQ(color) === '#FFFFFF'
+            ? module.Style.Light
+            : module.Style.Dark
+
+        module.StatusBar.setStyle({ style: preferredStyle }).catch(() => null)
+        module.StatusBar.setBackgroundColor({ color }).catch(() => null)
+    }).catch(() => null)
+}
+
 /**
  * School Theme Configuration
  * School IT can customize: primary accent color, logo, and school name.
@@ -25,7 +73,7 @@ function updateDocumentThemeColor(color) {
  */
 export const defaultTheme = {
     // Customizable by School IT
-    primaryColor: '#ffffffff',       // Lime green - the accent/brand color
+    primaryColor: '#AAFF00',       // Lime green - the accent/brand color
     primaryDark: '#88CC00',        // Slightly darker for hover states
     primaryText: '#0A0A0A',        // Text on primary colored backgrounds
     secondaryColor: '#AAFF00',
@@ -195,7 +243,13 @@ export function resolveAuraLogoForBackground(backgroundColor) {
 }
 
 export function toggleDarkMode() {
-    isDarkMode.value = !isDarkMode.value
+    setDarkMode(!isDarkMode.value)
+}
+
+export function setDarkMode(value) {
+    isDarkMode.value = Boolean(value)
+    persistDarkModePreference(isDarkMode.value)
+
     if (currentActiveTheme) {
         applyTheme(currentActiveTheme)
     }
@@ -314,6 +368,8 @@ export function applyTheme(theme) {
     root.style.setProperty('--color-pill-row-active-bg', secondaryColor)
     root.style.setProperty('--color-pill-row-active-text', secondaryTextColor)
     root.style.setProperty('--color-pill-row-outline', secondaryColor)
+    root.style.setProperty('color-scheme', isDarkMode.value ? 'dark' : 'light')
+    root.dataset.themeMode = isDarkMode.value ? 'dark' : 'light'
 
     // Backwards-compatible alias for existing white-card text references.
     root.style.setProperty('--color-text-always-dark', surfaceTextColor)
@@ -321,9 +377,19 @@ export function applyTheme(theme) {
     // Smart contrast text for the dark/light University Banner
     root.style.setProperty('--color-banner-text', primaryTextColor)
 
+    // Semantic status colors — fixed, not derived from school branding
+    root.style.setProperty('--color-status-compliant', '#22C55E')
+    root.style.setProperty('--color-status-at-risk', '#F59E0B')
+    root.style.setProperty('--color-status-non-compliant', '#EF4444')
+    root.style.setProperty('--color-status-excused', '#F97316')
+    root.style.setProperty('--color-status-late', '#FB923C')
+    root.style.setProperty('--color-ssg-accent', '#6366F1')
+    root.style.setProperty('--color-sg-accent', '#8B5CF6')
+
     // Automatically serve the correct Aura logo color based on banner contrast
     activeAuraLogo.value = resolveAuraLogoForBackground(theme.primaryColor)
     surfaceAuraLogo.value = resolveAuraLogoForBackground(surfaceColor)
     secondaryAuraLogo.value = resolveAuraLogoForBackground(secondaryColor)
     updateDocumentThemeColor(bgColor)
+    syncNativeStatusBar(bgColor)
 }

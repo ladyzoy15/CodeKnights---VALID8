@@ -1,11 +1,5 @@
 import { CalendarDays, Megaphone, ClipboardCheck, Users, Eye, Building2, Landmark, UserPlus, Shield } from 'lucide-vue-next'
 
-/**
- * Permission-to-card mapping for the SG Dashboard.
- * Each module defines a card with its required permission code, label, icon, and route.
- * Grouped into sections for the dashboard layout.
- */
-
 const SG_MODULE_SECTIONS = [
   {
     id: 'event-management',
@@ -105,13 +99,8 @@ const SG_MODULE_SECTIONS = [
   },
 ]
 
-/**
- * Returns only the sections/modules that the user has permission for.
- * Sections with zero visible modules are excluded entirely.
- */
 export function getVisibleSections(permissionCodes = []) {
   const codeSet = new Set(permissionCodes)
-
   return SG_MODULE_SECTIONS
     .map((section) => ({
       ...section,
@@ -120,27 +109,6 @@ export function getVisibleSections(permissionCodes = []) {
     .filter((section) => section.modules.length > 0)
 }
 
-/**
- * Returns ALL sections with ALL modules — used when showing everything
- * and marking unpermitted cards as disabled visually.
- */
-export function getAllSections() {
-  return SG_MODULE_SECTIONS.map((section) => ({
-    ...section,
-    modules: [...section.modules],
-  }))
-}
-
-/**
- * Returns a flat list of all visible modules for search filtering.
- */
-export function getVisibleModules(permissionCodes = []) {
-  return getVisibleSections(permissionCodes).flatMap((section) => section.modules)
-}
-
-/**
- * Filters sections by a search query matching module labels.
- */
 export function filterSectionsBySearch(sections = [], query = '') {
   const normalizedQuery = String(query || '').trim().toLowerCase()
   if (!normalizedQuery) return sections

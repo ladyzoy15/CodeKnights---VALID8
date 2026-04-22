@@ -17,7 +17,7 @@ def _gmail_api_settings(**overrides):
         "email_timeout_seconds": 20,
         "email_sender_email": "mailer@example.com",
         "email_from_email": "mailer@example.com",
-        "email_from_name": "VALID8 Notifications",
+        "email_from_name": "Aura Notifications",
         "email_reply_to": "",
         "email_google_account_type": "auto",
         "email_google_allow_custom_from": False,
@@ -31,7 +31,38 @@ def _gmail_api_settings(**overrides):
             "https://www.googleapis.com/auth/gmail.settings.basic",
         ],
         "google_gmail_api_base_url": "https://gmail.googleapis.com/gmail/v1",
-        "login_url": "https://valid8.example/login",
+        "login_url": "https://aura.example/login",
+    }
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
+
+
+def _smtp_settings(**overrides):
+    defaults = {
+        "email_transport": "smtp",
+        "email_required_on_startup": True,
+        "email_verify_connection_on_startup": False,
+        "email_timeout_seconds": 20,
+        "email_sender_email": "mailer@example.com",
+        "email_from_email": "mailer@example.com",
+        "email_from_name": "Aura Notifications",
+        "email_reply_to": "",
+        "email_google_account_type": "auto",
+        "email_google_allow_custom_from": False,
+        "smtp_host": "mailpit",
+        "smtp_port": 1025,
+        "smtp_username": "",
+        "smtp_password": "",
+        "smtp_use_tls": False,
+        "smtp_use_starttls": False,
+        "google_oauth_client_id": "",
+        "google_oauth_client_secret": "",
+        "google_oauth_refresh_token": "",
+        "google_oauth_auth_url": "https://accounts.google.com/o/oauth2/v2/auth",
+        "google_oauth_token_url": "https://oauth2.googleapis.com/token",
+        "google_oauth_scopes": [],
+        "google_gmail_api_base_url": "https://gmail.googleapis.com/gmail/v1",
+        "login_url": "https://aura.example/login",
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -43,7 +74,7 @@ def test_send_welcome_email_allows_temporary_password_after_login(monkeypatch) -
     monkeypatch.setattr(
         email_service,
         "get_settings",
-        lambda: SimpleNamespace(login_url="https://valid8.example/login"),
+        lambda: SimpleNamespace(login_url="https://aura.example/login"),
     )
 
     def fake_send_email(*, subject: str, recipient_email: str, body: str, **kwargs) -> None:
@@ -58,7 +89,7 @@ def test_send_welcome_email_allows_temporary_password_after_login(monkeypatch) -
         recipient_email="new.user@example.com",
         temporary_password="TempPass123!",
         first_name="New",
-        system_name="VALID8",
+        system_name="Aura",
     )
 
     assert sent["recipient_email"] == "new.user@example.com"
@@ -76,7 +107,7 @@ def test_send_password_reset_email_still_requires_password_change(monkeypatch) -
     monkeypatch.setattr(
         email_service,
         "get_settings",
-        lambda: SimpleNamespace(login_url="https://valid8.example/login"),
+        lambda: SimpleNamespace(login_url="https://aura.example/login"),
     )
 
     def fake_send_email(*, subject: str, recipient_email: str, body: str, **kwargs) -> None:
@@ -91,7 +122,7 @@ def test_send_password_reset_email_still_requires_password_change(monkeypatch) -
         recipient_email="existing.user@example.com",
         temporary_password="TempPass123!",
         first_name="Existing",
-        system_name="VALID8",
+        system_name="Aura",
     )
 
     assert sent["recipient_email"] == "existing.user@example.com"
@@ -105,7 +136,7 @@ def test_send_welcome_email_with_user_supplied_password_uses_generic_password_co
     monkeypatch.setattr(
         email_service,
         "get_settings",
-        lambda: SimpleNamespace(login_url="https://valid8.example/login"),
+        lambda: SimpleNamespace(login_url="https://aura.example/login"),
     )
 
     def fake_send_email(*, subject: str, recipient_email: str, body: str, **kwargs) -> None:
@@ -119,7 +150,7 @@ def test_send_welcome_email_with_user_supplied_password_uses_generic_password_co
         recipient_email="provided.password@example.com",
         temporary_password="ChosenPass123!",
         first_name="Chosen",
-        system_name="VALID8",
+        system_name="Aura",
         password_is_temporary=False,
     )
 
@@ -135,7 +166,7 @@ def test_send_import_onboarding_email_matches_welcome_credentials_copy(monkeypat
     monkeypatch.setattr(
         email_service,
         "get_settings",
-        lambda: SimpleNamespace(login_url="https://valid8.example/login"),
+        lambda: SimpleNamespace(login_url="https://aura.example/login"),
     )
 
     def fake_send_email(*, subject: str, recipient_email: str, body: str, **kwargs) -> None:
@@ -150,17 +181,15 @@ def test_send_import_onboarding_email_matches_welcome_credentials_copy(monkeypat
         recipient_email="imported.user@example.com",
         temporary_password="ImportPass123!",
         first_name="Imported",
-        system_name="VALID8",
+        system_name="Aura",
     )
 
     assert sent["recipient_email"] == "imported.user@example.com"
-    assert "Your account has been created" in sent["body"]
-    assert "Forgot Password option" in sent["body"]
-    assert "Login URL: https://valid8.example/login" in sent["body"]
-    # No longer includes raw credentials
-    assert "Email: " not in sent["body"]
-    assert "Temporary Password: " not in sent["body"]
-    assert "Account Ready" in sent["subject"]
+    assert "Email: imported.user@example.com" in sent["body"]
+    assert "Temporary Password: ImportPass123!" in sent["body"]
+    assert "Login URL: https://aura.example/login" in sent["body"]
+    assert "Forgot Password option" not in sent["body"]
+    assert "Login Credentials" in sent["html_body"]
 
 
 def test_validate_email_delivery_settings_accepts_gmail_api_transport() -> None:
@@ -170,6 +199,17 @@ def test_validate_email_delivery_settings_accepts_gmail_api_transport() -> None:
 
     assert resolved.transport == "gmail_api"
     assert resolved.auth_mode == "oauth2"
+    assert resolved.sender_email == "mailer@example.com"
+    assert resolved.from_email == "mailer@example.com"
+
+
+def test_validate_email_delivery_settings_accepts_smtp_transport() -> None:
+    resolved = email_service.validate_email_delivery_settings(
+        _smtp_settings(),
+    )
+
+    assert resolved.transport == "smtp"
+    assert resolved.auth_mode == "none"
     assert resolved.sender_email == "mailer@example.com"
     assert resolved.from_email == "mailer@example.com"
 
@@ -282,6 +322,82 @@ def test_send_plain_email_uses_gmail_api_transport(monkeypatch) -> None:
     assert captured["url"] == "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
     assert captured["headers"]["Authorization"] == "Bearer access-token"
     assert isinstance(captured["json"]["raw"], str)
+
+
+def test_send_plain_email_uses_smtp_transport(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeSMTP:
+        def __init__(self, host: str, port: int, timeout: float):
+            captured["host"] = host
+            captured["port"] = port
+            captured["timeout"] = timeout
+
+        def ehlo(self):
+            captured["ehlo_called"] = True
+
+        def starttls(self, context=None):
+            captured["starttls_called"] = True
+
+        def login(self, username, password):
+            captured["login"] = (username, password)
+
+        def send_message(self, msg, from_addr=None, to_addrs=None):
+            captured["from_addr"] = from_addr
+            captured["to_addrs"] = to_addrs
+            captured["subject"] = msg.get("Subject")
+            captured["to_header"] = msg.get("To")
+
+        def quit(self):
+            captured["quit_called"] = True
+
+    monkeypatch.setattr(
+        email_service,
+        "get_settings",
+        lambda: _smtp_settings(),
+    )
+    monkeypatch.setattr(
+        "app.services.email_service.transport.smtplib.SMTP",
+        FakeSMTP,
+    )
+
+    email_service.send_plain_email(
+        recipient_email="recipient@example.com",
+        subject="Subject",
+        body="Body",
+    )
+
+    assert captured["host"] == "mailpit"
+    assert captured["port"] == 1025
+    assert captured["from_addr"] == "mailer@example.com"
+    assert captured["to_addrs"] == ["recipient@example.com"]
+    assert captured["subject"] == "Subject"
+    assert captured["to_header"] == "recipient@example.com"
+
+
+def test_check_email_delivery_connection_verifies_smtp_transport(monkeypatch) -> None:
+    class FakeSMTP:
+        def __init__(self, host: str, port: int, timeout: float):
+            self.host = host
+            self.port = port
+            self.timeout = timeout
+
+        def ehlo(self):
+            return None
+
+        def quit(self):
+            return None
+
+    monkeypatch.setattr(
+        "app.services.email_service.transport.smtplib.SMTP",
+        FakeSMTP,
+    )
+
+    status = email_service.check_email_delivery_connection(settings=_smtp_settings())
+
+    assert status.transport == "smtp"
+    assert status.host == "mailpit"
+    assert status.port == 1025
 
 
 def test_send_plain_email_surfaces_gmail_api_scope_errors(monkeypatch) -> None:

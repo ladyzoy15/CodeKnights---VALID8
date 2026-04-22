@@ -185,14 +185,31 @@
           <div class="settings-row">
             <span class="settings-icon"><Bell :size="16" /></span>
             <span class="settings-row__label">Notifications</span>
-            <!-- Toggle (future: wire to real preference) -->
             <button
-              class="notif-toggle"
-              :class="{ 'notif-toggle--on': notificationsEnabled }"
+              class="settings-toggle"
+              :class="{ 'settings-toggle--on': notificationsEnabled }"
               @click="notificationsEnabled = !notificationsEnabled"
+              :aria-pressed="notificationsEnabled"
               aria-label="Toggle notifications"
             >
-              <span class="notif-toggle__knob" />
+              <span class="settings-toggle__knob" />
+            </button>
+          </div>
+
+          <div class="settings-divider" />
+
+          <div class="settings-row">
+            <span class="settings-icon"><Moon :size="16" /></span>
+            <span class="settings-row__label">Dark Mode</span>
+            <button
+              class="settings-toggle"
+              :class="{ 'settings-toggle--on': draftDarkMode }"
+              type="button"
+              :aria-pressed="draftDarkMode"
+              aria-label="Toggle dark mode"
+              @click="draftDarkMode = !draftDarkMode"
+            >
+              <span class="settings-toggle__knob" />
             </button>
           </div>
 
@@ -236,6 +253,18 @@
               <span class="font-size-label font-size-label--large">Aa</span>
             </div>
           </div>
+
+          <div class="settings-save-row" v-if="!props.preview">
+            <p v-if="settingsFeedback" class="settings-feedback">{{ settingsFeedback }}</p>
+            <button
+              class="settings-save-btn"
+              type="button"
+              :disabled="!settingsDirty || isSavingSettings"
+              @click="saveAppConfiguration"
+            >
+              {{ isSavingSettings ? 'Saving…' : settingsDirty ? 'Save Configuration' : 'Configuration Saved' }}
+            </button>
+          </div>
         </div>
 
         <!-- Action rows — below App Setting on mobile & desktop -->
@@ -262,18 +291,33 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowLeft, ArrowRight, Settings, Pencil, Upload,
-  Shield, ChevronRight, Bell
+  Shield, ChevronRight, Bell, Moon
 } from 'lucide-vue-next'
 
-import { defaultTheme } from '@/config/theme.js'
+import { defaultTheme, isDarkMode, setDarkMode } from '@/config/theme.js'
 import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
 import { useAuth } from '@/composables/useAuth.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { studentDashboardPreviewData } from '@/data/studentDashboardPreview.js'
+import {
+  getMyUserAppPreferences,
+  getMyNotificationPreferences,
+  updateMyNotificationPreferences,
+  updateMyUserAppPreferences,
+} from '@/services/backendApi.js'
+import {
+  DEFAULT_FONT_SIZE,
+  FONT_SIZE_MAX,
+  FONT_SIZE_MIN,
+  FONT_SIZE_STEP,
+  getStoredFontSize,
+  snapFontSize,
+  storeFontSizePreference,
+} from '@/services/userPreferences.js'
 
 const props = defineProps({
   preview: {
@@ -288,10 +332,12 @@ const router = useRouter()
 // ── Auth ─────────────────────────────────────────────────────────────
 const { logout } = useAuth()
 const {
+  apiBaseUrl,
   currentUser: sessionCurrentUser,
   schoolSettings: sessionSchoolSettings,
   attendanceRecords: sessionAttendanceRecords,
   saveCurrentUserProfile,
+  token,
 } = useDashboardSession()
 
 const previewUser = ref(JSON.parse(JSON.stringify(studentDashboardPreviewData.user)))
@@ -347,20 +393,10 @@ const sliderTrack = ref(null)
 const isBouncing  = ref(false)
 const isSliderDragging = ref(false)
 
-const FONT_SIZE_MIN = 80
-const FONT_SIZE_MAX = 130
-const FONT_SIZE_STEP = 5
-const DEFAULT_FONT_SIZE = 100
-
 // Thumb position as % of the track width
 const thumbPercent = computed(() =>
   ((fontSize.value - FONT_SIZE_MIN) / (FONT_SIZE_MAX - FONT_SIZE_MIN)) * 100
 )
-
-function snapFontSize(value) {
-  const normalized = Math.round(Number(value) / FONT_SIZE_STEP) * FONT_SIZE_STEP
-  return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, normalized))
-}
 
 function setValueFromX(clientX) {
   const trackElement = sliderTrack.value
@@ -430,61 +466,125 @@ function onSliderKeyDown(event) {
   }
 }
 
-// Applied to the root font size instead of browser zoom so mobile layouts stay stable.
-function applyFontSize(val) {
-  const root = document.documentElement
-  const baseSize = 16 * (snapFontSize(val) / 100)
-  root.style.zoom = ''
-  root.style.setProperty('--aura-font-base', `${baseSize}px`)
-  root.style.setProperty('--aura-text-size-adjust', `${snapFontSize(val)}%`)
-}
-
-// Default 100 = normal size.
-// Guard: old system stored 1/2/3 — if value is out of range, reset to 100.
-const storedSize = Number(localStorage.getItem('aura_font_size') ?? DEFAULT_FONT_SIZE)
-const fontSize = ref(
-  storedSize >= FONT_SIZE_MIN && storedSize <= FONT_SIZE_MAX
-    ? snapFontSize(storedSize)
-    : DEFAULT_FONT_SIZE
-)
-
-// Apply on mount (restore persisted setting, clear bad legacy values)
-onMounted(() => {
-  if (storedSize < FONT_SIZE_MIN || storedSize > FONT_SIZE_MAX) {
-    localStorage.setItem('aura_font_size', DEFAULT_FONT_SIZE)
-  }
-  applyFontSize(fontSize.value)
-})
+const fontSize = ref(getStoredFontSize() || DEFAULT_FONT_SIZE)
+const draftDarkMode = ref(isDarkMode.value)
+const settingsFeedback = ref('')
+const isSavingSettings = ref(false)
+const savedSettingsSnapshot = ref(null)
 
 // Apply + persist whenever slider changes
 watch(fontSize, val => {
-  applyFontSize(val)
-  localStorage.setItem('aura_font_size', val)
+  const normalizedValue = storeFontSizePreference(val)
+  if (normalizedValue !== val) {
+    fontSize.value = normalizedValue
+  }
 })
 
-// ── Notifications ──────────────────────────────────────────────────────
-// Currently persisted to localStorage.
-//
-// When backend is ready, swap savePreferences() to:
-//   await api.patch('/api/users/preferences', { notifications_enabled: value })
-//
+watch(draftDarkMode, (value) => {
+  setDarkMode(value)
+})
+
 const notificationsEnabled = ref(
   JSON.parse(localStorage.getItem('aura_notif_enabled') ?? 'true')
 )
 
-async function savePreferences(payload) {
-  // ── LOCAL (current) ───────────────────────────────────────────────
-  if ('notifications_enabled' in payload) {
-    localStorage.setItem('aura_notif_enabled', payload.notifications_enabled)
+function captureSettingsSnapshot() {
+  return {
+    notificationsEnabled: Boolean(notificationsEnabled.value),
+    darkMode: Boolean(draftDarkMode.value),
+    fontSize: snapFontSize(fontSize.value),
   }
-
-  // ── BACKEND (swap in when ready) ─────────────────────────────────
-  // await api.patch('/api/users/preferences', payload)
 }
 
-watch(notificationsEnabled, enabled =>
-  savePreferences({ notifications_enabled: enabled })
+function replaceSavedSettingsSnapshot(snapshot = captureSettingsSnapshot()) {
+  savedSettingsSnapshot.value = {
+    notificationsEnabled: Boolean(snapshot.notificationsEnabled),
+    darkMode: Boolean(snapshot.darkMode),
+    fontSize: snapFontSize(snapshot.fontSize),
+  }
+}
+
+function patchSavedSettingsSnapshot(patch = {}) {
+  const nextSnapshot = {
+    ...(savedSettingsSnapshot.value || captureSettingsSnapshot()),
+  }
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'notificationsEnabled')) {
+    nextSnapshot.notificationsEnabled = Boolean(patch.notificationsEnabled)
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'darkMode')) {
+    nextSnapshot.darkMode = Boolean(patch.darkMode)
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'fontSize')) {
+    nextSnapshot.fontSize = snapFontSize(patch.fontSize)
+  }
+
+  savedSettingsSnapshot.value = nextSnapshot
+}
+
+const settingsDirty = computed(() => {
+  if (!savedSettingsSnapshot.value) return false
+
+  const currentSnapshot = captureSettingsSnapshot()
+  return (
+    currentSnapshot.notificationsEnabled !== savedSettingsSnapshot.value.notificationsEnabled
+    || currentSnapshot.darkMode !== savedSettingsSnapshot.value.darkMode
+    || currentSnapshot.fontSize !== savedSettingsSnapshot.value.fontSize
+  )
+})
+
+watch(
+  [() => props.preview, apiBaseUrl, token, () => user.value?.id],
+  async ([previewMode, url, authToken, userId]) => {
+    if (previewMode) {
+      draftDarkMode.value = isDarkMode.value
+      fontSize.value = getStoredFontSize() || DEFAULT_FONT_SIZE
+      settingsFeedback.value = ''
+      replaceSavedSettingsSnapshot()
+      return
+    }
+
+    if (!url || !authToken || !Number.isFinite(Number(userId))) {
+      return
+    }
+
+    try {
+      const [notificationPreferenceResult, appPreferenceResult] = await Promise.allSettled([
+        getMyNotificationPreferences(url, authToken),
+        getMyUserAppPreferences(url, authToken),
+      ])
+
+      if (notificationPreferenceResult.status === 'fulfilled') {
+        notificationsEnabled.value = Boolean(notificationPreferenceResult.value?.email_enabled)
+        localStorage.setItem('aura_notif_enabled', JSON.stringify(Boolean(notificationPreferenceResult.value?.email_enabled)))
+      }
+
+      if (appPreferenceResult.status === 'fulfilled' && appPreferenceResult.value) {
+        draftDarkMode.value = Boolean(appPreferenceResult.value.dark_mode_enabled)
+        fontSize.value = appPreferenceResult.value.font_size_percent ?? DEFAULT_FONT_SIZE
+      } else {
+        draftDarkMode.value = isDarkMode.value
+        fontSize.value = getStoredFontSize() || DEFAULT_FONT_SIZE
+      }
+
+      settingsFeedback.value = ''
+      replaceSavedSettingsSnapshot()
+    } catch {
+      draftDarkMode.value = isDarkMode.value
+      fontSize.value = getStoredFontSize() || DEFAULT_FONT_SIZE
+      settingsFeedback.value = ''
+      replaceSavedSettingsSnapshot()
+    }
+  },
+  { immediate: true }
 )
+
+watch([notificationsEnabled, draftDarkMode, fontSize], () => {
+  if (isSavingSettings.value) return
+  if (settingsDirty.value && settingsFeedback.value) {
+    settingsFeedback.value = ''
+  }
+})
 
 watch(schoolLogo, () => {
   schoolLogoError.value = false
@@ -498,6 +598,82 @@ function handleSchoolLogoError() {
   }
 
   schoolLogoUnavailable.value = true
+}
+
+async function saveAppConfiguration() {
+  if (props.preview) return
+  if (!settingsDirty.value) {
+    settingsFeedback.value = 'Configuration is already saved.'
+    return
+  }
+  if (!apiBaseUrl.value || !token.value) {
+    settingsFeedback.value = 'Your session is not ready yet. Please try again.'
+    return
+  }
+
+  isSavingSettings.value = true
+  settingsFeedback.value = ''
+
+  const normalizedFontSize = storeFontSizePreference(fontSize.value)
+  if (normalizedFontSize !== fontSize.value) {
+    fontSize.value = normalizedFontSize
+  }
+
+  const [appPreferenceResult, notificationResult] = await Promise.allSettled([
+    updateMyUserAppPreferences(apiBaseUrl.value, token.value, {
+      dark_mode_enabled: Boolean(draftDarkMode.value),
+      font_size_percent: normalizedFontSize,
+    }),
+    updateMyNotificationPreferences(apiBaseUrl.value, token.value, {
+      email_enabled: Boolean(notificationsEnabled.value),
+    }),
+  ])
+
+  if (appPreferenceResult.status === 'fulfilled') {
+    const savedDarkMode = Boolean(appPreferenceResult.value?.dark_mode_enabled)
+    const savedFontSize = storeFontSizePreference(
+      appPreferenceResult.value?.font_size_percent ?? normalizedFontSize
+    )
+    draftDarkMode.value = savedDarkMode
+    if (savedFontSize !== fontSize.value) {
+      fontSize.value = savedFontSize
+    }
+    patchSavedSettingsSnapshot({
+      darkMode: savedDarkMode,
+      fontSize: savedFontSize,
+    })
+  }
+
+  if (notificationResult.status === 'fulfilled') {
+    notificationsEnabled.value = Boolean(notificationResult.value?.email_enabled)
+    localStorage.setItem('aura_notif_enabled', JSON.stringify(notificationsEnabled.value))
+    patchSavedSettingsSnapshot({
+      notificationsEnabled: notificationsEnabled.value,
+    })
+  }
+
+  const successfulSaves = [
+    appPreferenceResult.status === 'fulfilled',
+    notificationResult.status === 'fulfilled',
+  ].filter(Boolean).length
+
+  if (successfulSaves === 2) {
+    settingsFeedback.value = 'Saved to your account. Aura will sync this configuration on your next device sign-in.'
+  } else if (successfulSaves === 1) {
+    const failedReason = appPreferenceResult.status === 'rejected'
+      ? appPreferenceResult.reason?.message
+      : notificationResult.reason?.message
+    settingsFeedback.value = failedReason
+      ? `Saved part of your configuration. ${failedReason}`
+      : 'Saved part of your configuration. Please try again to finish syncing.'
+  } else {
+    settingsFeedback.value =
+      appPreferenceResult.reason?.message
+      || notificationResult.reason?.message
+      || 'Unable to save your configuration right now.'
+  }
+
+  isSavingSettings.value = false
 }
 
 // ── Edit Profile ──────────────────────────────────────────────────────
@@ -866,8 +1042,8 @@ async function handleSignOut() {
   flex: 1;
 }
 
-/* ── Notifications toggle ────────────────────────────────────────── */
-.notif-toggle {
+/* ── Settings toggles ────────────────────────────────────────────── */
+.settings-toggle {
   width: 42px;
   height: 24px;
   border-radius: 999px;
@@ -879,11 +1055,11 @@ async function handleSignOut() {
   flex-shrink: 0;
 }
 
-.notif-toggle--on {
+.settings-toggle--on {
   background: var(--color-primary);
 }
 
-.notif-toggle__knob {
+.settings-toggle__knob {
   position: absolute;
   top: 3px;
   left: 3px;
@@ -894,7 +1070,7 @@ async function handleSignOut() {
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.notif-toggle--on .notif-toggle__knob {
+.settings-toggle--on .settings-toggle__knob {
   transform: translateX(18px);
 }
 
@@ -915,6 +1091,51 @@ async function handleSignOut() {
 
 .font-size-label--small { font-size: 11px; }
 .font-size-label--large { font-size: 17px; }
+
+.settings-save-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.settings-feedback {
+  margin: 0;
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.settings-save-btn {
+  min-width: 154px;
+  padding: 11px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-banner-text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.settings-save-btn:hover {
+  opacity: 0.88;
+}
+
+.settings-save-btn:active {
+  transform: scale(0.98);
+}
+
+.settings-save-btn:disabled {
+  opacity: 0.52;
+  cursor: default;
+  transform: none;
+}
 
 /* ── Custom font-size slider ─────────────────────────────────────── */
 .custom-slider-track {

@@ -1,5 +1,5 @@
-# Use official Python base image
-FROM python:3.10-slim
+# Use official Python base image (3.11+ required by pinned dependencies like numpy==2.4.4)
+FROM python:3.11-slim
 
 # Set working directory inside the container
 WORKDIR /app
@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     cmake \
     build-essential \
     libglib2.0-0 \
+    libgl1 \
     libsm6 \
     libxext6 \
     libxrender-dev \
@@ -26,5 +27,5 @@ COPY . .
 # Expose the port FastAPI will run on
 EXPOSE 8000
 
-# Command to run the FastAPI app with hot reload
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Command to run the FastAPI app without hot reload so requests are not dropped mid-flight
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

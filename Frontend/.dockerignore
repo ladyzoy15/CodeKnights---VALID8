@@ -9,4 +9,3 @@ vite-dev.log
 *.log
 .env
 .env.*
-!.env.docker.example

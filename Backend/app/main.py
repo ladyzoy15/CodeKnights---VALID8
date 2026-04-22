@@ -12,7 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
+from app.reports.router import router as reports_router
 from app.services.email_service import validate_email_delivery_on_startup
+from app.services.face_recognition import FaceRecognitionService
 from app.routers import (
     users,
     events,
@@ -32,6 +34,7 @@ from app.routers import (
     face_recognition,
     public_attendance,
     health,
+    sanctions,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,6 +47,25 @@ async def lifespan(_: FastAPI):
     except Exception:
         logger.exception("Email delivery startup validation failed.")
         raise
+    if not settings.face_warmup_on_startup:
+        logger.info("InsightFace startup warm-up is disabled by configuration.")
+        yield
+        return
+    try:
+        runtime_status = FaceRecognitionService().initialize_face_runtime(
+            mode="single",
+            background=True,
+            trigger="startup",
+        )
+        logger.info(
+            "InsightFace startup initialization requested (state=%s, reason=%s).",
+            runtime_status.get("state", "unknown"),
+            runtime_status.get("reason", "unknown"),
+        )
+    except Exception:
+        # Face warm-up should not block API startup; registration endpoints still
+        # return explicit runtime errors when the model is not ready yet.
+        logger.exception("InsightFace startup warm-up probe failed.")
     yield
 
 
@@ -71,9 +93,10 @@ include_api_router(events.router)
 include_api_router(programs.router)
 include_api_router(departments.router)
 include_api_router(attendance.router)
+include_api_router(reports_router)
 app.include_router(school_settings.router)
 app.include_router(admin_import.router)
-include_api_router(school.router)  # Corrected: Use the standard helper
+app.include_router(school.router)
 app.include_router(audit_logs.router)
 app.include_router(notifications.router)
 include_api_router(security_center.router)
@@ -83,6 +106,7 @@ app.include_router(governance_hierarchy.router)
 include_api_router(face_recognition.router)
 app.include_router(public_attendance.router)
 app.include_router(health.router)
+include_api_router(sanctions.router)
 
 logo_storage_dir = Path(settings.school_logo_storage_dir)
 logo_storage_dir.mkdir(parents=True, exist_ok=True)
@@ -111,5 +135,6 @@ async def root():
             "subscription": "/api/subscription/me",
             "governance": "/api/governance/settings/me",
             "governance_hierarchy": "/api/governance/units",
+            "sanctions": "/api/sanctions",
         }
     }
