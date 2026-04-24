@@ -11,12 +11,22 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fastapi_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
     restart: always
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   mailpit:
     image: axllent/mailpit:v1.27
@@ -27,7 +37,7 @@ services:
 
   migrate:
     image: rizal-backend:local
-    command: alembic upgrade head
+    command: alembic upgrade heads
     env_file:
       - ./.env
     environment:
@@ -35,7 +45,8 @@ services:
     volumes:
       - ./Backend:/app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: "no"
 
   seed:
@@ -72,7 +83,7 @@ services:
       - IMPORT_STORAGE_DIR=/tmp/valid8_imports
       - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
       - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
-      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-gmail_api}
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
       - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
     volumes:
       - ./Backend:/app
@@ -82,9 +93,9 @@ services:
     restart: unless-stopped
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       seed:
         condition: service_completed_successfully
 
@@ -106,7 +117,7 @@ services:
       - IMPORT_STORAGE_DIR=/tmp/valid8_imports
       - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
       - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
-      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-gmail_api}
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
       - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
     volumes:
       - ./Backend:/app
@@ -115,9 +126,9 @@ services:
     restart: unless-stopped
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       seed:
         condition: service_completed_successfully
 
@@ -139,7 +150,7 @@ services:
       - IMPORT_STORAGE_DIR=/tmp/valid8_imports
       - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
       - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
-      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-gmail_api}
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
       - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
     volumes:
       - ./Backend:/app
@@ -148,9 +159,9 @@ services:
     restart: unless-stopped
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       seed:
         condition: service_completed_successfully
 
@@ -160,6 +171,7 @@ services:
     ports:
       - "5173:80"
     environment:
+      - PORT=80
       - BACKEND_ORIGIN=${BACKEND_ORIGIN:-http://backend:8000}
       - ASSISTANT_ORIGIN=${ASSISTANT_ORIGIN:-http://assistant:8500}
       - AURA_API_BASE_URL=${AURA_API_BASE_URL:-/__backend__}
@@ -182,7 +194,8 @@ services:
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       - BACKEND_API_BASE_URL=${BACKEND_API_BASE_URL:-http://backend:8000}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   pgadmin:
