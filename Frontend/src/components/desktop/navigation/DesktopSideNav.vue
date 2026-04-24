@@ -38,12 +38,12 @@
           </button>
         </div>
 
-        <div ref="pillRef" class="relative w-[40px] h-[74px] mx-2 mb-1.5 z-50">
+        <div v-if="showMiniAssistant" ref="pillRef" class="relative w-[40px] h-[74px] mx-2 mb-1.5 z-50">
           <div
-            class="absolute top-0 left-0 flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-lg origin-left"
+            class="absolute bottom-0 left-0 flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-lg origin-bottom-left"
             :class="isMiniOpen
-              ? 'w-[300px] h-[190px] rounded-[32px] cursor-default'
-              : 'w-[40px] h-[74px] rounded-[26px] cursor-pointer hover:brightness-110 hover:scale-105 active:scale-95'"
+              ? 'w-90 h-137.5 translate-x-15 rounded-4xl cursor-default shadow-2xl'
+              : 'w-10 h-18.5 translate-x-0 rounded-[26px] cursor-pointer hover:brightness-110 hover:scale-105 active:scale-95'"
             style="background: var(--color-primary);"
             @click="!isMiniOpen ? openPill() : null"
           >
@@ -64,34 +64,68 @@
               class="absolute inset-0 flex flex-col p-3 transition-opacity duration-300 delay-100"
               :class="isMiniOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'"
             >
-              <div class="flex items-center justify-between mb-2">
-                <img
-                  :src="activeAuraLogo"
-                  alt="Aura"
-                  class="w-7 h-7 object-contain opacity-90 cursor-pointer transition-transform hover:scale-110"
-                  title="Collapse chat"
-                  @click.stop="closeMini"
-                />
-
+              <div class="flex items-center justify-between mb-2 px-1">
                 <button
-                  class="p-1.5 hover:bg-black/10 rounded-full transition-colors"
-                  aria-label="Expand chat to full window"
-                  title="Open full chat"
-                  @click.stop="expandToFull"
+                  class="p-1.5 hover:bg-black/10 rounded-full transition-colors flex items-center justify-center group"
+                  aria-label="Minimize chat"
+                  title="Minimize chat"
+                  @click.stop="closeMini"
                 >
-                  <Maximize2 :size="15" :color="'var(--color-banner-text)'" />
+                  <ChevronDown :size="16" :color="'var(--color-banner-text)'" class="transition-transform group-hover:scale-110" />
                 </button>
+
+                <div class="flex items-center gap-1">
+                  <button
+                    class="p-1.5 hover:bg-black/10 rounded-full transition-colors"
+                    aria-label="Copy conversation"
+                    title="Copy conversation"
+                    @click.stop="copyConversation"
+                  >
+                    <Check v-if="copyStatus === 'copied'" :size="14" class="text-green-500" />
+                    <Copy v-else :size="14" :color="'var(--color-banner-text)'" />
+                  </button>
+                  <button
+                    class="p-1.5 hover:bg-black/10 rounded-full transition-colors"
+                    aria-label="Refresh conversation"
+                    title="Refresh chat"
+                    :disabled="isRefreshing || !conversationId"
+                    @click.stop="refreshChat"
+                  >
+                    <RotateCw 
+                      :size="14" 
+                      :color="'var(--color-banner-text)'" 
+                      :class="{ 'animate-spin': isRefreshing }" 
+                    />
+                  </button>
+                  <button
+                    class="p-1.5 hover:bg-black/10 rounded-full transition-colors"
+                    aria-label="New chat"
+                    title="New chat"
+                    @click.stop="startNewConversation"
+                  >
+                    <Plus :size="15" :color="'var(--color-banner-text)'" />
+                  </button>
+                  <button
+                    class="p-1.5 hover:bg-black/10 rounded-full transition-colors"
+                    aria-label="Expand chat to full window"
+                    title="Open full chat"
+                    @click.stop="openFullChatPage"
+                  >
+                    <Maximize2 :size="15" :color="'var(--color-banner-text)'" />
+                  </button>
+                </div>
               </div>
 
               <div class="mini-messages flex-1 overflow-y-auto scrollbar-hide pb-1">
                 <TransitionGroup name="mini-bubble" tag="div" class="mini-messages-inner">
-                  <div
-                    v-for="msg in messages"
-                    :key="msg.id"
-                    :class="msg.sender === 'ai' ? 'mini-bubble mini-bubble--ai' : 'mini-bubble mini-bubble--user'"
-                  >
-                    {{ msg.text }}
-                  </div>
+                  <template v-for="msg in messages" :key="msg.id">
+                    <div
+                      v-if="msg.sender === 'user' || (msg.text && msg.text.trim().length > 0)"
+                      :class="msg.sender === 'ai' ? 'mini-bubble mini-bubble--ai' : 'mini-bubble mini-bubble--user'"
+                    >
+                      <ChatMarkdownMessage :text="msg.text" />
+                    </div>
+                  </template>
 
                   <div v-if="isTyping" key="typing" class="mini-bubble mini-bubble--ai mini-bubble--typing">
                     <div class="w-1.5 h-1.5 rounded-full bg-black/40 animate-bounce" style="animation-delay:0ms" />
@@ -132,18 +166,17 @@
     </div>
   </aside>
 
-  <AuraChatWindow />
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Maximize2, Send } from 'lucide-vue-next'
+import { Maximize2, Send, ChevronDown, Copy, Plus, Check, RotateCw } from 'lucide-vue-next'
 import { activeAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'
-import AuraChatWindow from '@/components/ui/AuraChatWindow.vue'
+import ChatMarkdownMessage from '@/components/ui/ChatMarkdownMessage.vue'
 import { getNavigationItemsForRoute } from '@/components/navigation/navigationItems.js'
-import { withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
+import { resolveChatLocation, withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
 
 const {
   messages,
@@ -151,14 +184,35 @@ const {
   isTyping,
   isMiniOpen,
   sendMessage,
+  startNewConversation,
   openPill,
   closeMini,
-  expandToFull,
+  copyConversation,
+  copyStatus,
+  conversationId,
+  selectConversation,
 } = useChat()
+
+const isRefreshing = ref(false)
+
+async function refreshChat() {
+  if (!conversationId.value || isRefreshing.value) return
+  isRefreshing.value = true
+  try {
+    await selectConversation(conversationId.value)
+  } finally {
+    setTimeout(() => {
+      isRefreshing.value = false
+    }, 600)
+  }
+}
+
+
 
 const pillRef = ref(null)
 const router = useRouter()
 const route = useRoute()
+const showMiniAssistant = computed(() => !route.path.endsWith('/chat') && !route.path.endsWith('/chat/'))
 const navItems = computed(() => getNavigationItemsForRoute(route))
 const railHeight = computed(() => Math.max(380, 150 + (navItems.value.length * 58)))
 const navRailStyle = computed(() => ({
@@ -196,6 +250,14 @@ function isActive(item) {
 
 function navigate(path) {
   const target = withPreservedGovernancePreviewQuery(route, path)
+  const resolvedTarget = router.resolve(target)
+  if (route.fullPath === resolvedTarget.fullPath) return
+  router.push(target)
+}
+
+function openFullChatPage() {
+  closeMini()
+  const target = resolveChatLocation(route)
   const resolvedTarget = router.resolve(target)
   if (route.fullPath === resolvedTarget.fullPath) return
   router.push(target)

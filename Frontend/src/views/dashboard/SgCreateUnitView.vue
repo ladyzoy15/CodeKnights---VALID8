@@ -57,11 +57,10 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ArrowLeft, Building2, GraduationCap, Layers3 } from 'lucide-vue-next'
 import StudentCouncilSetupStage from '@/components/council/StudentCouncilSetupStage.vue'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
 import { useSgDashboard } from '@/composables/useSgDashboard.js'
 import {
   createGovernanceUnit,
@@ -73,20 +72,10 @@ import {
 } from '@/services/backendApi.js'
 import { resolvePreferredGovernanceUnit } from '@/services/governanceScope.js'
 import { createEmptyCouncilDraft } from '@/services/studentCouncilManagement.js'
-import { withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
 
-const props = defineProps({
-  preview: {
-    type: Boolean,
-    default: false,
-  },
-})
-
-const route = useRoute()
 const router = useRouter()
 const { apiBaseUrl, token } = useDashboardSession()
-const { previewBundle } = useSgPreviewBundle(() => props.preview)
-const { permissionCodes, isLoading: sgLoading } = useSgDashboard(props.preview)
+const { permissionCodes, isLoading: sgLoading } = useSgDashboard()
 
 const draft = ref(createEmptyCouncilDraft())
 const isSaving = ref(false)
@@ -213,23 +202,12 @@ const submitDisabled = computed(() => {
   return !d?.acronym?.trim() || !d?.name?.trim() || !d?.scopeId
 })
 
-function goBack() {
-  router.push(
-    props.preview
-      ? withPreservedGovernancePreviewQuery(route, '/exposed/governance')
-      : '/governance'
-  )
-}
+function goBack() { router.push('/sg') }
 
 watch(
-  [apiBaseUrl, token, () => sgLoading.value, childType, () => props.preview, () => route.query?.variant],
-  async ([url, authToken, isLoading, currentChildType, preview]) => {
-    if (isLoading || !currentChildType) return
-    if (preview) {
-      resolvePreviewCreateContext(currentChildType)
-      return
-    }
-    if (!url || !authToken) return
+  [apiBaseUrl, token, () => sgLoading.value, childType],
+  async ([url, authToken, isLoading, currentChildType]) => {
+    if (!url || !authToken || isLoading || !currentChildType) return
     await resolveCreateContext(url, authToken, currentChildType)
   },
   { immediate: true }
@@ -370,41 +348,11 @@ async function resolveCreateContext(url, authToken, currentChildType) {
   }
 }
 
-function resolvePreviewCreateContext(currentChildType) {
-  parentUnit.value = previewBundle.value?.activeUnit || null
-  parentUnitId.value = Number(parentUnit.value?.id || null)
-  formError.value = ''
-  isResolvingScope.value = false
-
-  const availableScopes = Array.isArray(previewBundle.value?.createUnit?.scopeOptions)
-    ? previewBundle.value.createUnit.scopeOptions
-    : []
-
-  if (previewBundle.value?.createUnit?.childType !== currentChildType) {
-    scopeOptions.value = []
-    formError.value = `Preview data for ${childTypeName.value} is unavailable right now.`
-    return
-  }
-
-  scopeOptions.value = normalizeOptions(
-    availableScopes.map((option) => ({
-      value: String(option.value),
-      label: option.label,
-    }))
-  )
-  syncDraftScopeSelection()
-}
-
 async function resetForm() {
   draft.value = createEmptyCouncilDraft()
   formError.value = ''
   isCreated.value = false
   createdUnit.value = null
-
-  if (props.preview && childType.value) {
-    resolvePreviewCreateContext(childType.value)
-    return
-  }
 
   if (apiBaseUrl.value && token.value && childType.value) {
     await resolveCreateContext(apiBaseUrl.value, token.value, childType.value)
@@ -415,21 +363,6 @@ async function resetForm() {
 
 async function handleCreate() {
   if (submitDisabled.value) return
-
-  if (props.preview) {
-    createdUnit.value = {
-      id: Date.now(),
-      unit_code: draft.value.acronym.trim(),
-      unit_name: draft.value.name.trim(),
-      unit_type: childType.value,
-      parent_unit_id: parentUnitId.value || null,
-      department_id: childType.value === 'SG' ? Number(draft.value.scopeId) : Number(parentUnit.value?.department_id) || null,
-      program_id: childType.value === 'ORG' ? Number(draft.value.scopeId) : null,
-    }
-    isCreated.value = true
-    return
-  }
-
   isSaving.value = true
   formError.value = ''
 

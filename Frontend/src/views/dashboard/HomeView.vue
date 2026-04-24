@@ -102,13 +102,14 @@
             <div class="mobile-ai-shell">
               <div class="mobile-ai-messages" ref="scrollEl">
                 <TransitionGroup name="mobile-bubble" tag="div" class="mobile-ai-messages-inner">
-                  <div
-                    v-for="msg in messages"
-                    :key="msg.id"
-                    :class="['mobile-bubble', msg.sender === 'ai' ? 'mobile-bubble--ai' : 'mobile-bubble--user']"
-                  >
-                    {{ msg.text }}
-                  </div>
+                  <template v-for="msg in messages" :key="msg.id">
+                    <div
+                      v-if="msg.sender === 'user' || (msg.text && msg.text.trim().length > 0)"
+                      :class="['mobile-bubble', msg.sender === 'ai' ? 'mobile-bubble--ai' : 'mobile-bubble--user']"
+                    >
+                      <ChatMarkdownMessage :text="msg.text" />
+                    </div>
+                  </template>
 
                   <div v-if="isTyping" key="typing" class="mobile-bubble mobile-bubble--ai mobile-bubble--typing">
                     <span class="mobile-dot" style="animation-delay: 0ms"   />
@@ -278,6 +279,7 @@ import UniversityBanner from '@/components/dashboard/UniversityBanner.vue'
 import EventsCard from '@/components/dashboard/EventsCard.vue'
 import ReportsLineChart from '@/components/reports/ReportsLineChart.vue'
 import ReportsPieChart from '@/components/reports/ReportsPieChart.vue'
+import ChatMarkdownMessage from '@/components/ui/ChatMarkdownMessage.vue'
 
 import { applyTheme, loadTheme, secondaryAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'

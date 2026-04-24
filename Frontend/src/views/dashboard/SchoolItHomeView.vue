@@ -82,18 +82,19 @@
                 <div class="school-it-home__ai-shell">
                   <div ref="scrollEl" class="school-it-home__ai-messages">
                     <TransitionGroup name="school-it-bubble" tag="div" class="school-it-home__ai-messages-inner">
-                      <div
-                        v-for="message in messages"
-                        :key="message.id"
-                        :class="[
-                          'school-it-home__bubble',
-                          message.sender === 'ai'
-                            ? 'school-it-home__bubble--ai'
-                            : 'school-it-home__bubble--user',
-                        ]"
-                      >
-                        {{ message.text }}
-                      </div>
+                      <template v-for="message in messages" :key="message.id">
+                        <div
+                          v-if="message.sender === 'user' || (message.text && message.text.trim().length > 0)"
+                          :class="[
+                            'school-it-home__bubble',
+                            message.sender === 'ai'
+                              ? 'school-it-home__bubble--ai'
+                              : 'school-it-home__bubble--user',
+                          ]"
+                        >
+                          <ChatMarkdownMessage :text="message.text" />
+                        </div>
+                      </template>
 
                       <div
                         v-if="isTyping"
@@ -277,6 +278,7 @@ import SchoolItTopHeader from '@/components/dashboard/SchoolItTopHeader.vue'
 import SchoolItMetricRing from '@/components/dashboard/SchoolItMetricRing.vue'
 import ReportsBarChart from '@/components/reports/ReportsBarChart.vue'
 import ReportsPieChart from '@/components/reports/ReportsPieChart.vue'
+import ChatMarkdownMessage from '@/components/ui/ChatMarkdownMessage.vue'
 import { schoolItPreviewData } from '@/data/schoolItPreview.js'
 import { secondaryAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'

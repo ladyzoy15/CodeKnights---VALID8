@@ -61,26 +61,15 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
 import { useSgDashboard } from '@/composables/useSgDashboard.js'
 import { getAttendanceSummary, getMyAttendance } from '@/services/backendApi.js'
-import { withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
 
-const props = defineProps({
-  preview: {
-    type: Boolean,
-    default: false,
-  },
-})
-
-const route = useRoute()
 const router = useRouter()
 const { apiBaseUrl } = useDashboardSession()
-const { previewBundle } = useSgPreviewBundle(() => props.preview)
-const { isLoading: sgLoading } = useSgDashboard(props.preview)
+const { isLoading: sgLoading } = useSgDashboard()
 
 const isLoading = ref(true)
 const loadError = ref('')
@@ -93,16 +82,10 @@ function formatDate(d) {
   catch { return d }
 }
 
-function goBack() {
-  router.push(
-    props.preview
-      ? withPreservedGovernancePreviewQuery(route, '/exposed/governance')
-      : '/governance'
-  )
-}
+function goBack() { router.push('/sg') }
 
 watch(
-  [apiBaseUrl, () => sgLoading.value, () => route.query?.variant],
+  [apiBaseUrl, () => sgLoading.value],
   async ([url]) => {
     if (!url || sgLoading.value) return
     await loadAttendance(url)
@@ -114,14 +97,6 @@ async function loadAttendance(url) {
   isLoading.value = true
   loadError.value = ''
   try {
-    if (props.preview) {
-      summary.value = previewBundle.value?.attendance?.summary || null
-      records.value = Array.isArray(previewBundle.value?.attendance?.records)
-        ? previewBundle.value.attendance.records.map((record) => ({ ...record }))
-        : []
-      return
-    }
-
     const token = localStorage.getItem('aura_token') || ''
     const [summaryData, attendanceRecords] = await Promise.allSettled([
       getAttendanceSummary(url, token),
