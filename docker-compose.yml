@@ -53,13 +53,13 @@ services:
 
   seed:
     image: rizal-backend:local
-    command: python seed.py
+    command: python seeder/seed.py demo
     env_file:
       - ./.env
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
     volumes:
-      - ./Backend:/app
+      - .:/app
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -85,7 +85,8 @@ services:
       - IMPORT_STORAGE_DIR=/tmp/valid8_imports
       - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
       - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
-      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-gmail_api}
+      # Dev-safe default: don't force Gmail API unless the user explicitly configures it in .env.
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
       - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
     volumes:
       - ./Backend:/app
@@ -119,7 +120,8 @@ services:
       - IMPORT_STORAGE_DIR=/tmp/valid8_imports
       - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
       - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
-      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-gmail_api}
+      # Dev-safe default: don't force Gmail API unless the user explicitly configures it in .env.
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
       - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
     volumes:
       - ./Backend:/app
@@ -152,7 +154,8 @@ services:
       - IMPORT_STORAGE_DIR=/tmp/valid8_imports
       - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
       - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
-      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-gmail_api}
+      # Dev-safe default: don't force Gmail API unless the user explicitly configures it in .env.
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
       - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
     volumes:
       - ./Backend:/app
@@ -186,7 +189,7 @@ services:
     restart: unless-stopped
 
   assistant:
-    build: ./Assistant
+    build: ./Assistant-${ASSISTANT_VERSION:-v2}
     env_file:
       - ./.env
     environment:
