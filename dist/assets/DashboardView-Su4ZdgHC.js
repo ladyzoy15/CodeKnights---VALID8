@@ -1,0 +1,1 @@
+import{a as s,o as t,e as o,h as n}from"./index-Bg0iE3s4.js";const r={},a={class:"min-h-screen bg-[#EBEBEB] flex items-center justify-center"};function c(i,e){return t(),o("div",a,[...e[0]||(e[0]=[n("p",{class:"text-[#0A0A0A] font-semibold text-lg"},"Dashboard — Coming soon",-1)])])}const f=s(r,[["render",c]]);export{f as default};

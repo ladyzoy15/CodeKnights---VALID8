@@ -238,7 +238,7 @@ import {
   PlayCircle,
   RefreshCw,
 } from 'lucide-vue-next'
-import { applyTheme, loadUnbrandedTheme } from '@/config/theme.js'
+import { applyTheme, loadUnbrandedTheme, applyLightOverride, removeLightOverride } from '@/config/theme.js'
 import { getCurrentPositionOrThrow, requestCameraPermission } from '@/services/devicePermissions.js'
 import {
   describePublicAttendanceError,
@@ -288,12 +288,14 @@ onBeforeMount(() => {
 })
 
 onMounted(() => {
+  applyLightOverride()
   cooldownIntervalId = window.setInterval(() => {
     syncCooldownEntries()
   }, 1000)
 })
 
 onBeforeUnmount(() => {
+  removeLightOverride()
   stopScanLoop()
   stopCamera()
 
