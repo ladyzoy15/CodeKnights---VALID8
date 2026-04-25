@@ -251,7 +251,7 @@ function isStudentUser(user) {
 }
 
 function isPrivilegedFaceUser(user) {
-    return hasRole(user, 'admin') || hasRole(user, 'school_IT')
+    return hasRole(user, 'admin') || hasRole(user, 'school_IT') || hasRole(user, 'governance')
 }
 
 function isSchoolItUser(user) {
@@ -767,13 +767,11 @@ export function isAdminSession(user = state.user) {
 }
 
 export function getDefaultAuthenticatedRoute(user = state.user) {
-    return isSchoolItSession(user)
-        ? { name: 'SchoolItHome' }
-        : isAdminSession(user)
-        ? { name: 'AdminHome' }
-        : isPrivilegedSession(user)
-        ? { name: 'PrivilegedDashboard' }
-        : { name: 'Home' }
+    if (isSchoolItSession(user)) return { name: 'SchoolItHome' }
+    if (isAdminSession(user)) return { name: 'AdminHome' }
+    if (sessionHasRole('governance', user)) return { name: 'SgDashboard' }
+    if (isPrivilegedSession(user)) return { name: 'PrivilegedDashboard' }
+    return { name: 'Home' }
 }
 
 export function useDashboardSession() {
