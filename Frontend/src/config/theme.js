@@ -31,6 +31,7 @@ function persistDarkModePreference(value) {
  * Global Dark Mode State
  */
 export const isDarkMode = ref(readStoredDarkModePreference())
+export const forceLightMode = ref(false)
 export const activeAuraLogo = ref('/logos/aura_logo_black.png')
 export const surfaceAuraLogo = ref('/logos/aura_logo_black.png')
 export const secondaryAuraLogo = ref('/logos/aura_logo_black.png')
@@ -256,34 +257,63 @@ export function setDarkMode(value) {
 }
 
 /**
+ * Force Light Mode Override (for Login/Public pages)
+ */
+export function applyLightOverride() {
+    forceLightMode.value = true
+    const root = document.documentElement
+    
+    // Nuclear option: Manually force light mode variables immediately
+    root.style.setProperty('--color-bg', '#EBEBEB')
+    root.style.setProperty('--color-surface', '#FFFFFF')
+    root.style.setProperty('--color-text-primary', '#0A0A0A')
+    root.style.setProperty('color-scheme', 'light')
+    root.dataset.themeMode = 'light'
+
+    // Apply the theme logic with the override active
+    applyTheme(currentActiveTheme || defaultTheme)
+}
+
+/**
+ * Remove Light Mode Override
+ */
+export function removeLightOverride() {
+    forceLightMode.value = false
+    if (currentActiveTheme) {
+        applyTheme(currentActiveTheme)
+    }
+}
+
+/**
  * Apply theme CSS variables to the document root.
  */
 export function applyTheme(theme) {
     currentActiveTheme = theme
     const root = document.documentElement
 
+    // Use effective dark mode state (respects forceLightMode override)
+    const effectiveDarkMode = isDarkMode.value && !forceLightMode.value
+
     // Dynamic colors based on dark mode state
     let bgColor = theme.background
     let surfaceColor = theme.surfaceColor
     let textPrimary = theme.textPrimary
 
-    if (isDarkMode.value) {
+    if (effectiveDarkMode) {
         // Dark mode: background is 96% darker than primary color
         // Example: #AAFF00 -> #070a00
         bgColor = darkenHex(theme.primaryColor, 96)
+        
+        // Darken the cards and surfaces as well to ensure a premium dark mode experience.
+        // We use 88% instead of 92% to make the cards "pop" more against the 96% background.
+        surfaceColor = darkenHex(theme.primaryColor, 88)
 
-        // In the dark mode Figma reference:
-        // - the main cards (Welcome, Latest Event, Upcoming Events) remain white surfaces
-        // - the profile pill remains white
-        // - the navigation pill turns slightly light grey
-        // - text on the dark body needs to be white, but text inside white cards remains black
-
-        // We keep surfaceColor white for the big cards
-        textPrimary = '#FFFFFF' // This applies to body text (like "Home", "Upcoming Events" headers)
+        // Text on the dark surfaces needs to be white/high-contrast.
+        textPrimary = '#FFFFFF'
     }
 
     const profileBg = surfaceColor
-    const navPillBg = isDarkMode.value ? '#EBEBEB' : surfaceColor
+    const navPillBg = effectiveDarkMode ? '#EBEBEB' : surfaceColor
     const bgTextColor = getContrastYIQ(bgColor)
     const surfaceTextColor = getContrastYIQ(surfaceColor)
     const profileTextColor = getContrastYIQ(profileBg)
@@ -308,8 +338,8 @@ export function applyTheme(theme) {
     const surfaceSecondaryText = mixHexColors(surfaceTextColor, surfaceColor, 0.68)
     const surfaceMutedText = mixHexColors(surfaceTextColor, surfaceColor, 0.48)
     const navSecondaryText = mixHexColors(navTextColor, theme.navColor, 0.68)
-    const softSurfaceBorder = mixHexColors(surfaceTextColor, surfaceColor, 0.1)
-    const strongSurfaceBorder = mixHexColors(surfaceTextColor, surfaceColor, 0.22)
+    const softSurfaceBorder = mixHexColors(surfaceTextColor, surfaceColor, 0.15)
+    const strongSurfaceBorder = mixHexColors(surfaceTextColor, surfaceColor, 0.3)
     const fieldSurface = mixHexColors(bgColor, surfaceColor, 0.5)
     const fieldSurfaceStrong = mixHexColors(bgColor, surfaceTextColor, 0.9)
     const aiSurface = normalizeHexColor(theme.primaryDark ?? darkenHex(theme.primaryColor, 16), theme.primaryDark)
@@ -344,7 +374,7 @@ export function applyTheme(theme) {
     root.style.setProperty('--color-nav-glass-shadow', navGlassShadow)
     root.style.setProperty('--nav-glass-blur', '12px')
     root.style.setProperty('--color-text-primary', bgTextColor || textPrimary)
-    root.style.setProperty('--color-text-secondary', isDarkMode.value ? '#A0A0A0' : bgSecondaryText)
+    root.style.setProperty('--color-text-secondary', effectiveDarkMode ? '#A0A0A0' : bgSecondaryText)
     root.style.setProperty('--color-text-muted', bgMutedText)
     root.style.setProperty('--color-surface-text', surfaceTextColor)
     root.style.setProperty('--color-surface-text-secondary', surfaceSecondaryText)
@@ -368,8 +398,8 @@ export function applyTheme(theme) {
     root.style.setProperty('--color-pill-row-active-bg', secondaryColor)
     root.style.setProperty('--color-pill-row-active-text', secondaryTextColor)
     root.style.setProperty('--color-pill-row-outline', secondaryColor)
-    root.style.setProperty('color-scheme', isDarkMode.value ? 'dark' : 'light')
-    root.dataset.themeMode = isDarkMode.value ? 'dark' : 'light'
+    root.style.setProperty('color-scheme', effectiveDarkMode ? 'dark' : 'light')
+    root.dataset.themeMode = effectiveDarkMode ? 'dark' : 'light'
 
     // Backwards-compatible alias for existing white-card text references.
     root.style.setProperty('--color-text-always-dark', surfaceTextColor)

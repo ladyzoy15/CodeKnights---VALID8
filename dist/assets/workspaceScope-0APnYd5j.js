@@ -1,0 +1,1 @@
+function i(o){const r=Number(o);return Number.isFinite(r)?r:null}function e(o,r){if(!Array.isArray(o))return[];const l=i(r);return l==null||!o.some(n=>i(n?.school_id)!=null)?o:o.filter(n=>i(n?.school_id)===l)}export{e as f};
