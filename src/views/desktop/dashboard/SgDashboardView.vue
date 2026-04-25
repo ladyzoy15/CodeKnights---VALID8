@@ -5,6 +5,7 @@
       :school-name="currentUser?.school_name || 'University Name'"
       :display-name="(currentUser?.first_name || '') + ' ' + (currentUser?.last_name || '')"
       :initials="(currentUser?.first_name?.[0] || '') + (currentUser?.last_name?.[0] || '')"
+      @logout="handleLogout"
     />
 
     <div class="dashboard-enter dashboard-enter--1">
@@ -56,6 +57,7 @@ import { Search, ArrowRight } from 'lucide-vue-next'
 import StandardHeader from '@/components/desktop/dashboard/StandardHeader.vue'
 import { useSgDashboard } from '@/composables/useSgDashboard.js'
 import { getVisibleSections, filterSectionsBySearch } from '@/data/sgModules.js'
+import { useAuth } from '@/composables/useAuth.js'
 
 const router = useRouter()
 const searchQuery = ref('')
@@ -69,11 +71,17 @@ const {
   currentUser,
 } = useSgDashboard()
 
+const { logout } = useAuth()
+
 const visibleSections = computed(() => getVisibleSections(permissionCodes.value))
 const filteredSections = computed(() => filterSectionsBySearch(visibleSections.value, searchQuery.value))
 
 function handleModuleClick(mod) {
   if (mod.route) router.push(mod.route)
+}
+
+async function handleLogout() {
+  await logout()
 }
 </script>
 

@@ -155,6 +155,7 @@
           :school-name="resolvedSchoolName"
           :school-logo="schoolLogoCandidates[0] || null"
           :school-logo-candidates="schoolLogoCandidates"
+          :latest-announcement="latestAnnouncement"
           :api-base-url="apiBaseUrl"
           @announcement-click="handleAnnouncementClick"
         />
@@ -216,16 +217,24 @@
         </TransitionGroup>
       </div>
     </div>
+    <!-- Announcement Sheet -->
+    <AnnouncementSheet
+      :is-open="showAnnouncements"
+      :announcements="announcements"
+      :is-refreshing="isRefreshingAnnouncements"
+      @close="showAnnouncements = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Send } from 'lucide-vue-next'
 import TopBar from '@/components/mobile/dashboard/TopBar.vue'
 import UniversityBanner from '@/components/mobile/dashboard/UniversityBanner.vue'
 import EventsCard from '@/components/mobile/dashboard/EventsCard.vue'
+import AnnouncementSheet from '@/components/mobile/dashboard/AnnouncementSheet.vue'
 
 import { applyTheme, loadTheme, secondaryAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'
@@ -247,15 +256,36 @@ const props = defineProps({
 const searchQuery = ref('')
 const eventSearchInputAttrs = createSearchFieldAttrs('student-event-search')
 const showNotifications = ref(false)
+const showAnnouncements = ref(false)
 const isMobileAiOpen = ref(false)
 const mobileInputEl = ref(null)
 const router = useRouter()
 const route = useRoute()
-const { currentUser, schoolSettings, events, hasAttendanceForEvent, hasOpenAttendanceForEvent, apiBaseUrl } = useDashboardSession()
+const { 
+  currentUser, 
+  schoolSettings, 
+  events, 
+  announcements,
+  isRefreshingAnnouncements,
+  unreadAnnouncements: unreadCount,
+  refreshAnnouncements,
+  hasAttendanceForEvent, 
+  hasOpenAttendanceForEvent, 
+  apiBaseUrl 
+} = useDashboardSession()
+
+onMounted(async () => {
+  // Only refresh if announcements are empty (router guard already fetched on first load)
+  if (!announcements.value.length) {
+    await refreshAnnouncements()
+  }
+})
 const authMeta = useStoredAuthMeta()
 const activeUser = computed(() => props.preview ? studentDashboardPreviewData.user : currentUser.value)
 const activeSchoolSettings = computed(() => props.preview ? studentDashboardPreviewData.schoolSettings : schoolSettings.value)
 const activeEvents = computed(() => props.preview ? studentDashboardPreviewData.events : events.value)
+
+const latestAnnouncement = computed(() => announcements.value[0] || null)
 
 const resolvedSchoolName = computed(() => (
   activeSchoolSettings.value?.school_name ||
@@ -438,9 +468,7 @@ const filteredEvents = computed(() => {
 
 const upcomingEvents = computed(() => filteredEvents.value)
 
-const unreadAnnouncements = computed(() =>
-  0
-)
+const unreadAnnouncements = computed(() => unreadCount.value)
 
 // --- Formatters ---
 function formatMonth(dt) {
@@ -466,10 +494,10 @@ function normalizeStatus(status) {
 }
 
 // --- Handlers ---
-function handleAnnouncementClick() {
+async function handleAnnouncementClick() {
   if (props.preview) return
-  // TODO: navigate to announcements page or open modal
-  console.log('Announcement clicked')
+  await refreshAnnouncements()
+  showAnnouncements.value = true
 }
 
 function handleSeeEvent(event) {

@@ -160,6 +160,7 @@
           :school-name="resolvedSchoolName"
           :school-logo="resolvedSchoolLogoCandidates[0] || null"
           :school-logo-candidates="resolvedSchoolLogoCandidates"
+          :latest-announcement="latestAnnouncement"
           @announcement-click="handleAnnouncementClick"
         />
       </Transition>
@@ -220,17 +221,26 @@
         </TransitionGroup>
       </div>
     </div>
+
+    <!-- Announcement Modal -->
+    <AnnouncementModal
+      :is-open="showAnnouncements"
+      :announcements="announcements"
+      :is-refreshing="isRefreshingAnnouncements"
+      @close="showAnnouncements = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Send } from 'lucide-vue-next'
 import StandardHeader from '@/components/desktop/dashboard/StandardHeader.vue'
 import Breadcrumbs from '@/components/desktop/dashboard/Breadcrumbs.vue'
 import UniversityBanner from '@/components/desktop/dashboard/UniversityBanner.vue'
 import EventsCard from '@/components/desktop/dashboard/EventsCard.vue'
+import AnnouncementModal from '@/components/desktop/dashboard/AnnouncementModal.vue'
 import { useAuth } from '@/composables/useAuth.js'
 
 import { applyTheme, loadTheme, secondaryAuraLogo } from '@/config/theme.js'
@@ -254,15 +264,34 @@ const props = defineProps({
 const searchQuery = ref('')
 const eventSearchInputAttrs = createSearchFieldAttrs('student-event-search')
 const showNotifications = ref(false)
+const showAnnouncements = ref(false)
 const isMobileAiOpen = ref(false)
 const mobileInputEl = ref(null)
 const router = useRouter()
 const route = useRoute()
-const { currentUser, schoolSettings, events, hasAttendanceForEvent, hasOpenAttendanceForEvent } = useDashboardSession()
+const { 
+  currentUser, 
+  schoolSettings, 
+  events, 
+  announcements,
+  unreadAnnouncements: unreadCount,
+  refreshAnnouncements,
+  isRefreshingAnnouncements,
+  hasAttendanceForEvent, 
+  hasOpenAttendanceForEvent 
+} = useDashboardSession()
+
+onMounted(async () => {
+  if (!announcements.value.length) {
+    await refreshAnnouncements()
+  }
+})
 const authMeta = useStoredAuthMeta()
 const activeUser = computed(() => props.preview ? studentDashboardPreviewData.user : currentUser.value)
 const activeSchoolSettings = computed(() => props.preview ? studentDashboardPreviewData.schoolSettings : schoolSettings.value)
 const activeEvents = computed(() => props.preview ? studentDashboardPreviewData.events : events.value)
+
+const latestAnnouncement = computed(() => announcements.value[0] || null)
 
 const resolvedSchoolName = computed(() => (
   activeSchoolSettings.value?.school_name ||
@@ -445,9 +474,7 @@ const filteredEvents = computed(() => {
 
 const upcomingEvents = computed(() => filteredEvents.value)
 
-const unreadAnnouncements = computed(() =>
-  0
-)
+const unreadAnnouncements = computed(() => unreadCount.value)
 
 const { logout } = useAuth()
 async function handleLogout() {
@@ -483,10 +510,10 @@ function normalizeStatus(status) {
 }
 
 // --- Handlers ---
-function handleAnnouncementClick() {
+async function handleAnnouncementClick() {
   if (props.preview) return
-  // TODO: navigate to announcements page or open modal
-  console.log('Announcement clicked')
+  await refreshAnnouncements()
+  showAnnouncements.value = true
 }
 
 function handleSeeEvent(event) {

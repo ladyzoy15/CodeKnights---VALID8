@@ -383,12 +383,169 @@
   "audit_logs": [],
   "notification_logs": [],
   "governance_requests": [],
-  "excuse_letters": [],
-  "announcements": [],
-  "$schema": "./node_modules/json-server/schema.json",
+  "excuse_letters": [
+    {
+      "id": "1",
+      "studentId": 3,
+      "eventId": 101,
+      "status": "Approved",
+      "reason": "Medical emergency",
+      "attachmentUrl": null,
+      "submittedAt": "2026-04-25T06:48:10.267Z",
+      "reviewedBy": 8,
+      "reviewerRemarks": null,
+      "reviewedAt": "2026-04-25T09:32:53.685Z"
+    },
+    {
+      "id": "2",
+      "studentId": 3,
+      "eventId": 1,
+      "status": "Approved",
+      "reason": "vbvbbvb",
+      "attachmentUrl": null,
+      "submittedAt": "2026-04-25T06:53:29.552Z",
+      "reviewedBy": 8,
+      "reviewerRemarks": "lupak",
+      "reviewedAt": "2026-04-25T07:31:14.243Z"
+    },
+    {
+      "id": "3",
+      "studentId": 3,
+      "eventId": 2,
+      "status": "Pending",
+      "reason": "sdsdsd",
+      "attachmentUrl": null,
+      "submittedAt": "2026-04-25T07:03:28.717Z",
+      "reviewedBy": null,
+      "reviewerRemarks": null
+    },
+    {
+      "id": "4",
+      "studentId": 3,
+      "eventId": 0,
+      "status": "Pending",
+      "reason": "czczcc",
+      "attachmentUrl": null,
+      "submittedAt": "2026-04-25T08:34:22.789Z",
+      "reviewedBy": null,
+      "reviewerRemarks": null
+    },
+    {
+      "id": "5",
+      "studentId": 3,
+      "eventId": 0,
+      "status": "Pending",
+      "reason": "cxcxfff",
+      "attachmentUrl": null,
+      "submittedAt": "2026-04-25T09:18:27.241Z",
+      "reviewedBy": null,
+      "reviewerRemarks": null
+    }
+  ],
+  "announcements": [
+    {
+      "title": "dfdfdf",
+      "body": "dfdfdf",
+      "status": "published",
+      "id": "1",
+      "governance_unit_id": 1,
+      "created_at": "2026-04-25T08:02:57.061Z",
+      "school_id": 1
+    },
+    {
+      "title": "cccc",
+      "body": "dss",
+      "status": "published",
+      "id": "2",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T08:09:51.899Z"
+    },
+    {
+      "title": "bbb",
+      "body": "ccvcv",
+      "status": "published",
+      "id": "3",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T08:21:15.580Z"
+    },
+    {
+      "title": "ccxcx",
+      "body": "sssf",
+      "status": "published",
+      "id": "4",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T08:26:09.239Z"
+    },
+    {
+      "title": "dsdsd",
+      "body": "sdsdsd",
+      "status": "published",
+      "id": "5",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T08:33:38.285Z"
+    },
+    {
+      "title": "fdfdffdfd",
+      "body": "fdfdfdf",
+      "status": "published",
+      "id": "6",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T08:39:46.575Z"
+    },
+    {
+      "title": "xcxcx",
+      "body": "cxcxc",
+      "status": "published",
+      "id": "7",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T08:47:04.563Z"
+    },
+    {
+      "title": "dss",
+      "body": "sdsdsd",
+      "status": "published",
+      "id": "8",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T08:56:55.019Z"
+    },
+    {
+      "title": "dsdsd",
+      "body": "dsdd",
+      "status": "published",
+      "id": "9",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T09:01:08.733Z"
+    },
+    {
+      "title": "fff",
+      "body": "dfdfdf",
+      "status": "published",
+      "id": "10",
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T09:15:55.506Z"
+    },
+    {
+      "title": "ssdsd",
+      "body": "addd",
+      "status": "published",
+      "id": 11,
+      "governance_unit_id": 1,
+      "school_id": 1,
+      "created_at": "2026-04-25T09:33:13.838Z"
+    }
+  ],
   "governance_members": [
     {
-      "id": 1,
+      "id": "1",
       "governance_unit_id": 1,
       "user_id": 4,
       "position_title": "President",
@@ -401,7 +558,7 @@
       ]
     },
     {
-      "id": 2,
+      "id": "2",
       "governance_unit_id": 1,
       "user_id": 5,
       "position_title": "Secretary",
@@ -411,7 +568,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": "3",
       "governance_unit_id": 2,
       "user_id": 6,
       "position_title": "President",
@@ -422,8 +579,23 @@
         "manage_students",
         "assign_permissions"
       ]
+    },
+    {
+      "id": "4",
+      "governance_unit_id": 1,
+      "user_id": 8,
+      "position_title": "SG President",
+      "permission_codes": [
+        "manage_events",
+        "manage_announcements",
+        "manage_members",
+        "manage_students",
+        "assign_permissions",
+        "Review Excuse Letter"
+      ]
     }
   ],
   "assistant_conversations": [],
-  "assistant_messages": []
+  "assistant_messages": [],
+  "$schema": "./node_modules/json-server/schema.json"
 }

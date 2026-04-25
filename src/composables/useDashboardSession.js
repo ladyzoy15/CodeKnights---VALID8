@@ -11,6 +11,7 @@ import {
     getEvents,
     getMyAttendance,
     getSchoolSettings,
+    getAnnouncements,
     resolveApiBaseUrl,
     updateUser,
 } from '@/services/backendApi.js'
@@ -22,7 +23,7 @@ import { resolveBackendMediaUrl } from '@/services/backendMedia.js'
 import { clearStoredAuthMeta, getStoredAuthMeta, patchStoredAuthMeta } from '@/services/localAuth.js'
 
 const DASHBOARD_CACHE_KEY = 'aura_dashboard_cache_v1'
-const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000
+const DEFAULT_CACHE_TTL_MS = 30 * 1000
 const configuredCacheTtl = Number(import.meta.env.VITE_DASHBOARD_CACHE_TTL_MS)
 const DASHBOARD_CACHE_TTL_MS = Number.isFinite(configuredCacheTtl) && configuredCacheTtl > 0
     ? configuredCacheTtl
@@ -36,6 +37,8 @@ const state = reactive({
     schoolSettings: null,
     events: [],
     attendanceRecords: [],
+    announcements: [],
+    isRefreshingAnnouncements: false,
     faceStatus: null,
     initialized: false,
     loading: false,
@@ -100,6 +103,7 @@ function persistDashboardSnapshot() {
             schoolSettings: state.schoolSettings,
             events: state.events,
             attendanceRecords: state.attendanceRecords,
+            announcements: state.announcements,
             faceStatus: state.faceStatus,
             limitedMode: false,
         },
@@ -131,6 +135,7 @@ function applyDashboardSnapshot(snapshot, token = state.token) {
     state.schoolSettings = snapshot.schoolSettings ?? null
     state.events = Array.isArray(snapshot.events) ? sortEvents(snapshot.events.map(normalizeEvent).filter(Boolean)) : []
     state.attendanceRecords = Array.isArray(snapshot.attendanceRecords) ? snapshot.attendanceRecords : []
+    state.announcements = Array.isArray(snapshot.announcements) ? sortAnnouncements(snapshot.announcements.map(normalizeAnnouncement).filter(Boolean)) : []
     state.faceStatus = snapshot.faceStatus ?? null
     state.limitedMode = Boolean(snapshot.limitedMode)
     state.initialized = true
@@ -164,6 +169,20 @@ function normalizeEvent(event) {
         ...event,
         status,
     }
+}
+
+function normalizeAnnouncement(ann) {
+    if (!ann) return null
+    return {
+        ...ann,
+        content: ann.content || ann.body || '',
+    }
+}
+
+function sortAnnouncements(list) {
+    return [...list].sort((left, right) => {
+        return new Date(right.created_at || 0) - new Date(left.created_at || 0)
+    })
 }
 
 function sortEvents(events) {
@@ -385,14 +404,17 @@ async function fetchDashboardData() {
 
         const shouldLoadPrivilegedFaceStatus = isPrivilegedFaceUser(user)
 
-        const [settingsResult, eventsResult, attendanceResult, faceStatusResult] = await Promise.allSettled([
+        console.log('[DashboardSession] Fetching data for school_id:', user?.school_id)
+        const [settingsResult, eventsResult, attendanceResult, announcementsResult, faceStatusResult] = await Promise.allSettled([
             getSchoolSettings(state.apiBaseUrl, state.token),
             getEvents(state.apiBaseUrl, state.token, { limit: 200 }),
             getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }),
+            getAnnouncements(state.apiBaseUrl, state.token, { school_id: user?.school_id }),
             shouldLoadPrivilegedFaceStatus
                 ? getFaceStatus(state.apiBaseUrl, state.token)
                 : Promise.resolve(null),
         ])
+        console.log('[DashboardSession] Announcements result:', announcementsResult.status)
 
         const schoolId = Number(user?.school_id)
         const nextEvents = eventsResult.status === 'fulfilled' && Array.isArray(eventsResult.value)
@@ -405,10 +427,18 @@ async function fetchDashboardData() {
         state.user = user
         state.schoolSettings = settingsResult.status === 'fulfilled'
             ? settingsResult.value
-            : buildFallbackSchoolSettings(authMeta)
+                : buildFallbackSchoolSettings(authMeta)
         state.events = sortEvents(nextEvents)
         state.attendanceRecords = attendanceResult.status === 'fulfilled' && Array.isArray(attendanceResult.value)
             ? attendanceResult.value
+            : []
+        state.announcements = announcementsResult.status === 'fulfilled' && Array.isArray(announcementsResult.value)
+            ? sortAnnouncements(
+                announcementsResult.value
+                    .map(normalizeAnnouncement)
+                    .filter(Boolean)
+                    .filter(a => a.status === 'published' || !a.status)
+            )
             : []
         state.faceStatus = faceStatusResult.status === 'fulfilled' && faceStatusResult.value
             ? faceStatusResult.value
@@ -488,8 +518,15 @@ export async function initializeDashboardSession(force = false) {
     if (!force && !state.initialized) {
         const cachedState = hydrateDashboardStateFromCache(storedToken)
         if (cachedState.hydrated) {
+            // Always re-fetch announcements in background regardless of cache freshness
             if (!cachedState.stale) {
-                return state
+                // Start background fetch so announcements always come from server
+                if (!initPromise) {
+                    initPromise = fetchDashboardData().finally(() => {
+                        initPromise = null
+                    })
+                }
+                return initPromise
             }
 
             if (!initPromise) {
@@ -498,7 +535,7 @@ export async function initializeDashboardSession(force = false) {
                 })
             }
 
-            return state
+            return initPromise
         }
     }
 
@@ -565,6 +602,43 @@ export function upsertAttendanceRecordSnapshot(record) {
     }
 
     return replaceAttendanceRecordsForEvent(normalizedEventId, [record])
+}
+
+export async function refreshAnnouncements() {
+    // Wait for session to initialize if it's in progress
+    if (initPromise && !state.initialized) {
+        console.log('[DashboardSession] Waiting for session init before refreshing announcements...')
+        try { await initPromise } catch { /* ignore */ }
+    }
+
+    const apiBaseUrl = state.apiBaseUrl
+    const token = state.token
+
+    // Fallback: get school_id from stored auth meta if user isn't populated yet
+    const schoolId = state.user?.school_id ?? getStoredAuthMeta()?.schoolId ?? null
+
+    console.log('[DashboardSession] refreshAnnouncements - token:', !!token, 'school_id:', schoolId)
+    if (!apiBaseUrl || !token || !schoolId) {
+        console.warn('[DashboardSession] refreshAnnouncements: missing required state, skipping.')
+        return
+    }
+
+    state.isRefreshingAnnouncements = true
+    try {
+        const announcements = await getAnnouncements(apiBaseUrl, token, { school_id: schoolId })
+        console.log('[DashboardSession] Fetched announcements count:', announcements?.length)
+        state.announcements = sortAnnouncements(
+            (announcements || [])
+                .map(normalizeAnnouncement)
+                .filter(Boolean)
+                .filter(a => a.status === 'published' || !a.status)
+        )
+        persistDashboardSnapshot()
+    } catch (e) {
+        console.error('[DashboardSession] Refresh failed:', e)
+    } finally {
+        state.isRefreshingAnnouncements = false
+    }
 }
 
 export async function refreshSchoolSettings() {
@@ -762,11 +836,14 @@ export function useDashboardSession() {
         schoolSettings: computed(() => state.schoolSettings),
         events: computed(() => state.events),
         attendanceRecords: computed(() => state.attendanceRecords),
+        announcements: computed(() => state.announcements),
+        isRefreshingAnnouncements: computed(() => state.isRefreshingAnnouncements),
         faceStatus: computed(() => state.faceStatus),
         limitedMode: computed(() => state.limitedMode),
         needsFaceRegistration: computed(() => sessionNeedsFaceRegistration()),
-        unreadAnnouncements: computed(() => 0),
+        unreadAnnouncements: computed(() => state.announcements.length),
         initializeDashboardSession,
+        refreshAnnouncements,
         refreshAttendanceRecords,
         replaceAttendanceRecordsForEvent,
         upsertAttendanceRecordSnapshot,

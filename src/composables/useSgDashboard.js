@@ -1,7 +1,7 @@
 import { ref, watch, computed } from 'vue'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { getGovernanceAccess } from '@/services/backendApi.js'
-import { resolvePreferredGovernanceUnit } from '@/services/governanceScope.js'
+import { resolvePreferredGovernanceUnit, normalizePermissionCode } from '@/services/governanceScope.js'
 
 // Global state cache for instant navigation without loading skeletons
 const cachedIsLoading = ref(true)
@@ -88,7 +88,8 @@ export function useSgDashboard(preview = false) {
 
     const unitPerms = Array.isArray(governanceUnit.permission_codes) ? governanceUnit.permission_codes : []
     const topPerms = Array.isArray(access.permission_codes) ? access.permission_codes : []
-    cachedPermissions.value = [...new Set([...unitPerms, ...topPerms])]
+    const allRaw = [...unitPerms, ...topPerms]
+    cachedPermissions.value = [...new Set(allRaw.map(p => normalizePermissionCode(p)))]
 
     cachedActiveUnitId.value = governanceUnit.governance_unit_id ?? null
     cachedAcronym.value = governanceUnit.unit_code || 'SG'
@@ -112,7 +113,8 @@ export function useSgDashboard(preview = false) {
   }
 
   const hasPermission = (code) => {
-    return (permissionCodes.value || []).includes(code);
+    const normalized = normalizePermissionCode(code);
+    return (permissionCodes.value || []).includes(normalized);
   };
 
   return {

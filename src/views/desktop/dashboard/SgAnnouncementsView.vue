@@ -133,7 +133,7 @@ const isFormOpen = ref(false)
 const isSaving = ref(false)
 const formError = ref('')
 const editingId = ref(null)
-const draft = ref({ title: '', body: '', status: 'draft' })
+const draft = ref({ title: '', body: '', status: 'published' })
 const governanceUnitId = ref(null)
 
 const filteredAnnouncements = computed(() => {
@@ -185,9 +185,15 @@ async function loadData(url) {
     const governanceUnit = resolvePreferredGovernanceUnit(access, {
       requiredPermissionCode: 'manage_announcements',
     })
-    if (!governanceUnit) { loadError.value = 'No governance unit found.'; return }
-    governanceUnitId.value = governanceUnit.governance_unit_id
-    announcements.value = await getGovernanceAnnouncements(url, token, governanceUnit.governance_unit_id)
+    
+    if (!governanceUnit) {
+      loadError.value = 'You do not have access to any governance units.'
+      isLoading.value = false
+      return
+    }
+    
+    governanceUnitId.value = governanceUnit.id || governanceUnit.governance_unit_id
+    announcements.value = await getGovernanceAnnouncements(url, token, governanceUnitId.value)
   } catch (e) {
     loadError.value = e?.message || 'Unable to load announcements.'
   } finally { isLoading.value = false }
@@ -197,7 +203,7 @@ async function reload() { if (apiBaseUrl.value) await loadData(apiBaseUrl.value)
 
 function openCreate() {
   editingId.value = null
-  draft.value = { title: '', body: '', status: 'draft' }
+  draft.value = { title: '', body: '', status: 'published' }
   formError.value = ''
   isFormOpen.value = true
 }
