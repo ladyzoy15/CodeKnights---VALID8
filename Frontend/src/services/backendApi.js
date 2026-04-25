@@ -1583,9 +1583,59 @@ export async function getEventTimeStatus(baseUrl, token, eventId) {
     }))
 }
 
+
+/* --- EXCUSE LETTERS --- */
+
+/**
+ * Fetches excuse letters based on scope (student or governance).
+ * @param {string} baseUrl 
+ * @param {string} token 
+ * @param {Object} params - { scope: 'student'|'governance', student_id, unit_id }
+ */
+export async function getExcuseLetters(baseUrl, token, params = {}) {
+  const payload = await request(baseUrl, '/api/attendance/excuse-letters', {
+    method: 'GET',
+    token,
+    params,
+  })
+  return Array.isArray(payload) ? payload : []
+}
+
+/**
+ * Submits a new excuse letter for an event.
+ * @param {string} baseUrl 
+ * @param {string} token 
+ * @param {string|number} eventId 
+ * @param {Object} payload - { student_id, reason, attachment_url }
+ */
+export async function submitExcuseLetter(baseUrl, token, eventId, payload) {
+  return request(baseUrl, `/api/attendance/events/${eventId}/excuse-letters`, {
+    method: 'POST',
+    token,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+/**
+ * Reviews (approves/rejects) an excuse letter.
+ * @param {string} baseUrl 
+ * @param {string} token 
+ * @param {string|number} letterId 
+ * @param {Object} payload - { status: 'Approved'|'Rejected', remarks, reviewer_id }
+ */
+export async function reviewExcuseLetter(baseUrl, token, letterId, payload) {
+  return request(baseUrl, `/api/attendance/excuse-letters/${letterId}/review`, {
+    method: 'POST',
+    token,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
 function appendFormValue(formData, key, value) {
-    if (value == null || value === '') return
-    formData.append(key, String(value))
+  if (value == null || value === '') return
+  formData.append(key, String(value))
 }
 
 
