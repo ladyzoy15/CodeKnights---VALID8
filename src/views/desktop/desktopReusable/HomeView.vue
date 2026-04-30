@@ -160,7 +160,10 @@
           :school-name="resolvedSchoolName"
           :school-logo="resolvedSchoolLogoCandidates[0] || null"
           :school-logo-candidates="resolvedSchoolLogoCandidates"
+<<<<<<< HEAD
           :latest-announcement="latestAnnouncement"
+=======
+>>>>>>> Aura_update3
           @announcement-click="handleAnnouncementClick"
         />
       </Transition>
@@ -221,6 +224,7 @@
         </TransitionGroup>
       </div>
     </div>
+<<<<<<< HEAD
 
     <!-- Announcement Modal -->
     <AnnouncementModal
@@ -229,18 +233,27 @@
       :is-refreshing="isRefreshingAnnouncements"
       @close="showAnnouncements = false"
     />
+=======
+>>>>>>> Aura_update3
   </div>
 </template>
 
 <script setup>
+<<<<<<< HEAD
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
+=======
+import { ref, computed, watch, nextTick } from 'vue'
+>>>>>>> Aura_update3
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Send } from 'lucide-vue-next'
 import StandardHeader from '@/components/desktop/dashboard/StandardHeader.vue'
 import Breadcrumbs from '@/components/desktop/dashboard/Breadcrumbs.vue'
 import UniversityBanner from '@/components/desktop/dashboard/UniversityBanner.vue'
 import EventsCard from '@/components/desktop/dashboard/EventsCard.vue'
+<<<<<<< HEAD
 import AnnouncementModal from '@/components/desktop/dashboard/AnnouncementModal.vue'
+=======
+>>>>>>> Aura_update3
 import { useAuth } from '@/composables/useAuth.js'
 
 import { applyTheme, loadTheme, secondaryAuraLogo } from '@/config/theme.js'
@@ -264,11 +277,15 @@ const props = defineProps({
 const searchQuery = ref('')
 const eventSearchInputAttrs = createSearchFieldAttrs('student-event-search')
 const showNotifications = ref(false)
+<<<<<<< HEAD
 const showAnnouncements = ref(false)
+=======
+>>>>>>> Aura_update3
 const isMobileAiOpen = ref(false)
 const mobileInputEl = ref(null)
 const router = useRouter()
 const route = useRoute()
+<<<<<<< HEAD
 const { 
   currentUser, 
   schoolSettings, 
@@ -286,13 +303,19 @@ onMounted(async () => {
     await refreshAnnouncements()
   }
 })
+=======
+const { currentUser, schoolSettings, events, hasAttendanceForEvent, hasOpenAttendanceForEvent } = useDashboardSession()
+>>>>>>> Aura_update3
 const authMeta = useStoredAuthMeta()
 const activeUser = computed(() => props.preview ? studentDashboardPreviewData.user : currentUser.value)
 const activeSchoolSettings = computed(() => props.preview ? studentDashboardPreviewData.schoolSettings : schoolSettings.value)
 const activeEvents = computed(() => props.preview ? studentDashboardPreviewData.events : events.value)
 
+<<<<<<< HEAD
 const latestAnnouncement = computed(() => announcements.value[0] || null)
 
+=======
+>>>>>>> Aura_update3
 const resolvedSchoolName = computed(() => (
   activeSchoolSettings.value?.school_name ||
   activeUser.value?.school_name ||
@@ -474,7 +497,13 @@ const filteredEvents = computed(() => {
 
 const upcomingEvents = computed(() => filteredEvents.value)
 
+<<<<<<< HEAD
 const unreadAnnouncements = computed(() => unreadCount.value)
+=======
+const unreadAnnouncements = computed(() =>
+  0
+)
+>>>>>>> Aura_update3
 
 const { logout } = useAuth()
 async function handleLogout() {
@@ -510,10 +539,17 @@ function normalizeStatus(status) {
 }
 
 // --- Handlers ---
+<<<<<<< HEAD
 async function handleAnnouncementClick() {
   if (props.preview) return
   await refreshAnnouncements()
   showAnnouncements.value = true
+=======
+function handleAnnouncementClick() {
+  if (props.preview) return
+  // TODO: navigate to announcements page or open modal
+  console.log('Announcement clicked')
+>>>>>>> Aura_update3
 }
 
 function handleSeeEvent(event) {

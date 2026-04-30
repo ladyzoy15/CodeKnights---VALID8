@@ -11,7 +11,10 @@ import {
     getEvents,
     getMyAttendance,
     getSchoolSettings,
+<<<<<<< HEAD
     getAnnouncements,
+=======
+>>>>>>> Aura_update3
     resolveApiBaseUrl,
     updateUser,
 } from '@/services/backendApi.js'
@@ -23,7 +26,11 @@ import { resolveBackendMediaUrl } from '@/services/backendMedia.js'
 import { clearStoredAuthMeta, getStoredAuthMeta, patchStoredAuthMeta } from '@/services/localAuth.js'
 
 const DASHBOARD_CACHE_KEY = 'aura_dashboard_cache_v1'
+<<<<<<< HEAD
 const DEFAULT_CACHE_TTL_MS = 30 * 1000
+=======
+const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000
+>>>>>>> Aura_update3
 const configuredCacheTtl = Number(import.meta.env.VITE_DASHBOARD_CACHE_TTL_MS)
 const DASHBOARD_CACHE_TTL_MS = Number.isFinite(configuredCacheTtl) && configuredCacheTtl > 0
     ? configuredCacheTtl
@@ -37,8 +44,11 @@ const state = reactive({
     schoolSettings: null,
     events: [],
     attendanceRecords: [],
+<<<<<<< HEAD
     announcements: [],
     isRefreshingAnnouncements: false,
+=======
+>>>>>>> Aura_update3
     faceStatus: null,
     initialized: false,
     loading: false,
@@ -103,7 +113,10 @@ function persistDashboardSnapshot() {
             schoolSettings: state.schoolSettings,
             events: state.events,
             attendanceRecords: state.attendanceRecords,
+<<<<<<< HEAD
             announcements: state.announcements,
+=======
+>>>>>>> Aura_update3
             faceStatus: state.faceStatus,
             limitedMode: false,
         },
@@ -135,7 +148,10 @@ function applyDashboardSnapshot(snapshot, token = state.token) {
     state.schoolSettings = snapshot.schoolSettings ?? null
     state.events = Array.isArray(snapshot.events) ? sortEvents(snapshot.events.map(normalizeEvent).filter(Boolean)) : []
     state.attendanceRecords = Array.isArray(snapshot.attendanceRecords) ? snapshot.attendanceRecords : []
+<<<<<<< HEAD
     state.announcements = Array.isArray(snapshot.announcements) ? sortAnnouncements(snapshot.announcements.map(normalizeAnnouncement).filter(Boolean)) : []
+=======
+>>>>>>> Aura_update3
     state.faceStatus = snapshot.faceStatus ?? null
     state.limitedMode = Boolean(snapshot.limitedMode)
     state.initialized = true
@@ -171,6 +187,7 @@ function normalizeEvent(event) {
     }
 }
 
+<<<<<<< HEAD
 function normalizeAnnouncement(ann) {
     if (!ann) return null
     return {
@@ -185,6 +202,8 @@ function sortAnnouncements(list) {
     })
 }
 
+=======
+>>>>>>> Aura_update3
 function sortEvents(events) {
     const statusRank = {
         ongoing: 0,
@@ -404,17 +423,27 @@ async function fetchDashboardData() {
 
         const shouldLoadPrivilegedFaceStatus = isPrivilegedFaceUser(user)
 
+<<<<<<< HEAD
         console.log('[DashboardSession] Fetching data for school_id:', user?.school_id)
         const [settingsResult, eventsResult, attendanceResult, announcementsResult, faceStatusResult] = await Promise.allSettled([
             getSchoolSettings(state.apiBaseUrl, state.token),
             getEvents(state.apiBaseUrl, state.token, { limit: 200 }),
             getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }),
             getAnnouncements(state.apiBaseUrl, state.token, { school_id: user?.school_id }),
+=======
+        const [settingsResult, eventsResult, attendanceResult, faceStatusResult] = await Promise.allSettled([
+            getSchoolSettings(state.apiBaseUrl, state.token),
+            getEvents(state.apiBaseUrl, state.token, { limit: 200 }),
+            getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }),
+>>>>>>> Aura_update3
             shouldLoadPrivilegedFaceStatus
                 ? getFaceStatus(state.apiBaseUrl, state.token)
                 : Promise.resolve(null),
         ])
+<<<<<<< HEAD
         console.log('[DashboardSession] Announcements result:', announcementsResult.status)
+=======
+>>>>>>> Aura_update3
 
         const schoolId = Number(user?.school_id)
         const nextEvents = eventsResult.status === 'fulfilled' && Array.isArray(eventsResult.value)
@@ -427,11 +456,16 @@ async function fetchDashboardData() {
         state.user = user
         state.schoolSettings = settingsResult.status === 'fulfilled'
             ? settingsResult.value
+<<<<<<< HEAD
                 : buildFallbackSchoolSettings(authMeta)
+=======
+            : buildFallbackSchoolSettings(authMeta)
+>>>>>>> Aura_update3
         state.events = sortEvents(nextEvents)
         state.attendanceRecords = attendanceResult.status === 'fulfilled' && Array.isArray(attendanceResult.value)
             ? attendanceResult.value
             : []
+<<<<<<< HEAD
         state.announcements = announcementsResult.status === 'fulfilled' && Array.isArray(announcementsResult.value)
             ? sortAnnouncements(
                 announcementsResult.value
@@ -440,6 +474,8 @@ async function fetchDashboardData() {
                     .filter(a => a.status === 'published' || !a.status)
             )
             : []
+=======
+>>>>>>> Aura_update3
         state.faceStatus = faceStatusResult.status === 'fulfilled' && faceStatusResult.value
             ? faceStatusResult.value
             : {
@@ -518,6 +554,7 @@ export async function initializeDashboardSession(force = false) {
     if (!force && !state.initialized) {
         const cachedState = hydrateDashboardStateFromCache(storedToken)
         if (cachedState.hydrated) {
+<<<<<<< HEAD
             // Always re-fetch announcements in background regardless of cache freshness
             if (!cachedState.stale) {
                 // Start background fetch so announcements always come from server
@@ -527,6 +564,10 @@ export async function initializeDashboardSession(force = false) {
                     })
                 }
                 return initPromise
+=======
+            if (!cachedState.stale) {
+                return state
+>>>>>>> Aura_update3
             }
 
             if (!initPromise) {
@@ -535,7 +576,11 @@ export async function initializeDashboardSession(force = false) {
                 })
             }
 
+<<<<<<< HEAD
             return initPromise
+=======
+            return state
+>>>>>>> Aura_update3
         }
     }
 
@@ -604,6 +649,7 @@ export function upsertAttendanceRecordSnapshot(record) {
     return replaceAttendanceRecordsForEvent(normalizedEventId, [record])
 }
 
+<<<<<<< HEAD
 export async function refreshAnnouncements() {
     // Wait for session to initialize if it's in progress
     if (initPromise && !state.initialized) {
@@ -641,6 +687,8 @@ export async function refreshAnnouncements() {
     }
 }
 
+=======
+>>>>>>> Aura_update3
 export async function refreshSchoolSettings() {
     if (!state.token) return null
 
@@ -836,6 +884,7 @@ export function useDashboardSession() {
         schoolSettings: computed(() => state.schoolSettings),
         events: computed(() => state.events),
         attendanceRecords: computed(() => state.attendanceRecords),
+<<<<<<< HEAD
         announcements: computed(() => state.announcements),
         isRefreshingAnnouncements: computed(() => state.isRefreshingAnnouncements),
         faceStatus: computed(() => state.faceStatus),
@@ -844,6 +893,13 @@ export function useDashboardSession() {
         unreadAnnouncements: computed(() => state.announcements.length),
         initializeDashboardSession,
         refreshAnnouncements,
+=======
+        faceStatus: computed(() => state.faceStatus),
+        limitedMode: computed(() => state.limitedMode),
+        needsFaceRegistration: computed(() => sessionNeedsFaceRegistration()),
+        unreadAnnouncements: computed(() => 0),
+        initializeDashboardSession,
+>>>>>>> Aura_update3
         refreshAttendanceRecords,
         replaceAttendanceRecordsForEvent,
         upsertAttendanceRecordSnapshot,
