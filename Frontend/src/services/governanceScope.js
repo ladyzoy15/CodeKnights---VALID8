@@ -45,9 +45,53 @@ export function hasGovernanceUnitPermission(access = null, unit = null, permissi
   return true
 }
 
+function matchesPreferredUnit(unit = null, preferredUnitId = null, preferredContext = '') {
+  const normalizedPreferredUnitId = Number(preferredUnitId)
+  if (Number.isFinite(normalizedPreferredUnitId)) {
+    return Number(unit?.governance_unit_id) === normalizedPreferredUnitId
+  }
+
+  const normalizedPreferredContext = normalizeGovernanceContext(preferredContext)
+  if (normalizedPreferredContext) {
+    return normalizeGovernanceContext(unit?.unit_type) === normalizedPreferredContext
+  }
+
+  return false
+}
+
+export function getGovernanceUnitsForAction(access = null, options = {}) {
+  const {
+    requiredPermissionCode = '',
+    preferredUnitId = null,
+    preferredContext = '',
+  } = options
+
+  const matchingUnits = getGovernanceAccessUnits(access)
+    .filter((unit) => hasGovernanceUnitPermission(access, unit, requiredPermissionCode))
+
+  const preferredUnits = matchingUnits.filter((unit) =>
+    matchesPreferredUnit(unit, preferredUnitId, preferredContext)
+  )
+  const remainingUnits = matchingUnits.filter((unit) => !preferredUnits.includes(unit))
+
+  return [...preferredUnits, ...remainingUnits]
+}
+
 export function resolvePreferredGovernanceUnit(access = null, options = {}) {
-  const units = getGovernanceAccessUnits(access)
-  return units[0] || null
+  return getGovernanceUnitsForAction(access, options)[0] || null
+}
+
+export function listGovernanceContextsForAction(access = null, options = {}) {
+  const contexts = []
+
+  getGovernanceUnitsForAction(access, options).forEach((unit) => {
+    const context = normalizeGovernanceContext(unit?.unit_type)
+    if (context && !contexts.includes(context)) {
+      contexts.push(context)
+    }
+  })
+
+  return contexts
 }
 
 export function collectGovernancePermissionCodes(access = null) {
