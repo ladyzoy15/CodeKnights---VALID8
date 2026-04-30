@@ -1349,10 +1349,3 @@ function appendFormValue(formData, key, value) {
     if (value == null || value === '') return
     formData.append(key, String(value))
 }
-export async function getAnnouncements(baseUrl, token, params = {}) {
-    return requestWithFallback(baseUrl, ['/api/announcements', '/announcements'], {
-        method: 'GET',
-        token,
-        params,
-    })
-}

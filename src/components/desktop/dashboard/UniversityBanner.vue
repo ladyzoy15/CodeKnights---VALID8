@@ -33,10 +33,7 @@
           <span class="flex items-center justify-center w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors">
             <ArrowRight :size="14" color="var(--color-nav-text)" :stroke-width="2.5" />
           </span>
-          <div class="flex flex-col items-start overflow-hidden max-w-[300px]">
-            <span class="text-[10px] font-bold uppercase opacity-60 leading-none mb-1" style="color: var(--color-nav-text);">Latest Announcement</span>
-            <span class="text-[12px] font-bold truncate w-full" style="color: var(--color-nav-text);">{{ latestAnnouncement?.title || 'Check Campus Updates' }}</span>
-          </div>
+        <span class="text-[12px] font-semibold" style="color: var(--color-nav-text);">Latest Announcement</span>
         </button>
     </div>
 
@@ -81,10 +78,6 @@ const props = defineProps({
   schoolLogoCandidates: {
     type: Array,
     default: () => [],
-  },
-  latestAnnouncement: {
-    type: Object,
-    default: null,
   },
 })
 

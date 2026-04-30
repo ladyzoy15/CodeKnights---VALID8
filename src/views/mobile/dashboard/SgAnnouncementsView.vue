@@ -185,6 +185,7 @@ async function loadData(url) {
     const governanceUnit = resolvePreferredGovernanceUnit(access, {
       requiredPermissionCode: 'manage_announcements',
     })
+<<<<<<< HEAD
     if (!governanceUnit) {
       loadError.value = 'No governance unit found.'
       isLoading.value = false
@@ -193,6 +194,11 @@ async function loadData(url) {
     
     governanceUnitId.value = governanceUnit.id || governanceUnit.governance_unit_id
     announcements.value = await getGovernanceAnnouncements(url, token, governanceUnitId.value)
+=======
+    if (!governanceUnit) { loadError.value = 'No governance unit found.'; return }
+    governanceUnitId.value = governanceUnit.governance_unit_id
+    announcements.value = await getGovernanceAnnouncements(url, token, governanceUnit.governance_unit_id)
+>>>>>>> Aura_update3
   } catch (e) {
     loadError.value = e?.message || 'Unable to load announcements.'
   } finally { isLoading.value = false }
@@ -202,7 +208,11 @@ async function reload() { if (apiBaseUrl.value) await loadData(apiBaseUrl.value)
 
 function openCreate() {
   editingId.value = null
+<<<<<<< HEAD
   draft.value = { title: '', body: '', status: 'published' }
+=======
+  draft.value = { title: '', body: '', status: 'draft' }
+>>>>>>> Aura_update3
   formError.value = ''
   isFormOpen.value = true
 }

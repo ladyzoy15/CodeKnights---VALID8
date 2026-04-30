@@ -79,13 +79,10 @@ def create_student_account(
                 password_is_temporary=True,
             )
         except EmailDeliveryError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail=(
-                    "Student account was not created because the welcome email could not be delivered. "
-                    f"Email delivery error: {exc}"
-                ),
-            ) from exc
+            import logging
+            logging.warning(f"Welcome email could not be sent to {db_user.email}: {exc}")
+            db.commit()
+            return UserWithRelations.model_validate(db_user)
 
         db.commit()
         created_user = (

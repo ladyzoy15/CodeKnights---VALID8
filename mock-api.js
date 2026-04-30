@@ -279,8 +279,7 @@ app.get('/governance/access/me', (req, res) => {
         'manage_members',
         'assign_permissions',
         'create_sg',
-        'create_org',
-        'review_excuse_letter'
+        'create_org'
       ]
     }));
 
@@ -317,18 +316,6 @@ app.get('/governance/units/:id/members', (req, res) => {
 });
 
 app.get('/attendance/summary', (req, res) => res.json({ summary: [], total: 0 }));
-app.get('/announcements', (req, res) => {
-  const { school_id } = req.query;
-  console.log('[DEBUG] GET /announcements - school_id:', school_id);
-  let list = db.data.announcements || [];
-  console.log(`  Total announcements in DB: ${list.length}`);
-  if (school_id) {
-    list = list.filter(a => String(a.school_id) === String(school_id));
-  }
-  console.log(`[DEBUG] Returning ${list.length} announcements for school_id: ${school_id}`);
-  res.json(list);
-});
-
 app.get('/governance/units/:id/announcements', (req, res) => {
   const { id } = req.params;
   const list = (db.data.announcements || []).filter(a => String(a.governance_unit_id) === String(id));
@@ -337,15 +324,11 @@ app.get('/governance/units/:id/announcements', (req, res) => {
 app.post('/governance/units/:id/announcements', async (req, res) => {
   const { id } = req.params;
   await parseBody(req);
-  const unit = (db.data.governance_units || []).find(u => String(u.id) === String(id));
-  const school_id = unit ? Number(unit.school_id) : null;
   const nextId = Math.max(0, ...(db.data.announcements || []).map(a => Number(a.id) || 0)) + 1;
-  console.log('[API] Creating announcement for unit:', id, 'payload:', req.body);
   const newAnn = {
     ...req.body,
     id: nextId,
     governance_unit_id: Number(id),
-    school_id: school_id,
     created_at: new Date().toISOString(),
   };
   db.data.announcements = [...(db.data.announcements || []), newAnn];
@@ -684,24 +667,6 @@ app.get('/events/', (req, res, next) => {
   next?.();
 });
 
-app.get('/events/:eventId/time-status', (req, res) => {
-  const { eventId } = req.params;
-  const event = (db.data.events || []).find(e => String(e.id) === String(eventId));
-  if (!event) return res.status(404).json({ error: 'Event not found' });
-
-  res.json({
-    event_id: Number(eventId),
-    event_status: event.status || 'upcoming',
-    status: event.status || 'upcoming',
-    current_time: new Date().toISOString(),
-    check_in_opens_at: event.start_datetime || null,
-    start_time: event.start_datetime || null,
-    end_time: event.end_datetime || null,
-    attendance_override_active: false,
-    timezone_name: 'Asia/Manila'
-  });
-});
-
 app.post('/public-attendance/events/nearby', async (req, res) => {
   console.log(`[POST] /public-attendance/events/nearby`);
   await parseBody(req);
@@ -896,7 +861,7 @@ app.patch('/governance/requests/:id', async (req, res) => {
   }
 });
 
-app.post('/events/:eventId/excuse-letters', async (req, res) => {
+app.post('/api/events/:eventId/excuse-letters', async (req, res) => {
   const { eventId } = req.params;
   console.log(`[POST] /api/events/${eventId}/excuse-letters`);
   await parseBody(req);
@@ -921,7 +886,7 @@ app.post('/events/:eventId/excuse-letters', async (req, res) => {
   res.status(201).json(newLetter);
 });
 
-app.get('/excuse_letters', (req, res) => {
+app.get('/api/excuse-letters', (req, res) => {
   const queryString = req.url.split('?')[1] ?? '';
   const params = new URLSearchParams(queryString);
   const scope = params.get('scope');
@@ -939,26 +904,10 @@ app.get('/excuse_letters', (req, res) => {
     // letters = letters.filter(e => String(e.unitId) === String(unitId));
   }
 
-  const users = db.data.users || [];
-  const events = db.data.events || [];
-
-  const populatedLetters = letters.map(letter => {
-    const student = users.find(u => String(u.id) === String(letter.studentId) || (u.student_profile && String(u.student_profile.student_id) === String(letter.studentId)));
-    const event = events.find(e => String(e.id) === String(letter.eventId));
-
-    return {
-      ...letter,
-      studentName: student ? `${student.first_name} ${student.last_name}` : 'Unknown Student',
-      course: student?.student_profile?.program_code || 'BSIT',
-      yearLevel: student?.student_profile?.year_level || '1',
-      eventName: event ? event.name : 'Unknown Event'
-    };
-  });
-
-  res.json(populatedLetters);
+  res.json(letters);
 });
 
-app.patch('/excuse_letters/:id/review', async (req, res) => {
+app.patch('/api/excuse-letters/:id/review', async (req, res) => {
   const { id } = req.params;
   console.log(`[PATCH] /api/excuse-letters/${id}/review`);
   await parseBody(req);

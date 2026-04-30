@@ -1,29 +1,51 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# OS / editor
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-.env.docker
+Thumbs.db
+.idea/
+.vscode/
 
-# Capacitor
-android/
-ios/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+
+# Node / frontend builds
+node_modules/
+Frontend/node_modules/
+Frontend/dist/
+Frontend/dist-ssr/
+Frontend/.vite/
+Frontend/.pnp.*
+Frontend/.yarn/
+
+# Logs
+*.log
+logs/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+Frontend/.env.local
+
+# Database / local artifacts
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+Backend/smoke.db
+storage/imports/
+storage/school_logos/
+Backend/storage/imports/
+Backend/storage/school_logos/
+Backend/storage/seed_credentials.csv
+Backend/storage/seed_credentials.json
+
+# Project-specific generated files
+Backend/face_encodings.pkl
+Backend/.alembic.ini.swp
+Backend/.venv/
+GITHUB/

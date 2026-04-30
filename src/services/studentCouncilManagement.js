@@ -348,7 +348,7 @@ export function normalizePermissionCatalog(catalog = defaultStudentCouncilPermis
 export function normalizePermissionIds(values) {
   return Array.isArray(values)
     ? [...new Set(values.map((value) => String(value).trim()).filter(Boolean))]
-      .filter(Boolean)
+    .filter(Boolean)
     : []
 }
 

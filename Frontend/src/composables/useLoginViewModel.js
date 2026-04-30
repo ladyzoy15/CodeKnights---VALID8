@@ -15,10 +15,6 @@ export function useLoginViewModel() {
   const { login, isLoading, error } = useAuth()
   const visibleMessage = computed(() => error.value || sessionNotice.value)
 
-  onBeforeMount(() => {
-    applyTheme(loadUnbrandedTheme())
-  })
-
   onMounted(() => {
     sessionNotice.value = consumeSessionExpiredNotice()
 

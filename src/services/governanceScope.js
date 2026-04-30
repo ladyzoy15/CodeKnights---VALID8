@@ -1,10 +1,10 @@
 const GOVERNANCE_CONTEXTS = new Set(['SSG', 'SG', 'ORG'])
 
-export function normalizePermissionCode(value) {
+function normalizePermissionCode(value) {
   return String(value || '')
     .trim()
     .toLowerCase()
-    .replace(/[-\s]/g, '_')
+    .replace(/-/g, '_')
 }
 
 function normalizePermissionCodeList(values = []) {
