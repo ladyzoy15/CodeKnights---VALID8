@@ -136,14 +136,30 @@
             <div class="admin-view__form-grid">
               <label class="admin-view__field"><span>School Name</span><input v-model.trim="createForm.school_name" required type="text"></label>
               <label class="admin-view__field"><span>School Code</span><input v-model.trim="createForm.school_code" type="text"></label>
-              <label class="admin-view__field"><span>Primary Color</span><input v-model="createForm.primary_color" required type="color"></label>
-              <label class="admin-view__field"><span>Secondary Color</span><input v-model="createForm.secondary_color" required type="color"></label>
+              <label class="admin-view__field"><span>Logo</span><input type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" @change="handleCreateLogoChange"></label>
+              
+              <!-- Branding Preview (Hidden Inputs, Visual Preview) -->
+              <div v-if="createForm.primary_color" class="admin-view__field">
+                <span>Extracted Branding</span>
+                <div class="flex gap-3 mt-2">
+                  <div class="w-10 h-10 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-110" :style="{ backgroundColor: createForm.primary_color }" title="Primary Color"></div>
+                  <div class="w-10 h-10 rounded-full border-2 border-white shadow-sm transition-transform hover:scale-110" :style="{ backgroundColor: createForm.secondary_color }" title="Secondary Color"></div>
+                  <button type="button" @click="showManualColors = !showManualColors" class="text-[10px] font-bold uppercase tracking-wider opacity-60 hover:opacity-100 underline ml-2">
+                    {{ showManualColors ? 'Hide Manual' : 'Adjust Manually' }}
+                  </button>
+                </div>
+              </div>
+
+              <template v-if="showManualColors">
+                <label class="admin-view__field"><span>Primary Color</span><input v-model="createForm.primary_color" required type="color"></label>
+                <label class="admin-view__field"><span>Secondary Color</span><input v-model="createForm.secondary_color" required type="color"></label>
+              </template>
+
               <label class="admin-view__field"><span>Campus Admin Email</span><input v-model.trim="createForm.school_it_email" required type="email"></label>
               <label class="admin-view__field"><span>Temporary Password</span><input v-model="createForm.school_it_password" type="text"></label>
               <label class="admin-view__field"><span>First Name</span><input v-model.trim="createForm.school_it_first_name" required type="text"></label>
               <label class="admin-view__field"><span>Middle Name</span><input v-model.trim="createForm.school_it_middle_name" type="text"></label>
               <label class="admin-view__field"><span>Last Name</span><input v-model.trim="createForm.school_it_last_name" required type="text"></label>
-              <label class="admin-view__field"><span>Logo</span><input type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" @change="handleCreateLogoChange"></label>
             </div>
 
             <button class="admin-view__pill admin-view__pill--submit" type="submit" :disabled="adminState.creatingSchool">
@@ -345,6 +361,7 @@ import { useAdminWorkspaceData } from '@/composables/useAdminWorkspaceData.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
 import { adminDashboardPreviewData } from '@/data/adminDashboardPreview.js'
+import { extractDominantColors } from '@/utils/colorExtractor.js'
 
 const props = defineProps({
   preview: { type: Boolean, default: false },
@@ -380,6 +397,7 @@ const {
 
 const searchQuery = ref('')
 const showCreateForm = ref(false)
+const showManualColors = ref(false)
 const feedback = reactive({ type: 'success', message: '' })
 const createForm = reactive(createDefaultSchoolForm())
 const governanceForm = reactive({
@@ -462,7 +480,25 @@ async function handleLogout() { await logout() }
 function handlePrimaryAction() { if (props.section === 'schools') { showCreateForm.value = !showCreateForm.value; return }; if (props.section === 'accounts') { goToSection('oversight'); return }; if (props.section === 'oversight') { initializeAdminWorkspaceData({ force: true }).catch(() => null); return }; goToSection('schools') }
 function goToSection(section) { const base = props.preview ? '/exposed/admin' : '/admin'; const next = section === 'overview' ? base : `${base}/${section}`; if (route.path !== next) router.push(next) }
 async function submitCreateSchool() { try { const created = await createAdminSchool({ ...createForm, school_code: createForm.school_code || undefined, school_it_middle_name: createForm.school_it_middle_name || undefined, school_it_password: createForm.school_it_password || undefined }); pushFeedback('success', `Created ${created?.school?.school_name || createForm.school_name}.`); Object.assign(createForm, createDefaultSchoolForm()); showCreateForm.value = false } catch (error) { pushFeedback('error', error?.message || 'Unable to create the school.') } }
-function handleCreateLogoChange(event) { createForm.logo = event?.target?.files?.[0] || null }
+async function handleCreateLogoChange(event) { 
+  const file = event?.target?.files?.[0] || null;
+  createForm.logo = file;
+  
+  if (file) {
+    try {
+      const colors = await extractDominantColors(file, 2);
+      if (colors && colors.length > 0) {
+        createForm.primary_color = colors[0];
+        if (colors.length > 1) {
+          createForm.secondary_color = colors[1];
+        }
+        pushFeedback('success', 'Branding colors extracted from logo.');
+      }
+    } catch (error) {
+      console.error('Color extraction failed:', error);
+    }
+  }
+}
 async function toggleSchoolActive(school) { try { await saveAdminSchoolStatus(school.school_id, { active_status: !school.active_status }); pushFeedback('success', `${school.school_name} updated.`) } catch (error) { pushFeedback('error', error?.message || 'Unable to update school status.') } }
 async function setSchoolSubscription(school, value) { if (school.subscription_status === value) return; try { await saveAdminSchoolStatus(school.school_id, { subscription_status: value }); pushFeedback('success', `${school.school_name} moved to ${formatSubscriptionLabel(value)}.`) } catch (error) { pushFeedback('error', error?.message || 'Unable to update subscription.') } }
 async function toggleCampusAccount(account) { try { await saveAdminCampusAccountStatus(account.user_id, !account.is_active); pushFeedback('success', `${formatPersonName(account.first_name, account.last_name)} updated.`) } catch (error) { pushFeedback('error', error?.message || 'Unable to update account status.') } }

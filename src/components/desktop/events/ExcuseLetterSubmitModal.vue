@@ -1,70 +1,76 @@
 <template>
-  <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+  <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-opacity">
+    <div class="rounded-2xl shadow-xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] transition-transform scale-100" style="background-color: var(--color-surface); border: 1px solid var(--color-surface-border);">
       <!-- Header -->
-      <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Submit Excuse Letter</h3>
-        <button @click="close" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      <div class="px-6 py-5 flex justify-between items-center" style="border-bottom: 1px solid var(--color-surface-border); background-color: color-mix(in srgb, var(--color-surface) 90%, transparent);">
+        <h3 class="text-xl font-bold tracking-tight" style="color: var(--color-primary);">Submit Excuse</h3>
+        <button @click="close" class="p-2 rounded-lg transition-colors hover:opacity-70" style="color: var(--color-surface-text); background-color: transparent;">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
 
       <!-- Body -->
       <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
         <!-- Read Only Info -->
-        <div class="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4 mb-6 space-y-3 border border-gray-100 dark:border-gray-700">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span class="block text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-1">Student Name</span>
-              <span class="font-medium text-gray-900 dark:text-gray-100">{{ auth.user?.first_name }} {{ auth.user?.last_name }}</span>
-            </div>
-            <div>
-              <span class="block text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-1">Event</span>
-              <span class="font-medium text-gray-900 dark:text-gray-100">{{ event?.name || 'Unknown Event' }}</span>
-            </div>
-            <div>
-              <span class="block text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider mb-1">Date</span>
-              <span class="font-medium text-gray-900 dark:text-gray-100">{{ formatDate(event?.date) }}</span>
-            </div>
+        <div class="rounded-xl p-5 mb-6 shadow-sm flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4" style="background-color: color-mix(in srgb, var(--color-bg) 50%, transparent); border: 1px solid var(--color-surface-border);">
+          <div>
+            <span class="block text-[11px] font-bold uppercase tracking-wider opacity-60 mb-0.5" style="color: var(--color-surface-text);">Student</span>
+            <span class="font-bold text-sm" style="color: var(--color-surface-text);">{{ auth.user?.first_name }} {{ auth.user?.last_name }}</span>
+          </div>
+          <div class="hidden sm:block w-px h-8" style="background-color: var(--color-surface-border);"></div>
+          <div>
+            <span class="block text-[11px] font-bold uppercase tracking-wider opacity-60 mb-0.5" style="color: var(--color-surface-text);">Event</span>
+            <span class="font-bold text-sm" style="color: var(--color-primary);">{{ event?.name || 'Unknown Event' }}</span>
+          </div>
+          <div class="hidden sm:block w-px h-8" style="background-color: var(--color-surface-border);"></div>
+          <div>
+            <span class="block text-[11px] font-bold uppercase tracking-wider opacity-60 mb-0.5" style="color: var(--color-surface-text);">Date</span>
+            <span class="font-bold text-sm" style="color: var(--color-surface-text);">{{ formatDate(event?.date) }}</span>
           </div>
         </div>
 
-        <form @submit.prevent="handleSubmit" class="space-y-4">
+        <form @submit.prevent="handleSubmit" class="space-y-6">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label class="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2" style="color: var(--color-surface-text);">
               Reason for Absence <span class="text-red-500">*</span>
             </label>
             <textarea
               v-model="form.reason"
               required
               rows="4"
-              class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 resize-none"
+              class="w-full rounded-xl p-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:border-transparent transition-all resize-none"
+              style="background-color: var(--color-bg); border: 1px solid var(--color-surface-border); color: var(--color-surface-text); outline-color: var(--color-primary);"
               placeholder="Please explain why you cannot attend this event..."
             ></textarea>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label class="block text-xs font-bold uppercase tracking-wider opacity-70 mb-2" style="color: var(--color-surface-text);">
               Supporting Document (Optional)
             </label>
-            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" @click="$refs.fileInput.click()">
+            <div class="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl transition-colors cursor-pointer hover:bg-opacity-50" 
+                 style="border-color: color-mix(in srgb, var(--color-surface-border) 80%, var(--color-primary)); background-color: var(--color-bg);"
+                 @click="$refs.fileInput.click()">
               <div class="space-y-1 text-center">
-                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                  <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-                <div class="flex text-sm text-gray-600 dark:text-gray-400 justify-center">
-                  <span class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500">
+                <div class="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-sm" style="background-color: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary);">
+                  <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                  </svg>
+                </div>
+                <div class="flex text-sm justify-center">
+                  <span class="relative font-bold hover:underline transition-all cursor-pointer" style="color: var(--color-primary);">
                     <span>Upload a file</span>
                     <input ref="fileInput" id="file-upload" name="file-upload" type="file" class="sr-only" @change="handleFileChange">
                   </span>
-                  <p class="pl-1">or drag and drop</p>
+                  <p class="pl-1 font-medium opacity-70" style="color: var(--color-surface-text);">or drag and drop</p>
                 </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400">
+                <p class="text-xs opacity-50" style="color: var(--color-surface-text);">
                   PNG, JPG, PDF up to 10MB
                 </p>
-                <p v-if="selectedFileName" class="text-sm font-medium text-primary-600 mt-2 truncate max-w-xs mx-auto">
-                  Selected: {{ selectedFileName }}
-                </p>
+                <div v-if="selectedFileName" class="mt-3 inline-flex items-center px-3 py-1 rounded-md text-xs font-bold truncate max-w-[200px]" style="background-color: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary);">
+                  <svg class="w-3.5 h-3.5 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                  <span class="truncate">{{ selectedFileName }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -72,24 +78,26 @@
       </div>
 
       <!-- Footer -->
-      <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50">
+      <div class="px-6 py-4 flex justify-end gap-3" style="border-top: 1px solid var(--color-surface-border); background-color: color-mix(in srgb, var(--color-surface) 90%, transparent);">
         <button
           type="button"
           @click="close"
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700"
+          class="px-5 py-2 text-sm font-semibold rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+          style="color: var(--color-surface-text); background-color: transparent; border: 1px solid var(--color-surface-border);"
         >
           Cancel
         </button>
         <button
           @click="handleSubmit"
           :disabled="isSubmitting || !form.reason.trim()"
-          class="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center shadow-sm"
+          class="px-5 py-2 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center shadow-sm hover:opacity-90"
+          style="background-color: var(--color-primary); color: #ffffff;"
         >
           <svg v-if="isSubmitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          Submit Letter
+          {{ isSubmitting ? 'Submitting...' : 'Submit Letter' }}
         </button>
       </div>
     </div>

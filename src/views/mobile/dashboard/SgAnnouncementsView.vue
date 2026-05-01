@@ -187,7 +187,8 @@ async function loadData(url) {
     })
     if (!governanceUnit) { loadError.value = 'No governance unit found.'; return }
     governanceUnitId.value = governanceUnit.governance_unit_id
-    announcements.value = await getGovernanceAnnouncements(url, token, governanceUnit.governance_unit_id)
+    const list = await getGovernanceAnnouncements(url, token, governanceUnit.governance_unit_id)
+    announcements.value = (list || []).sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
   } catch (e) {
     loadError.value = e?.message || 'Unable to load announcements.'
   } finally { isLoading.value = false }

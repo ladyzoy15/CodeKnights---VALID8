@@ -160,7 +160,8 @@
           :school-name="resolvedSchoolName"
           :school-logo="resolvedSchoolLogoCandidates[0] || null"
           :school-logo-candidates="resolvedSchoolLogoCandidates"
-          @announcement-click="handleAnnouncementClick"
+          :latest-announcement="latestAnnouncement"
+          @announcement-click="showAnnouncementSheet = true"
         />
       </Transition>
 
@@ -220,6 +221,13 @@
         </TransitionGroup>
       </div>
     </div>
+
+    <!-- Announcement Sheet -->
+    <AnnouncementSheet
+      :is-open="showAnnouncementSheet"
+      :announcements="publishedAnnouncements"
+      @close="showAnnouncementSheet = false"
+    />
   </div>
 </template>
 
@@ -231,6 +239,7 @@ import StandardHeader from '@/components/desktop/dashboard/StandardHeader.vue'
 import Breadcrumbs from '@/components/desktop/dashboard/Breadcrumbs.vue'
 import UniversityBanner from '@/components/desktop/dashboard/UniversityBanner.vue'
 import EventsCard from '@/components/desktop/dashboard/EventsCard.vue'
+import AnnouncementSheet from '@/components/mobile/dashboard/AnnouncementSheet.vue'
 import { useAuth } from '@/composables/useAuth.js'
 
 import { applyTheme, loadTheme, secondaryAuraLogo } from '@/config/theme.js'
@@ -258,11 +267,16 @@ const isMobileAiOpen = ref(false)
 const mobileInputEl = ref(null)
 const router = useRouter()
 const route = useRoute()
-const { currentUser, schoolSettings, events, hasAttendanceForEvent, hasOpenAttendanceForEvent } = useDashboardSession()
+const { currentUser, schoolSettings, events, announcements, unreadAnnouncements, hasAttendanceForEvent, hasOpenAttendanceForEvent } = useDashboardSession()
 const authMeta = useStoredAuthMeta()
 const activeUser = computed(() => props.preview ? studentDashboardPreviewData.user : currentUser.value)
 const activeSchoolSettings = computed(() => props.preview ? studentDashboardPreviewData.schoolSettings : schoolSettings.value)
 const activeEvents = computed(() => props.preview ? studentDashboardPreviewData.events : events.value)
+const activeAnnouncements = computed(() => props.preview ? [] : announcements.value)
+const publishedAnnouncements = computed(() => activeAnnouncements.value.filter(a => a.status === 'published'))
+const latestAnnouncement = computed(() => publishedAnnouncements.value[0] || null)
+
+const showAnnouncementSheet = ref(false)
 
 const resolvedSchoolName = computed(() => (
   activeSchoolSettings.value?.school_name ||
@@ -445,9 +459,6 @@ const filteredEvents = computed(() => {
 
 const upcomingEvents = computed(() => filteredEvents.value)
 
-const unreadAnnouncements = computed(() =>
-  0
-)
 
 const { logout } = useAuth()
 async function handleLogout() {

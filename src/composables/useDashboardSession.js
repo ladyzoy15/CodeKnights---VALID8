@@ -11,6 +11,8 @@ import {
     getEvents,
     getMyAttendance,
     getSchoolSettings,
+    getGovernanceUnits,
+    getGovernanceAnnouncements,
     resolveApiBaseUrl,
     updateUser,
 } from '@/services/backendApi.js'
@@ -35,6 +37,7 @@ const state = reactive({
     user: null,
     schoolSettings: null,
     events: [],
+    announcements: [],
     attendanceRecords: [],
     faceStatus: null,
     initialized: false,
@@ -99,6 +102,7 @@ function persistDashboardSnapshot() {
             user: state.user,
             schoolSettings: state.schoolSettings,
             events: state.events,
+            announcements: state.announcements || [],
             attendanceRecords: state.attendanceRecords,
             faceStatus: state.faceStatus,
             limitedMode: false,
@@ -130,6 +134,7 @@ function applyDashboardSnapshot(snapshot, token = state.token) {
     state.user = snapshot.user ?? null
     state.schoolSettings = snapshot.schoolSettings ?? null
     state.events = Array.isArray(snapshot.events) ? sortEvents(snapshot.events.map(normalizeEvent).filter(Boolean)) : []
+    state.announcements = Array.isArray(snapshot.announcements) ? sortAnnouncements(snapshot.announcements) : []
     state.attendanceRecords = Array.isArray(snapshot.attendanceRecords) ? snapshot.attendanceRecords : []
     state.faceStatus = snapshot.faceStatus ?? null
     state.limitedMode = Boolean(snapshot.limitedMode)
@@ -179,6 +184,12 @@ function sortEvents(events) {
         const bRank = statusRank[b?.status] ?? 99
         if (aRank !== bRank) return aRank - bRank
         return new Date(a?.start_datetime ?? 0) - new Date(b?.start_datetime ?? 0)
+    })
+}
+
+function sortAnnouncements(announcements) {
+    return [...announcements].sort((a, b) => {
+        return new Date(b?.created_at || 0) - new Date(a?.created_at || 0)
     })
 }
 
@@ -275,6 +286,7 @@ function resetDashboardState() {
     state.user = null
     state.schoolSettings = null
     state.events = []
+    state.announcements = []
     state.attendanceRecords = []
     state.faceStatus = null
     state.initialized = false
@@ -385,16 +397,34 @@ async function fetchDashboardData() {
 
         const shouldLoadPrivilegedFaceStatus = isPrivilegedFaceUser(user)
 
-        const [settingsResult, eventsResult, attendanceResult, faceStatusResult] = await Promise.allSettled([
+        const [settingsResult, eventsResult, attendanceResult, faceStatusResult, unitsResult] = await Promise.allSettled([
             getSchoolSettings(state.apiBaseUrl, state.token),
             getEvents(state.apiBaseUrl, state.token, { limit: 200 }),
             getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }),
             shouldLoadPrivilegedFaceStatus
                 ? getFaceStatus(state.apiBaseUrl, state.token)
                 : Promise.resolve(null),
+            getGovernanceUnits(state.apiBaseUrl, state.token),
         ])
 
         const schoolId = Number(user?.school_id)
+
+        // Fetch announcements for the school's SSG unit
+        let announcements = []
+        if (unitsResult.status === 'fulfilled') {
+            const ssgUnit = (unitsResult.value || []).find(u => 
+                Number(u.school_id) === schoolId && 
+                String(u.unit_type).toUpperCase() === 'SSG'
+            )
+            if (ssgUnit) {
+                try {
+                    announcements = await getGovernanceAnnouncements(state.apiBaseUrl, state.token, ssgUnit.id)
+                } catch (e) {
+                    console.warn('Failed to fetch announcements:', e)
+                }
+            }
+        }
+
         const nextEvents = eventsResult.status === 'fulfilled' && Array.isArray(eventsResult.value)
             ? eventsResult.value
                 .map(normalizeEvent)
@@ -407,6 +437,7 @@ async function fetchDashboardData() {
             ? settingsResult.value
             : buildFallbackSchoolSettings(authMeta)
         state.events = sortEvents(nextEvents)
+        state.announcements = sortAnnouncements(announcements)
         state.attendanceRecords = attendanceResult.status === 'fulfilled' && Array.isArray(attendanceResult.value)
             ? attendanceResult.value
             : []
@@ -763,9 +794,10 @@ export function useDashboardSession() {
         events: computed(() => state.events),
         attendanceRecords: computed(() => state.attendanceRecords),
         faceStatus: computed(() => state.faceStatus),
+        announcements: computed(() => state.announcements),
         limitedMode: computed(() => state.limitedMode),
         needsFaceRegistration: computed(() => sessionNeedsFaceRegistration()),
-        unreadAnnouncements: computed(() => 0),
+        unreadAnnouncements: computed(() => state.announcements.filter(a => a.status === 'published').length),
         initializeDashboardSession,
         refreshAttendanceRecords,
         replaceAttendanceRecordsForEvent,
