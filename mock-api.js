@@ -861,16 +861,27 @@ app.patch('/governance/requests/:id', async (req, res) => {
   }
 });
 
-app.post('/api/events/:eventId/excuse-letters', async (req, res) => {
+app.post('/events/:eventId/excuse-letters', async (req, res) => {
   const { eventId } = req.params;
   console.log(`[POST] /api/events/${eventId}/excuse-letters`);
   await parseBody(req);
   const payload = req.body;
 
+  const studentId = payload.student_id || payload.studentId;
+  
+  // Check if an excuse letter already exists for this student and event
+  const existingLetter = (db.data.excuse_letters || []).find(
+    e => String(e.studentId) === String(studentId) && String(e.eventId) === String(eventId)
+  );
+
+  if (existingLetter) {
+    return res.status(409).json({ error: 'You have already submitted an excuse letter for this event.' });
+  }
+
   const nextId = Math.max(0, ...(db.data.excuse_letters || []).map(e => Number(e.id) || 0)) + 1;
   const newLetter = {
     id: nextId,
-    studentId: payload.student_id || payload.studentId, // Handle both cases
+    studentId: studentId,
     eventId: Number(eventId),
     status: 'Pending',
     reason: payload.reason,
@@ -886,7 +897,7 @@ app.post('/api/events/:eventId/excuse-letters', async (req, res) => {
   res.status(201).json(newLetter);
 });
 
-app.get('/api/excuse-letters', (req, res) => {
+app.get('/excuse_letters', (req, res) => {
   const queryString = req.url.split('?')[1] ?? '';
   const params = new URLSearchParams(queryString);
   const scope = params.get('scope');
@@ -907,7 +918,7 @@ app.get('/api/excuse-letters', (req, res) => {
   res.json(letters);
 });
 
-app.patch('/api/excuse-letters/:id/review', async (req, res) => {
+app.patch('/excuse_letters/:id/review', async (req, res) => {
   const { id } = req.params;
   console.log(`[PATCH] /api/excuse-letters/${id}/review`);
   await parseBody(req);
