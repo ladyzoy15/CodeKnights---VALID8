@@ -6,13 +6,8 @@
       class="dashboard-enter dashboard-enter--1"
       :avatar-url="activeUser?.avatar_url || activeUser?.student_profile?.photo_url"
       :school-name="resolvedSchoolName"
-<<<<<<< HEAD
       :display-name="(activeUser?.first_name || '') + ' ' + (activeUser?.last_name || '')"
       :initials="(activeUser?.first_name?.[0] || '') + (activeUser?.last_name?.[0] || '')"
-=======
-      :display-name="activeUser?.first_name + ' ' + activeUser?.last_name"
-      :initials="activeUser?.first_name?.[0] + activeUser?.last_name?.[0]"
->>>>>>> Aura_update3
       @logout="handleLogout"
       @toggle-notifications="showNotifications = !showNotifications"
     />
@@ -104,10 +99,7 @@ const {
   unreadAnnouncements,
 } = useDashboardSession()
 const { fetchStudentLetters, letters: excuseLetters, hasLetterForEvent } = useExcuseLetters()
-<<<<<<< HEAD
 const { logout } = useAuth()
-=======
->>>>>>> Aura_update3
 
 const showNotifications = ref(false)
 const isExcuseModalOpen = ref(false)

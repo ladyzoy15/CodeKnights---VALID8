@@ -11,7 +11,6 @@ import {
     getEvents,
     getMyAttendance,
     getSchoolSettings,
-    getAnnouncements,
     getGovernanceUnits,
     getGovernanceAnnouncements,
     resolveApiBaseUrl,
@@ -41,7 +40,6 @@ const state = reactive({
     announcements: [],
     attendanceRecords: [],
     announcements: [],
-    isRefreshingAnnouncements: false,
     faceStatus: null,
     initialized: false,
     loading: false,
@@ -410,17 +408,15 @@ async function fetchDashboardData() {
         const shouldLoadPrivilegedFaceStatus = isPrivilegedFaceUser(user)
 
         console.log('[DashboardSession] Fetching data for school_id:', user?.school_id)
-        const [settingsResult, eventsResult, attendanceResult, faceStatusResult, announcementsResult, unitsResult] = await Promise.allSettled([
+        const [settingsResult, eventsResult, attendanceResult, faceStatusResult, unitsResult] = await Promise.allSettled([
             getSchoolSettings(state.apiBaseUrl, state.token),
             getEvents(state.apiBaseUrl, state.token, { limit: 200 }),
             getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }),
             shouldLoadPrivilegedFaceStatus
                 ? getFaceStatus(state.apiBaseUrl, state.token)
                 : Promise.resolve(null),
-            getAnnouncements(state.apiBaseUrl, state.token, { school_id: user?.school_id }),
             getGovernanceUnits(state.apiBaseUrl, state.token),
         ])
-        console.log('[DashboardSession] Announcements result:', announcementsResult.status)
 
         const schoolId = Number(user?.school_id)
 
@@ -456,11 +452,7 @@ async function fetchDashboardData() {
             ? attendanceResult.value
             : []
         
-        let regularAnnouncements = announcementsResult.status === 'fulfilled' && Array.isArray(announcementsResult.value)
-            ? announcementsResult.value.map(normalizeAnnouncement).filter(Boolean).filter(a => a.status === 'published' || !a.status)
-            : []
-
-        state.announcements = sortAnnouncements([...regularAnnouncements, ...announcements])
+        state.announcements = sortAnnouncements(announcements)
         state.faceStatus = faceStatusResult.status === 'fulfilled' && faceStatusResult.value
             ? faceStatusResult.value
             : {
@@ -539,15 +531,8 @@ export async function initializeDashboardSession(force = false) {
     if (!force && !state.initialized) {
         const cachedState = hydrateDashboardStateFromCache(storedToken)
         if (cachedState.hydrated) {
-            // Always re-fetch announcements in background regardless of cache freshness
             if (!cachedState.stale) {
-                // Start background fetch so announcements always come from server
-                if (!initPromise) {
-                    initPromise = fetchDashboardData().finally(() => {
-                        initPromise = null
-                    })
-                }
-                return initPromise
+                return state
             }
 
             if (!initPromise) {
@@ -625,42 +610,6 @@ export function upsertAttendanceRecordSnapshot(record) {
     return replaceAttendanceRecordsForEvent(normalizedEventId, [record])
 }
 
-export async function refreshAnnouncements() {
-    // Wait for session to initialize if it's in progress
-    if (initPromise && !state.initialized) {
-        console.log('[DashboardSession] Waiting for session init before refreshing announcements...')
-        try { await initPromise } catch { /* ignore */ }
-    }
-
-    const apiBaseUrl = state.apiBaseUrl
-    const token = state.token
-
-    // Fallback: get school_id from stored auth meta if user isn't populated yet
-    const schoolId = state.user?.school_id ?? getStoredAuthMeta()?.schoolId ?? null
-
-    console.log('[DashboardSession] refreshAnnouncements - token:', !!token, 'school_id:', schoolId)
-    if (!apiBaseUrl || !token || !schoolId) {
-        console.warn('[DashboardSession] refreshAnnouncements: missing required state, skipping.')
-        return
-    }
-
-    state.isRefreshingAnnouncements = true
-    try {
-        const announcements = await getAnnouncements(apiBaseUrl, token, { school_id: schoolId })
-        console.log('[DashboardSession] Fetched announcements count:', announcements?.length)
-        state.announcements = sortAnnouncements(
-            (announcements || [])
-                .map(normalizeAnnouncement)
-                .filter(Boolean)
-                .filter(a => a.status === 'published' || !a.status)
-        )
-        persistDashboardSnapshot()
-    } catch (e) {
-        console.error('[DashboardSession] Refresh failed:', e)
-    } finally {
-        state.isRefreshingAnnouncements = false
-    }
-}
 export async function refreshSchoolSettings() {
     if (!state.token) return null
 
@@ -857,13 +806,11 @@ export function useDashboardSession() {
         events: computed(() => state.events),
         attendanceRecords: computed(() => state.attendanceRecords),
         announcements: computed(() => state.announcements),
-        isRefreshingAnnouncements: computed(() => state.isRefreshingAnnouncements),
         faceStatus: computed(() => state.faceStatus),
         limitedMode: computed(() => state.limitedMode),
         needsFaceRegistration: computed(() => sessionNeedsFaceRegistration()),
         unreadAnnouncements: computed(() => state.announcements.length),
         initializeDashboardSession,
-        refreshAnnouncements,
         refreshAttendanceRecords,
         replaceAttendanceRecordsForEvent,
         upsertAttendanceRecordSnapshot,
