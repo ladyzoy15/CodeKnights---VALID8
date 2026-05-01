@@ -30,7 +30,9 @@
           <span class="flex items-center justify-center w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors">
             <ArrowRight :size="14" color="var(--color-nav-text)" :stroke-width="2.5" />
           </span>
-        <span class="text-[12px] font-semibold" style="color: var(--color-nav-text);">Latest Announcement</span>
+        <span class="text-[12px] font-semibold truncate max-w-[140px]" style="color: var(--color-nav-text);">
+          Latest Announcement
+        </span>
         </button>
     </div>
 
@@ -79,6 +81,10 @@ const props = defineProps({
   apiBaseUrl: {
     type: String,
     default: '',
+  },
+  latestAnnouncement: {
+    type: Object,
+    default: null,
   },
 })
 

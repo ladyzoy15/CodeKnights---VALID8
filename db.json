@@ -152,6 +152,20 @@
       ],
       "is_active": true,
       "school_id": 4
+    },
+    {
+      "id": "12",
+      "email": "trudge@gmail.com",
+      "password": "trudge123",
+      "first_name": "trudge",
+      "last_name": "insong",
+      "middle_name": "sabido",
+      "roles": [
+        "school_IT"
+      ],
+      "is_active": true,
+      "school_id": 5,
+      "created_at": "2026-05-01T12:00:42.206Z"
     }
   ],
   "schools": [
@@ -206,6 +220,20 @@
       "active_status": true,
       "created_at": "2026-04-05T06:54:07.376Z",
       "updated_at": "2026-04-05T06:54:07.376Z"
+    },
+    {
+      "id": "5",
+      "school_id": 5,
+      "school_name": "trudge",
+      "school_code": null,
+      "primary_color": "#000000",
+      "secondary_color": "#ffffff",
+      "accent_color": "#000000",
+      "logo_url": null,
+      "subscription_status": "trial",
+      "active_status": true,
+      "created_at": "2026-05-01T12:00:42.206Z",
+      "updated_at": "2026-05-01T12:00:42.206Z"
     }
   ],
   "departments": [
@@ -383,12 +411,112 @@
   "audit_logs": [],
   "notification_logs": [],
   "governance_requests": [],
-  "excuse_letters": [],
-  "announcements": [],
-  "$schema": "./node_modules/json-server/schema.json",
+  "excuse_letters": [
+    {
+      "id": "1",
+      "studentId": 3,
+      "eventId": 1,
+      "status": "Approved",
+      "reason": "skdsddsdsdsd",
+      "attachmentUrl": null,
+      "submittedAt": "2026-05-01T09:09:37.860Z",
+      "reviewedBy": 8,
+      "reviewerRemarks": null,
+      "reviewedAt": "2026-05-01T09:10:17.063Z"
+    },
+    {
+      "id": "2",
+      "studentId": 3,
+      "eventId": 0,
+      "status": "Approved",
+      "reason": "xcxcxcx",
+      "attachmentUrl": "mock-url-00.jpg",
+      "submittedAt": "2026-05-01T10:17:20.753Z",
+      "reviewedBy": 8,
+      "reviewerRemarks": null,
+      "reviewedAt": "2026-05-01T11:14:55.702Z"
+    },
+    {
+      "id": "3",
+      "studentId": 3,
+      "eventId": 0,
+      "status": "Rejected",
+      "reason": "cxcxcxc",
+      "attachmentUrl": null,
+      "submittedAt": "2026-05-01T10:17:36.193Z",
+      "reviewedBy": 8,
+      "reviewerRemarks": "lupak",
+      "reviewedAt": "2026-05-01T11:15:12.363Z"
+    },
+    {
+      "id": "4",
+      "studentId": 3,
+      "eventId": 0,
+      "status": "Pending",
+      "reason": "jjjj",
+      "attachmentUrl": null,
+      "submittedAt": "2026-05-01T10:20:27.711Z",
+      "reviewedBy": null,
+      "reviewerRemarks": null
+    },
+    {
+      "id": "5",
+      "studentId": 3,
+      "eventId": 2,
+      "status": "Approved",
+      "reason": "fggffgf",
+      "attachmentUrl": "mock-url-00.jpg",
+      "submittedAt": "2026-05-01T10:32:55.225Z",
+      "reviewedBy": 8,
+      "reviewerRemarks": null,
+      "reviewedAt": "2026-05-01T10:33:44.918Z"
+    }
+  ],
+  "announcements": [
+    {
+      "title": "lupak",
+      "body": "dd",
+      "status": "published",
+      "id": "1",
+      "governance_unit_id": 1,
+      "created_at": "2026-04-30T15:40:22.746Z"
+    },
+    {
+      "title": "ddd",
+      "body": "ddd",
+      "status": "published",
+      "id": "2",
+      "governance_unit_id": 1,
+      "created_at": "2026-04-30T15:52:54.121Z"
+    },
+    {
+      "title": "patotoya",
+      "body": "ddd",
+      "status": "published",
+      "id": "3",
+      "governance_unit_id": 1,
+      "created_at": "2026-04-30T16:50:08.344Z"
+    },
+    {
+      "title": "new",
+      "body": "ajkakajjdjdjdjdjdjdjdjdjsjdjskdjskdjskjdkskdjsdskdjskjjdskjdksdksjdksjdksdsjdskdjskjdskdjkjdksjfasofhioffjfdkjdkk k jk jkt   s  ewo ppdfdpffjd  sdkgjdskgjsdkgjsdkgjskgsdjkgksdgjskdgdskjgdjddjksdkjoeiweoweoess\n]fddkgdgg\n\ndjgdgjdkgj\n\nfffdjdkgj",
+      "status": "published",
+      "id": "4",
+      "governance_unit_id": 1,
+      "created_at": "2026-04-30T16:55:35.417Z"
+    },
+    {
+      "title": "trudge",
+      "body": "lupak",
+      "status": "published",
+      "id": "5",
+      "governance_unit_id": 1,
+      "created_at": "2026-05-01T02:30:33.385Z"
+    }
+  ],
   "governance_members": [
     {
-      "id": 1,
+      "id": "1",
       "governance_unit_id": 1,
       "user_id": 4,
       "position_title": "President",
@@ -401,7 +529,7 @@
       ]
     },
     {
-      "id": 2,
+      "id": "2",
       "governance_unit_id": 1,
       "user_id": 5,
       "position_title": "Secretary",
@@ -411,7 +539,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": "3",
       "governance_unit_id": 2,
       "user_id": 6,
       "position_title": "President",
@@ -425,5 +553,6 @@
     }
   ],
   "assistant_conversations": [],
-  "assistant_messages": []
+  "assistant_messages": [],
+  "$schema": "./node_modules/json-server/schema.json"
 }

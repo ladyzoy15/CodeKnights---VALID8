@@ -155,12 +155,9 @@
           :school-name="resolvedSchoolName"
           :school-logo="schoolLogoCandidates[0] || null"
           :school-logo-candidates="schoolLogoCandidates"
-<<<<<<< HEAD
-          :latest-announcement="latestAnnouncement"
-=======
->>>>>>> Aura_update3
           :api-base-url="apiBaseUrl"
-          @announcement-click="handleAnnouncementClick"
+          :latest-announcement="latestAnnouncement"
+          @announcement-click="showAnnouncementSheet = true"
         />
       </Transition>
 
@@ -220,34 +217,24 @@
         </TransitionGroup>
       </div>
     </div>
-<<<<<<< HEAD
+
     <!-- Announcement Sheet -->
     <AnnouncementSheet
-      :is-open="showAnnouncements"
-      :announcements="announcements"
-      :is-refreshing="isRefreshingAnnouncements"
-      @close="showAnnouncements = false"
+      :is-open="showAnnouncementSheet"
+      :announcements="publishedAnnouncements"
+      @close="showAnnouncementSheet = false"
     />
-=======
->>>>>>> Aura_update3
   </div>
 </template>
 
 <script setup>
-<<<<<<< HEAD
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
-=======
 import { ref, computed, watch, nextTick } from 'vue'
->>>>>>> Aura_update3
 import { useRoute, useRouter } from 'vue-router'
 import { Search, Send } from 'lucide-vue-next'
 import TopBar from '@/components/mobile/dashboard/TopBar.vue'
 import UniversityBanner from '@/components/mobile/dashboard/UniversityBanner.vue'
 import EventsCard from '@/components/mobile/dashboard/EventsCard.vue'
-<<<<<<< HEAD
 import AnnouncementSheet from '@/components/mobile/dashboard/AnnouncementSheet.vue'
-=======
->>>>>>> Aura_update3
 
 import { applyTheme, loadTheme, secondaryAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'
@@ -269,47 +256,21 @@ const props = defineProps({
 const searchQuery = ref('')
 const eventSearchInputAttrs = createSearchFieldAttrs('student-event-search')
 const showNotifications = ref(false)
-<<<<<<< HEAD
-const showAnnouncements = ref(false)
-=======
->>>>>>> Aura_update3
 const isMobileAiOpen = ref(false)
 const mobileInputEl = ref(null)
 const router = useRouter()
 const route = useRoute()
-<<<<<<< HEAD
-const { 
-  currentUser, 
-  schoolSettings, 
-  events, 
-  announcements,
-  isRefreshingAnnouncements,
-  unreadAnnouncements: unreadCount,
-  refreshAnnouncements,
-  hasAttendanceForEvent, 
-  hasOpenAttendanceForEvent, 
-  apiBaseUrl 
-} = useDashboardSession()
-
-onMounted(async () => {
-  // Only refresh if announcements are empty (router guard already fetched on first load)
-  if (!announcements.value.length) {
-    await refreshAnnouncements()
-  }
-})
-=======
-const { currentUser, schoolSettings, events, hasAttendanceForEvent, hasOpenAttendanceForEvent, apiBaseUrl } = useDashboardSession()
->>>>>>> Aura_update3
+const { currentUser, schoolSettings, events, announcements, unreadAnnouncements, hasAttendanceForEvent, hasOpenAttendanceForEvent, apiBaseUrl } = useDashboardSession()
 const authMeta = useStoredAuthMeta()
 const activeUser = computed(() => props.preview ? studentDashboardPreviewData.user : currentUser.value)
 const activeSchoolSettings = computed(() => props.preview ? studentDashboardPreviewData.schoolSettings : schoolSettings.value)
 const activeEvents = computed(() => props.preview ? studentDashboardPreviewData.events : events.value)
+const activeAnnouncements = computed(() => props.preview ? [] : announcements.value)
+const publishedAnnouncements = computed(() => activeAnnouncements.value.filter(a => a.status === 'published'))
+const latestAnnouncement = computed(() => publishedAnnouncements.value[0] || null)
 
-<<<<<<< HEAD
-const latestAnnouncement = computed(() => announcements.value[0] || null)
+const showAnnouncementSheet = ref(false)
 
-=======
->>>>>>> Aura_update3
 const resolvedSchoolName = computed(() => (
   activeSchoolSettings.value?.school_name ||
   activeUser.value?.school_name ||
@@ -491,13 +452,6 @@ const filteredEvents = computed(() => {
 
 const upcomingEvents = computed(() => filteredEvents.value)
 
-<<<<<<< HEAD
-const unreadAnnouncements = computed(() => unreadCount.value)
-=======
-const unreadAnnouncements = computed(() =>
-  0
-)
->>>>>>> Aura_update3
 
 // --- Formatters ---
 function formatMonth(dt) {
@@ -523,17 +477,10 @@ function normalizeStatus(status) {
 }
 
 // --- Handlers ---
-<<<<<<< HEAD
-async function handleAnnouncementClick() {
-  if (props.preview) return
-  await refreshAnnouncements()
-  showAnnouncements.value = true
-=======
 function handleAnnouncementClick() {
   if (props.preview) return
   // TODO: navigate to announcements page or open modal
   console.log('Announcement clicked')
->>>>>>> Aura_update3
 }
 
 function handleSeeEvent(event) {
