@@ -19,6 +19,8 @@ __pycache__/
 
 # Node / frontend builds
 node_modules/
+Frontend/node_modules/
+Frontend/dist/
 frontend-web/node_modules/
 frontend-web/dist/
 frontend-web/dist-ssr/

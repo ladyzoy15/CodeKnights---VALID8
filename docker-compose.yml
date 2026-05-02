@@ -1,11 +1,6 @@
 # =============================================================================
 # Aura — Single Compose File
-# Usage:
-#   Development:  docker compose --profile dev up --build
-#   Production:   docker compose --profile prod up --build
-#
-# Each service loads its own .env file from its subfolder.
-# Copy each service's .env.example to .env and fill in the values before running.
+# Hybrid Merge: Backend (pilot-merge) + Frontend (mr.frontend_v7)
 # =============================================================================
 
 x-backend-volumes: &backend-volumes
@@ -40,6 +35,18 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    profiles: ["dev", "prod"]
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    environment:
+      - MP_DATABASE=/data/mailpit.db
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    volumes:
+      - mailpit_data:/data
     profiles: ["dev", "prod"]
 
   # ---------------------------------------------------------------------------
@@ -153,6 +160,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+    profiles: ["dev", "prod"]
+
+  frontend:
+    build:
+      context: ./Frontend
+    image: aura-frontend:${APP_ENV:-dev}
+    ports:
+      - "5173:80"
+    env_file:
+      - ./Frontend/.env
+    depends_on:
+      backend:
+        condition: service_healthy
+      assistant:
+        condition: service_started
     restart: unless-stopped
     profiles: ["dev", "prod"]
 
