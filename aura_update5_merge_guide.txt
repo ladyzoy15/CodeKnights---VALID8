@@ -1,0 +1,22 @@
+AURA_UPDATE5 MERGE DOCUMENTATION
+==============================
+
+OBJECTIVE:
+To integrate the modernized UI and dynamic branding from 'mr.frontend_v7' into the 'Aura_update4' base branch.
+
+STEPS TAKEN:
+1. Created branch 'Aura_update5' from 'Aura_update4'.
+2. Merged 'mr.frontend_v7' into 'Aura_update5'.
+3. Resolved conflicts in:
+   - Frontend/src/composables/useDashboardSession.js (Integrated new session logic)
+   - Frontend/src/services/backendApi.js (Mapped governance API endpoints)
+   - .env (Synchronized database and mailpit settings)
+4. Verified build status via 'npm run build' in the Frontend directory.
+
+KEY FEATURES ADDED:
+- Automatic Branding: UI colors now sync with the school logo.
+- Modernized Modules: Improved layouts for Excuse Letters and Announcements.
+- Desktop/Mobile Split: Optimized navigation for both platforms.
+
+STATUS:
+Functional, verified, and pushed to 'ladyzoy15' repository.
