@@ -189,14 +189,13 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { LoaderCircle, Upload } from 'lucide-vue-next'
-import SchoolItTopHeader from '@/components/dashboard/SchoolItTopHeader.vue'
+import SchoolItTopHeader from '@/components/mobile/dashboard/SchoolItTopHeader.vue'
 import { useAuth } from '@/composables/useAuth.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
 import { schoolItPreviewData } from '@/data/schoolItPreview.js'
 import { resolveBackendMediaUrl, withMediaCacheKey } from '@/services/backendMedia.js'
 import { updateSchoolBranding } from '@/services/backendApi.js'
-import { extractDominantColors } from '@/utils/colorExtractor.js'
 
 const props = defineProps({
   preview: {
@@ -361,23 +360,9 @@ async function handleLogoChange(event) {
     validateLogoFile(file)
     updateLocalLogoPreview(file)
 
-    try {
-      const colors = await extractDominantColors(file, 2)
-      if (colors && colors.length >= 1) {
-        draft.primary_color = colors[0]
-        if (colors.length >= 2) {
-          draft.secondary_color = colors[1]
-        }
-      }
-    } catch (e) {
-      console.error('Failed to extract colors', e)
-    }
-
     if (props.preview) {
       previewSettings.logo_url = localLogoUrl.value
-      previewSettings.primary_color = draft.primary_color
-      previewSettings.secondary_color = draft.secondary_color
-      pushFeedback('success', 'University logo and colors updated in preview.')
+      pushFeedback('success', 'University logo updated in preview.')
       return
     }
 
