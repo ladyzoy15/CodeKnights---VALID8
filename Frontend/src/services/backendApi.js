@@ -479,6 +479,33 @@ export async function deleteEvent(baseUrl, token, eventId, params = {}) {
     }, [404, 405])
 }
 
+export async function getExcuseLetters(baseUrl, token, params = {}) {
+    const payload = await request(baseUrl, '/api/attendance/excuse-letters', {
+        method: 'GET',
+        token,
+        params,
+    })
+    return Array.isArray(payload) ? payload : []
+}
+
+export async function submitExcuseLetter(baseUrl, token, eventId, payload) {
+    return request(baseUrl, `/api/attendance/events/${eventId}/excuse-letters`, {
+        method: 'POST',
+        token,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
+}
+
+export async function reviewExcuseLetter(baseUrl, token, letterId, payload) {
+    return request(baseUrl, `/api/attendance/excuse-letters/${letterId}/review`, {
+        method: 'POST',
+        token,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
+}
+
 export async function getUsers(baseUrl, token, params = {}) {
     const payload = await requestWithFallback(baseUrl, ['/api/users/', '/users/'], {
         method: 'GET',

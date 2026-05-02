@@ -393,3 +393,32 @@ export function applyTheme(theme) {
     updateDocumentThemeColor(bgColor)
     syncNativeStatusBar(bgColor)
 }
+
+/**
+ * Force light mode appearance (useful for specific pages like Login/Registration).
+ * Does not change the user's permanent dark mode preference.
+ */
+export function applyLightOverride() {
+  const root = document.documentElement
+  root.dataset.themeOverride = 'light'
+  
+  if (currentActiveTheme) {
+    // Re-apply theme without dark mode transformation
+    const previousDarkMode = isDarkMode.value
+    isDarkMode.value = false
+    applyTheme(currentActiveTheme)
+    isDarkMode.value = previousDarkMode
+  }
+}
+
+/**
+ * Remove any theme override and restore the user's preferred mode.
+ */
+export function removeLightOverride() {
+  const root = document.documentElement
+  delete root.dataset.themeOverride
+  
+  if (currentActiveTheme) {
+    applyTheme(currentActiveTheme)
+  }
+}

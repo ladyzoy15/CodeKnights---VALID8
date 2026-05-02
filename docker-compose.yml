@@ -1,4 +1,4 @@
-name: codeknights20-Aura_update4
+name: codeknights20-Aura_update5
 
 services:
   db:
@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: fastapi_db
     ports:
       # Expose Postgres on 5433 to avoid conflicts with any local Windows PostgreSQL service.
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker-init:/docker-entrypoint-initdb.d
@@ -24,7 +24,7 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   mailpit:
     image: axllent/mailpit:v1.27
@@ -32,8 +32,8 @@ services:
     environment:
       - MP_DATABASE=/data/mailpit.db
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "1026:1025"
+      - "8026:8025"
     volumes:
       - mailpit_data:/data
 
@@ -70,7 +70,7 @@ services:
   backend:
     image: rizal-backend:local
     ports:
-      - "8000:8000"
+      - "8001:8000"
     env_file:
       - ./.env
     environment:
@@ -176,7 +176,7 @@ services:
     build:
       context: ./Frontend
     ports:
-      - "5173:80"
+      - "5174:80"
     environment:
       - PORT=80
       - BACKEND_ORIGIN=${BACKEND_ORIGIN:-http://backend:8000}
@@ -213,7 +213,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin123
     ports:
-      - "5050:80"
+      - "5051:80"
     depends_on:
       db:
         condition: service_healthy
@@ -228,10 +228,10 @@ services:
              echo '-------------------------------------------------------' &&
              echo '   🚀 AURA SYSTEM IS READY!' &&
              echo '-------------------------------------------------------' &&
-             echo 'Frontend:        http://localhost:5173' &&
-             echo 'Backend API:     http://localhost:8000' &&
-             echo 'pgAdmin (DB):    http://localhost:5050 (admin@example.com / admin123)' &&
-             echo 'Mailpit (Email): http://localhost:8025' &&
+             echo 'Frontend:        http://localhost:5174' &&
+             echo 'Backend API:     http://localhost:8001' &&
+             echo 'pgAdmin (DB):    http://localhost:5051 (admin@example.com / admin123)' &&
+             echo 'Mailpit (Email): http://localhost:8026' &&
              echo 'Database Port:   5433 (for external tools)' &&
              echo '-------------------------------------------------------'"
 
