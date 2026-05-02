@@ -1,7 +1,11 @@
+<!--
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+Purpose: School IT Branding and Preview Settings
+-->
 <template>
   <section class="school-it-settings">
     <div class="school-it-settings__shell">
-      <SchoolItTopHeader
+      <StandardHeader
         :avatar-url="avatarUrl"
         :school-name="schoolName"
         :display-name="displayName"
@@ -10,177 +14,181 @@
       />
 
       <div class="school-it-settings__body">
-        <section class="school-it-settings__preview-card dashboard-enter dashboard-enter--1">
-          <p class="school-it-settings__preview-label">UI Preview</p>
-
-          <div
-            class="school-it-settings__phone"
-            :class="{
-              'school-it-settings__phone--dark': previewMode === 'dark',
-              'school-it-settings__phone--light': previewMode === 'light',
-              'school-it-settings__phone--animating': previewAnimating,
-            }"
-          >
-            <div class="school-it-settings__phone-top">
-              <span class="school-it-settings__phone-pill school-it-settings__phone-pill--short" />
-            </div>
-
-            <div class="school-it-settings__phone-middle">
-              <span class="school-it-settings__phone-pill school-it-settings__phone-pill--wide" />
-              <span
-                class="school-it-settings__phone-pill school-it-settings__phone-pill--accent"
-                :style="{ backgroundColor: draft.secondary_color }"
-              />
-            </div>
+        <div class="school-it-settings__preview-column">
+          <section class="school-it-settings__preview-card dashboard-enter dashboard-enter--1">
+            <p class="school-it-settings__preview-label">UI Preview</p>
 
             <div
-              class="school-it-settings__phone-card school-it-settings__phone-card--primary"
-              :style="{ backgroundColor: draft.primary_color }"
-            />
-
-            <div class="school-it-settings__phone-card school-it-settings__phone-card--surface" />
-
-            <div class="school-it-settings__phone-nav">
-              <span class="school-it-settings__phone-nav-dot" />
-              <span class="school-it-settings__phone-nav-triangle" />
-              <span class="school-it-settings__phone-nav-slot" />
-            </div>
-          </div>
-
-          <div class="school-it-settings__mode-switch" role="tablist" aria-label="Preview mode">
-            <span
-              class="school-it-settings__mode-thumb"
-              :class="{ 'school-it-settings__mode-thumb--dark': previewMode === 'dark' }"
-              aria-hidden="true"
-            />
-            <button
-              class="school-it-settings__mode-button"
-              :class="{ 'school-it-settings__mode-button--active': previewMode === 'light' }"
-              type="button"
-              @click="setPreviewMode('light')"
+              class="school-it-settings__phone"
+              :class="{
+                'school-it-settings__phone--dark': previewMode === 'dark',
+                'school-it-settings__phone--light': previewMode === 'light',
+                'school-it-settings__phone--animating': previewAnimating,
+              }"
             >
-              Light
-            </button>
-            <button
-              class="school-it-settings__mode-button"
-              :class="{ 'school-it-settings__mode-button--active': previewMode === 'dark' }"
-              type="button"
-              @click="setPreviewMode('dark')"
-            >
-              Dark
-            </button>
-          </div>
-        </section>
+              <div class="school-it-settings__phone-top">
+                <span class="school-it-settings__phone-pill school-it-settings__phone-pill--short" />
+              </div>
 
-        <section class="school-it-settings__logo-card dashboard-enter dashboard-enter--2">
-          <div class="school-it-settings__logo-copy">
-            <div class="school-it-settings__logo-mark">
-              <img
-                v-if="logoDisplaySrc"
-                :src="logoDisplaySrc"
-                alt="University Logo"
-                class="school-it-settings__logo-image"
-              >
-              <span v-else class="school-it-settings__logo-fallback">{{ schoolInitials }}</span>
-            </div>
+              <div class="school-it-settings__phone-middle">
+                <span class="school-it-settings__phone-pill school-it-settings__phone-pill--wide" />
+                <span
+                  class="school-it-settings__phone-pill school-it-settings__phone-pill--accent"
+                  :style="{ backgroundColor: draft.secondary_color }"
+                />
+              </div>
 
-            <span class="school-it-settings__logo-label">University Logo</span>
-          </div>
-
-          <button
-            class="school-it-settings__icon-action"
-            type="button"
-            :disabled="isSavingLogo || controlsDisabled"
-            aria-label="Upload university logo"
-            @click="openLogoPicker"
-          >
-            <LoaderCircle v-if="isSavingLogo" :size="18" class="school-it-settings__spinner" />
-            <Upload v-else :size="20" />
-          </button>
-
-          <input
-            ref="logoInputEl"
-            class="sr-only"
-            type="file"
-            accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"
-            @change="handleLogoChange"
-          >
-        </section>
-
-        <section class="school-it-settings__color-grid dashboard-enter dashboard-enter--3">
-          <article class="school-it-settings__color-card">
-            <div class="school-it-settings__color-top">
-              <span
-                class="school-it-settings__color-swatch"
+              <div
+                class="school-it-settings__phone-card school-it-settings__phone-card--primary"
                 :style="{ backgroundColor: draft.primary_color }"
               />
 
-              <div class="school-it-settings__color-copy">
-                <span class="school-it-settings__color-title">Primary</span>
-                <span class="school-it-settings__color-title">Color</span>
+              <div class="school-it-settings__phone-card school-it-settings__phone-card--surface" />
+
+              <div class="school-it-settings__phone-nav">
+                <span class="school-it-settings__phone-nav-dot" />
+                <span class="school-it-settings__phone-nav-triangle" />
+                <span class="school-it-settings__phone-nav-slot" />
               </div>
             </div>
 
-            <button
-              class="school-it-settings__action-pill"
-              type="button"
-              :disabled="isSavingPrimary || controlsDisabled"
-              @click="openColorPicker('primary')"
-            >
-              {{ isSavingPrimary ? 'Saving...' : 'Select Color' }}
-            </button>
-
-            <input
-              ref="primaryInputEl"
-              class="sr-only"
-              type="color"
-              :value="draft.primary_color"
-              @input="handleColorInput('primary', $event)"
-            >
-          </article>
-
-          <article class="school-it-settings__color-card">
-            <div class="school-it-settings__color-top">
+            <div class="school-it-settings__mode-switch" role="tablist" aria-label="Preview mode">
               <span
-                class="school-it-settings__color-swatch"
-                :style="{ backgroundColor: draft.secondary_color }"
+                class="school-it-settings__mode-thumb"
+                :class="{ 'school-it-settings__mode-thumb--dark': previewMode === 'dark' }"
+                aria-hidden="true"
               />
+              <button
+                class="school-it-settings__mode-button"
+                :class="{ 'school-it-settings__mode-button--active': previewMode === 'light' }"
+                type="button"
+                @click="setPreviewMode('light')"
+              >
+                Light
+              </button>
+              <button
+                class="school-it-settings__mode-button"
+                :class="{ 'school-it-settings__mode-button--active': previewMode === 'dark' }"
+                type="button"
+                @click="setPreviewMode('dark')"
+              >
+                Dark
+              </button>
+            </div>
+          </section>
+        </div>
 
-              <div class="school-it-settings__color-copy">
-                <span class="school-it-settings__color-title">Secondary</span>
-                <span class="school-it-settings__color-title">Color</span>
+        <div class="school-it-settings__controls-column">
+          <section class="school-it-settings__logo-card dashboard-enter dashboard-enter--2">
+            <div class="school-it-settings__logo-copy">
+              <div class="school-it-settings__logo-mark">
+                <img
+                  v-if="logoDisplaySrc"
+                  :src="logoDisplaySrc"
+                  alt="University Logo"
+                  class="school-it-settings__logo-image"
+                >
+                <span v-else class="school-it-settings__logo-fallback">{{ schoolInitials }}</span>
               </div>
+
+              <span class="school-it-settings__logo-label">University Logo</span>
             </div>
 
             <button
-              class="school-it-settings__action-pill"
+              class="school-it-settings__icon-action"
               type="button"
-              :disabled="isSavingSecondary || controlsDisabled"
-              @click="openColorPicker('secondary')"
+              :disabled="isSavingLogo || controlsDisabled"
+              aria-label="Upload university logo"
+              @click="openLogoPicker"
             >
-              {{ isSavingSecondary ? 'Saving...' : 'Select Color' }}
+              <LoaderCircle v-if="isSavingLogo" :size="18" class="school-it-settings__spinner" />
+              <Upload v-else :size="20" />
             </button>
 
             <input
-              ref="secondaryInputEl"
+              ref="logoInputEl"
               class="sr-only"
-              type="color"
-              :value="draft.secondary_color"
-              @input="handleColorInput('secondary', $event)"
+              type="file"
+              accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"
+              @change="handleLogoChange"
             >
-          </article>
-        </section>
+          </section>
 
-        <p
-          v-if="feedback.message"
-          class="school-it-settings__feedback dashboard-enter dashboard-enter--4"
-          :class="{
-            'school-it-settings__feedback--error': feedback.type === 'error',
-            'school-it-settings__feedback--success': feedback.type === 'success',
-          }"
-        >
-          {{ feedback.message }}
-        </p>
+          <section class="school-it-settings__color-grid dashboard-enter dashboard-enter--3">
+            <article class="school-it-settings__color-card">
+              <div class="school-it-settings__color-top">
+                <span
+                  class="school-it-settings__color-swatch"
+                  :style="{ backgroundColor: draft.primary_color }"
+                />
+
+                <div class="school-it-settings__color-copy">
+                  <span class="school-it-settings__color-title">Primary</span>
+                  <span class="school-it-settings__color-title">Color</span>
+                </div>
+              </div>
+
+              <button
+                class="school-it-settings__action-pill"
+                type="button"
+                :disabled="isSavingPrimary || controlsDisabled"
+                @click="openColorPicker('primary')"
+              >
+                {{ isSavingPrimary ? 'Saving...' : 'Select Color' }}
+              </button>
+
+              <input
+                ref="primaryInputEl"
+                class="sr-only"
+                type="color"
+                :value="draft.primary_color"
+                @input="handleColorInput('primary', $event)"
+              >
+            </article>
+
+            <article class="school-it-settings__color-card">
+              <div class="school-it-settings__color-top">
+                <span
+                  class="school-it-settings__color-swatch"
+                  :style="{ backgroundColor: draft.secondary_color }"
+                />
+
+                <div class="school-it-settings__color-copy">
+                  <span class="school-it-settings__color-title">Secondary</span>
+                  <span class="school-it-settings__color-title">Color</span>
+                </div>
+              </div>
+
+              <button
+                class="school-it-settings__action-pill"
+                type="button"
+                :disabled="isSavingSecondary || controlsDisabled"
+                @click="openColorPicker('secondary')"
+              >
+                {{ isSavingSecondary ? 'Saving...' : 'Select Color' }}
+              </button>
+
+              <input
+                ref="secondaryInputEl"
+                class="sr-only"
+                type="color"
+                :value="draft.secondary_color"
+                @input="handleColorInput('secondary', $event)"
+              >
+            </article>
+          </section>
+
+          <p
+            v-if="feedback.message"
+            class="school-it-settings__feedback dashboard-enter dashboard-enter--4"
+            :class="{
+              'school-it-settings__feedback--error': feedback.type === 'error',
+              'school-it-settings__feedback--success': feedback.type === 'success',
+            }"
+          >
+            {{ feedback.message }}
+          </p>
+        </div>
       </div>
     </div>
   </section>
@@ -189,14 +197,13 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { LoaderCircle, Upload } from 'lucide-vue-next'
-import SchoolItTopHeader from '@/components/dashboard/SchoolItTopHeader.vue'
+import StandardHeader from '@/components/desktop/dashboard/StandardHeader.vue'
 import { useAuth } from '@/composables/useAuth.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
 import { schoolItPreviewData } from '@/data/schoolItPreview.js'
 import { resolveBackendMediaUrl, withMediaCacheKey } from '@/services/backendMedia.js'
 import { updateSchoolBranding } from '@/services/backendApi.js'
-import { extractDominantColors } from '@/utils/colorExtractor.js'
 
 const props = defineProps({
   preview: {
@@ -361,23 +368,9 @@ async function handleLogoChange(event) {
     validateLogoFile(file)
     updateLocalLogoPreview(file)
 
-    try {
-      const colors = await extractDominantColors(file, 2)
-      if (colors && colors.length >= 1) {
-        draft.primary_color = colors[0]
-        if (colors.length >= 2) {
-          draft.secondary_color = colors[1]
-        }
-      }
-    } catch (e) {
-      console.error('Failed to extract colors', e)
-    }
-
     if (props.preview) {
       previewSettings.logo_url = localLogoUrl.value
-      previewSettings.primary_color = draft.primary_color
-      previewSettings.secondary_color = draft.secondary_color
-      pushFeedback('success', 'University logo and colors updated in preview.')
+      pushFeedback('success', 'University logo updated in preview.')
       return
     }
 
@@ -519,7 +512,8 @@ function abbreviateName(value, maxLetters = 4) {
 <style scoped>
 .school-it-settings{min-height:100vh;padding:30px 28px 120px;font-family:'Manrope',sans-serif}
 .school-it-settings__shell{width:100%;max-width:1120px;margin:0 auto}
-.school-it-settings__body{display:flex;flex-direction:column;gap:18px;max-width:560px;margin:24px auto 0}
+.school-it-settings__body{display:grid;grid-template-columns:340px 1fr;gap:40px;max-width:1000px;margin:24px auto 0}
+.school-it-settings__preview-column,.school-it-settings__controls-column{display:flex;flex-direction:column;gap:18px}
 .school-it-settings__preview-card,.school-it-settings__logo-card,.school-it-settings__color-card{background:var(--color-surface);border-radius:32px;box-shadow:0 18px 40px rgba(15,23,42,.04)}
 .school-it-settings__preview-card{padding:18px 18px 16px;display:flex;flex-direction:column;align-items:center}
 .school-it-settings__preview-label{margin:0 0 10px;font-size:12px;font-weight:500;line-height:1;color:var(--color-text-secondary)}
@@ -582,6 +576,11 @@ function abbreviateName(value, maxLetters = 4) {
   0%{transform:scale(.975) translate3d(0,3px,0)}
   58%{transform:scale(1.012) translate3d(0,0,0)}
   100%{transform:scale(1) translate3d(0,0,0)}
+}
+
+@media (max-width: 900px){
+  .school-it-settings__body{display:flex;flex-direction:column;gap:18px;max-width:560px;margin:24px auto 0}
+  .school-it-settings__preview-column,.school-it-settings__controls-column{display:contents}
 }
 
 @media (max-width: 767px){
