@@ -12,6 +12,11 @@ function getRoutePath(routeOrPath = '') {
   return String(routeOrPath || '')
 }
 
+export function isGovernancePreviewPath(path = '') {
+  const normalizedPath = getRoutePath(path)
+  return normalizedPath.startsWith('/exposed/governance') || normalizedPath.startsWith('/exposed/sg')
+}
+
 function resolveContextFromPath(path = '') {
   const normalizedPath = getRoutePath(path)
 
@@ -55,13 +60,26 @@ export function isPreviewWorkspaceContext(routeOrContext = null) {
   return context.endsWith('_preview')
 }
 
-export function isCouncilWorkspaceContext(routeOrContext = null) {
+export function hasGovernancePreviewAccess(routeOrContext = null) {
   const context = normalizeContext(
     typeof routeOrContext === 'string'
       ? routeOrContext
       : resolveWorkspaceContext(routeOrContext)
   )
-  return context === 'sg' || context === 'sg_preview'
+  return context === 'sg_preview' || context === 'governance_preview'
+}
+
+export function isGovernanceWorkspaceContext(routeOrContext = null) {
+  const context = normalizeContext(
+    typeof routeOrContext === 'string'
+      ? routeOrContext
+      : resolveWorkspaceContext(routeOrContext)
+  )
+  return context === 'sg' || context === 'sg_preview' || context === 'governance' || context === 'governance_preview'
+}
+
+export function isCouncilWorkspaceContext(routeOrContext = null) {
+  return isGovernanceWorkspaceContext(routeOrContext)
 }
 
 export function resolveStudentHomeLocation(routeOrPath = null) {
@@ -70,10 +88,104 @@ export function resolveStudentHomeLocation(routeOrPath = null) {
     : { name: 'Home' }
 }
 
-export function resolveCouncilWorkspaceLocation(routeOrPath = null) {
+export function isGatherWelcomePath(path = '') {
+  const normalizedPath = getRoutePath(path)
+  return normalizedPath.includes('/gather') && !normalizedPath.includes('/attendance')
+}
+
+export function resolveGatherWelcomeLocation(routeOrPath = null) {
+  const context = resolveWorkspaceContext(routeOrPath)
+  switch (context) {
+    case 'dashboard_preview':
+      return { name: 'PreviewGatherWelcome' }
+    case 'sg':
+    case 'governance':
+      return { name: 'SgGatherWelcome' }
+    default:
+      return { name: 'GatherWelcome' }
+  }
+}
+
+export function resolveGatherAttendanceLocation(routeOrPath = null) {
+  const context = resolveWorkspaceContext(routeOrPath)
+  switch (context) {
+    case 'dashboard_preview':
+      return { name: 'PreviewGatherAttendance' }
+    case 'sg':
+    case 'governance':
+      return { name: 'SgGatherAttendance' }
+    default:
+      return { name: 'GatherAttendance' }
+  }
+}
+
+export function resolveGatherEntryLocation(routeOrPath = null) {
+  const context = resolveWorkspaceContext(routeOrPath)
+  switch (context) {
+    case 'dashboard_preview':
+      return { name: 'PreviewGatherWelcome' }
+    case 'sg':
+    case 'governance':
+      return { name: 'SgGatherWelcome' }
+    default:
+      return { name: 'GatherWelcome' }
+  }
+}
+
+export function resolveChatLocation(routeOrPath = null) {
+  const context = resolveWorkspaceContext(routeOrPath)
+  switch (context) {
+    case 'admin':
+      return { name: 'AdminAuraChat' }
+    case 'admin_preview':
+      return { name: 'PreviewAdminAuraChat' }
+    case 'workspace':
+      return { name: 'SchoolItAuraChat' }
+    case 'workspace_preview':
+      return { name: 'PreviewSchoolItAuraChat' }
+    case 'sg':
+    case 'governance':
+      return { name: 'SgAuraChat' }
+    case 'sg_preview':
+    case 'governance_preview':
+      return { name: 'PreviewSgAuraChat' }
+    case 'dashboard_preview':
+      return { name: 'PreviewDashboardAuraChat' }
+    default:
+      return { name: 'AuraChat' }
+  }
+}
+
+export function resolveWorkspaceHomeLocation(routeOrPath = null) {
+  const context = resolveWorkspaceContext(routeOrPath)
+  switch (context) {
+    case 'admin':
+      return { name: 'AdminHome' }
+    case 'admin_preview':
+      return { name: 'PreviewAdminHome' }
+    case 'workspace':
+      return { name: 'SchoolItHome' }
+    case 'workspace_preview':
+      return { name: 'PreviewSchoolItHome' }
+    case 'sg':
+    case 'governance':
+      return { name: 'SgDashboard' }
+    case 'sg_preview':
+    case 'governance_preview':
+      return { name: 'PreviewSgDashboard' }
+    default:
+      return resolveStudentHomeLocation(routeOrPath)
+  }
+}
+
+export function resolveGovernanceWorkspaceLocation(routeOrPath = null) {
   return isPreviewWorkspaceContext(routeOrPath)
     ? { name: 'PreviewSgDashboard' }
     : { name: 'SgDashboard' }
+}
+
+export function resolveCouncilWorkspaceLocation(routeOrPath = null) {
+  return resolveGovernanceWorkspaceLocation(routeOrPath)
 }
 
 export function resolveEventListLocation(routeOrPath = null) {
@@ -146,6 +258,17 @@ export function resolveBackFallbackLocation(routeOrPath = null, options = {}) {
   }
 
   return resolveStudentHomeLocation(routeOrPath)
+}
+
+export function withPreservedGovernancePreviewQuery(route = null, target = null) {
+  if (!route || !target) return target
+  const query = route.query || {}
+
+  if (!query.preview && !query.unit && !query.variant) return target
+
+  const targetObj = typeof target === 'string' ? { path: target } : { ...target }
+  targetObj.query = { ...query, ...(targetObj.query || {}) }
+  return targetObj
 }
 
 export function hasNavigableHistory(routeOrPath = null) {
