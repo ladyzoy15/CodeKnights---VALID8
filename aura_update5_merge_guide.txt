@@ -1,22 +1,57 @@
-AURA_UPDATE5 MERGE DOCUMENTATION
-==============================
+AURA_UPDATE5: DETAILED MERGE PROCESS & TROUBLESHOOTING
+===================================================
 
-OBJECTIVE:
-To integrate the modernized UI and dynamic branding from 'mr.frontend_v7' into the 'Aura_update4' base branch.
+1. MERGE OVERVIEW
+-----------------
+The goal was to synchronize the 'Aura_update4' (base) with 'mr.frontend_v7' (modernized UI).
+Branch Created: Aura_update5
+Source Branch: Aura_update4
+Merge Target: mr.frontend_v7
 
-STEPS TAKEN:
-1. Created branch 'Aura_update5' from 'Aura_update4'.
-2. Merged 'mr.frontend_v7' into 'Aura_update5'.
-3. Resolved conflicts in:
-   - Frontend/src/composables/useDashboardSession.js (Integrated new session logic)
-   - Frontend/src/services/backendApi.js (Mapped governance API endpoints)
-   - .env (Synchronized database and mailpit settings)
-4. Verified build status via 'npm run build' in the Frontend directory.
+2. STEP-BY-STEP PROCESS
+-----------------------
+Step 1: Branch Preparation
+   - Switched to Aura_update4.
+   - Created and checked out Aura_update5: `git checkout -b Aura_update5`.
 
-KEY FEATURES ADDED:
-- Automatic Branding: UI colors now sync with the school logo.
-- Modernized Modules: Improved layouts for Excuse Letters and Announcements.
-- Desktop/Mobile Split: Optimized navigation for both platforms.
+Step 2: Integration
+   - Merged the modernized frontend: `git merge mr.frontend_v7`.
+   - This triggered several logical conflicts due to different session handling patterns.
 
-STATUS:
-Functional, verified, and pushed to 'ladyzoy15' repository.
+Step 3: Conflict Resolution (Manual)
+   - 'useDashboardSession.js': Reconciled the new role-based access control with the existing session storage.
+   - 'backendApi.js': Re-mapped missing announcement endpoints that were renamed in the v7 cleanup.
+   - '.env': Synchronized database URLs and seeding configurations.
+
+Step 4: Build Verification
+   - Ran `npm run build` inside the Frontend directory to ensure production readiness.
+   - Verified that the 'PlatformView' router was correctly loading desktop/mobile versions.
+
+Step 5: Deployment & Documentation
+   - Updated `docker-compose.yml` to reflect the new branch name and port mappings (5174, 8001).
+   - Generated documentation artifacts (docx, txt, md).
+   - Pushed final state to 'ladyzoy15' repository.
+
+3. ERRORS & CHALLENGES ENCOUNTERED
+----------------------------------
+Error A: Session Logic Conflict
+   - Cause: v7 introduced a read-only state pattern while Aura_update4 used a reactive store.
+   - Fix: Integrated the reactive Pinia store into the v7 platform views.
+
+Error B: Missing API Methods
+   - Cause: Several helper functions like `getAnnouncements` were pruned in the v7 branch.
+   - Fix: Restored the necessary API mappings in `src/services/backendApi.js`.
+
+Error C: .env Synchronization
+   - Cause: Conflict between `SEED_WIPE_EXISTING=true` (upstream) and `false` (local).
+   - Fix: Manually forced `true` to ensure a clean state for testing.
+
+Error D: File Permission (merge_summary.docx)
+   - Cause: Background process (Word) was locking the file during creation.
+   - Fix: Generated a new unique file path and ensured processes were closed.
+
+4. FINAL VERIFICATION
+---------------------
+- UI Consistency: Confirmed that Dynamic Branding (color extraction) is functional.
+- Platform Routing: Desktop and Mobile layouts load correctly based on screen size.
+- Repository: 'Aura_update5' is now the primary active development branch.
