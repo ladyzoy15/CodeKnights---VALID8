@@ -74,7 +74,7 @@ import {
   getDefaultAuthenticatedRoute,
   initializeDashboardSession,
 } from '@/composables/useDashboardSession.js'
-import { applyTheme, loadTheme, applyLightOverride, removeLightOverride } from '@/config/theme.js'
+import { applyTheme, loadTheme } from '@/config/theme.js'
 import {
   getFaceStatus,
   resolveApiBaseUrl,
@@ -262,13 +262,11 @@ function describeAntiSpoofReason(reason) {
 }
 
 onMounted(async () => {
-  applyLightOverride()
   applyPrivilegedTheme()
   await ensurePendingPrivilegedFace()
 })
 
 onBeforeUnmount(() => {
-  removeLightOverride()
   clearTimers()
   stopFaceDetection()
   stopCamera()

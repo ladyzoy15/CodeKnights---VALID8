@@ -60,7 +60,7 @@ import { useRouter } from 'vue-router'
 import { ArrowRight } from 'lucide-vue-next'
 import { useAuth } from '@/composables/useAuth.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import { applyTheme, loadTheme, applyLightOverride, removeLightOverride } from '@/config/theme.js'
+import { applyTheme, loadTheme } from '@/config/theme.js'
 import { registerStudentFace } from '@/services/backendApi.js'
 import { initFaceScanDetector, resetFaceScanDetector } from '@/composables/useFaceScanDetector.js'
 import { getStoredAuthMeta, patchStoredAuthMeta } from '@/services/localAuth.js'
@@ -223,7 +223,6 @@ watch(
 )
 
 onMounted(() => {
-  applyLightOverride()
   applyRegistrationTheme()
   if (!needsFaceRegistration.value) {
     router.replace({ name: 'Home' })
@@ -231,7 +230,6 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  removeLightOverride()
   clearTimers()
   stopFaceDetection()
   stopCamera()

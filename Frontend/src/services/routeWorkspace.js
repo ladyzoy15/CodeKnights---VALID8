@@ -12,21 +12,16 @@ function getRoutePath(routeOrPath = '') {
   return String(routeOrPath || '')
 }
 
-export function isGovernancePreviewPath(path = '') {
-  const normalizedPath = getRoutePath(path)
-  return normalizedPath.startsWith('/exposed/governance') || normalizedPath.startsWith('/exposed/sg')
-}
-
 function resolveContextFromPath(path = '') {
   const normalizedPath = getRoutePath(path)
 
   if (normalizedPath.startsWith('/exposed/admin')) return 'admin_preview'
   if (normalizedPath.startsWith('/exposed/workspace')) return 'workspace_preview'
-  if (normalizedPath.startsWith('/exposed/sg') || normalizedPath.startsWith('/exposed/governance')) return 'sg_preview'
+  if (normalizedPath.startsWith('/exposed/sg')) return 'sg_preview'
   if (normalizedPath.startsWith('/exposed/dashboard')) return 'dashboard_preview'
   if (normalizedPath.startsWith('/admin')) return 'admin'
   if (normalizedPath.startsWith('/workspace')) return 'workspace'
-  if (normalizedPath.startsWith('/sg') || normalizedPath.startsWith('/governance')) return 'sg'
+  if (normalizedPath.startsWith('/sg')) return 'sg'
   if (normalizedPath.startsWith('/dashboard')) return 'dashboard'
   return 'dashboard'
 }
@@ -69,14 +64,6 @@ export function isCouncilWorkspaceContext(routeOrContext = null) {
   return context === 'sg' || context === 'sg_preview'
 }
 
-export function isGovernanceWorkspaceContext(routeOrContext = null) {
-  return isCouncilWorkspaceContext(routeOrContext)
-}
-
-export function hasGovernancePreviewAccess(routeOrPath = null) {
-  return isPreviewWorkspaceContext(routeOrPath) && isCouncilWorkspaceContext(routeOrPath)
-}
-
 export function resolveStudentHomeLocation(routeOrPath = null) {
   return isPreviewWorkspaceContext(routeOrPath)
     ? { name: 'PreviewHome' }
@@ -87,10 +74,6 @@ export function resolveCouncilWorkspaceLocation(routeOrPath = null) {
   return isPreviewWorkspaceContext(routeOrPath)
     ? { name: 'PreviewSgDashboard' }
     : { name: 'SgDashboard' }
-}
-
-export function resolveGovernanceWorkspaceLocation(routeOrPath = null) {
-  return resolveCouncilWorkspaceLocation(routeOrPath)
 }
 
 export function resolveEventListLocation(routeOrPath = null) {
@@ -165,56 +148,6 @@ export function resolveBackFallbackLocation(routeOrPath = null, options = {}) {
   return resolveStudentHomeLocation(routeOrPath)
 }
 
-export function resolveChatLocation(routeOrPath = null) {
-  const context = resolveWorkspaceContext(routeOrPath)
-  switch (context) {
-    case 'admin': return { name: 'AdminAuraChat' }
-    case 'admin_preview': return { name: 'PreviewAdminAuraChat' }
-    case 'workspace': return { name: 'SchoolItAuraChat' }
-    case 'workspace_preview': return { name: 'PreviewSchoolItAuraChat' }
-    case 'sg': return { name: 'SgAuraChat' }
-    case 'sg_preview': return { name: 'PreviewSgAuraChat' }
-    case 'dashboard_preview': return { name: 'PreviewDashboardAuraChat' }
-    default: return { name: 'AuraChat' }
-  }
-}
-
-export function resolveGatherAttendanceLocation(routeOrPath = null) {
-  return isPreviewWorkspaceContext(routeOrPath)
-    ? { name: 'PreviewGatherAttendance' }
-    : { name: 'GatherAttendance' }
-}
-
-export function isGatherWelcomePath(path = '') {
-  const normalizedPath = getRoutePath(path)
-  return normalizedPath.includes('/gather') && !normalizedPath.includes('/attendance')
-}
-
-export function resolveGatherWelcomeLocation(routeOrPath = null) {
-  return isPreviewWorkspaceContext(routeOrPath)
-    ? { name: 'PreviewGatherWelcome' }
-    : { name: 'GatherWelcome' }
-}
-
-export function resolveGatherEntryLocation(routeOrPath = null) {
-  return resolveGatherWelcomeLocation(routeOrPath)
-}
-
-export function withPreservedGovernancePreviewQuery(route = null, target = null) {
-  if (!route || !target) return target
-  const query = route.query || {}
-  
-  // Use .preview or .unit as signals for governance preview persistence
-  if (!query.preview && !query.unit) return target
-
-  const targetObj = typeof target === 'string' ? { path: target } : { ...target }
-  
-  // Merge existing query into target, but target's own query takes precedence if set
-  targetObj.query = { ...query, ...(targetObj.query || {}) }
-  
-  return targetObj
-}
-
 export function hasNavigableHistory(routeOrPath = null) {
   if (typeof window === 'undefined') return false
 
@@ -222,26 +155,4 @@ export function hasNavigableHistory(routeOrPath = null) {
   const backTarget = window.history.state?.back
 
   return Boolean(backTarget && backTarget !== currentPath)
-}
-
-export function resolveWorkspaceHomeLocation(routeOrPath = null) {
-  const context = resolveWorkspaceContext(routeOrPath)
-  switch (context) {
-    case 'admin':
-      return { name: 'AdminHome' }
-    case 'admin_preview':
-      return { name: 'PreviewAdminHome' }
-    case 'workspace':
-      return { name: 'SchoolItHome' }
-    case 'workspace_preview':
-      return { name: 'PreviewSchoolItHome' }
-    case 'sg':
-      return { name: 'SgDashboard' }
-    case 'sg_preview':
-      return { name: 'PreviewSgDashboard' }
-    case 'dashboard_preview':
-      return { name: 'PreviewHome' }
-    default:
-      return { name: 'Home' }
-  }
 }

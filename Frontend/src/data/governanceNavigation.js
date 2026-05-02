@@ -6,7 +6,6 @@ import {
   Megaphone,
   ShieldCheck,
   UsersRound,
-  FileText,
 } from 'lucide-vue-next'
 
 const SECTION_DEFINITIONS = {
@@ -95,23 +94,6 @@ const SECTION_DEFINITIONS = {
       'Keep structural governance tools separate from student-facing screens.',
     ],
   },
-  excuse_letters: {
-    key: 'excuse_letters',
-    navLabel: 'Excuse Letters',
-    route: '/governance/excuse-letters',
-    previewRoute: '/exposed/governance/excuse-letters',
-    navIcon: FileText,
-    panelIcon: FileText,
-    title: 'Excuse Letters',
-    description: 'Review and manage submitted excuse letters from students.',
-    placeholderTitle: 'Excuse Letters',
-    placeholderDescription: 'Manage student excuse letter submissions here.',
-    featureList: [
-      'Review pending excuse letters.',
-      'Approve or reject submissions with remarks.',
-      'View history of resolved letters.',
-    ],
-  },
 }
 
 export const governanceSectionOrder = [
@@ -119,7 +101,6 @@ export const governanceSectionOrder = [
   'events',
   'reports',
   'students',
-  'excuse_letters',
   'governance',
 ]
 

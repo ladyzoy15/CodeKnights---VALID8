@@ -781,7 +781,7 @@ const subscriptionOptions = ['active', 'trial', 'suspended']
 .admin-view__ghost--primary{background:var(--color-secondary);color:var(--color-secondary-text)}
 .admin-view__feedback{margin:16px 0 0;padding:14px 18px;border-radius:22px;background:rgba(255,255,255,.8);font-size:14px;font-weight:600}
 .admin-view__feedback--success{color:#166534}.admin-view__feedback--error{color:#B42318}
-.admin-view__stack,.admin-view__list{display:flex;flex-direction:column;gap:18px;margin-top:18px}.admin-view__grid{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:18px}
+.admin-view__stack,.admin-view__list{display:flex;flex-direction:column;gap:18px}
 .admin-view__metrics,.admin-view__grid,.admin-view__form-grid,.admin-view__profile{display:grid;gap:16px}
 .admin-view__metrics{grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px}
 .admin-view__grid{grid-template-columns:repeat(2,minmax(0,1fr))}

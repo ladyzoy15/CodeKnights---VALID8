@@ -8,7 +8,6 @@ import {
     ShieldCheck,
     UserRound,
     UsersRound,
-    FileText,
 } from 'lucide-vue-next'
 import { getGovernanceNavigationItems } from '@/data/governanceNavigation.js'
 
@@ -16,7 +15,6 @@ export const dashboardNavigationItems = [
     { name: 'Home', route: '/dashboard', icon: House },
     { name: 'Schedule', route: '/dashboard/schedule', icon: CalendarDays },
     { name: 'Reports', route: '/dashboard/analytics', icon: PieChart },
-    { name: 'Excuse Letters', route: '/dashboard/excuse-letters', icon: FileText },
     { name: 'Sanctions', route: '/dashboard/sanctions', icon: ShieldAlert },
     { name: 'Profile', route: '/dashboard/profile', icon: UserRound },
 ]

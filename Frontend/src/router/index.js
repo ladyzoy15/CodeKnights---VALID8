@@ -49,8 +49,6 @@ const StudentSanctionsView = dashboardView('StudentSanctionsView')
 const GatherWelcomeView = dashboardView('GatherWelcomeView')
 const GatherAttendanceView = dashboardView('GatherAttendanceView')
 const AuraChatView = dashboardView('AuraChatView')
-const StudentExcuseLettersView = dashboardView('StudentExcuseLettersView')
-const SgExcuseLettersView = dashboardView('SgExcuseLettersView')
 
 const SgDashboardView = dashboardView('SgDashboardView')
 const SgMembersView = dashboardView('SgMembersView')
@@ -573,11 +571,6 @@ const routes = [
                 component: SgAttendanceView,
             },
             {
-                path: 'excuse-letters',
-                name: 'SgExcuseLetters',
-                component: SgExcuseLettersView,
-            },
-            {
                 path: 'create-unit',
                 name: 'SgCreateUnit',
                 component: SgCreateUnitView,
@@ -836,11 +829,6 @@ const routes = [
                 path: 'analytics',
                 name: 'Analytics',
                 component: AnalyticsView,
-            },
-            {
-                path: 'excuse-letters',
-                name: 'StudentExcuseLetters',
-                component: StudentExcuseLettersView,
             },
             {
                 path: 'sanctions',

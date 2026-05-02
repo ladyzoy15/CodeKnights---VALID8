@@ -121,10 +121,9 @@
 </template>
 
 <script setup>
-import { onBeforeMount, onMounted, onUnmounted } from 'vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import { surfaceAuraLogo, applyLightOverride, removeLightOverride } from '@/config/theme.js'
+import { surfaceAuraLogo } from '@/config/theme.js'
 import { useLoginViewModel } from '@/composables/useLoginViewModel.js'
 
 const {
@@ -137,14 +136,6 @@ const {
   handleLogin,
   openQuickAttendance,
 } = useLoginViewModel()
-
-onBeforeMount(() => {
-  applyLightOverride()
-})
-
-onUnmounted(() => {
-  removeLightOverride()
-})
 </script>
 
 <style scoped>
@@ -165,7 +156,6 @@ onUnmounted(() => {
 /* When keyboard is open (viewport shrinks), allow scrolling */
 .login-page {
   -webkit-overflow-scrolling: touch;
-  background-color: #EBEBEB !important; /* Force light background fallback */
 }
 
 .remember-row {
