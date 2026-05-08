@@ -143,6 +143,27 @@ export function resolveAttendanceLocation(routeOrPath = null, eventId = null) {
   }
 }
 
+export function withPreservedGovernancePreviewQuery(routeOrPath = null, targetLocation = null) {
+  if (!targetLocation || typeof targetLocation !== 'object') return targetLocation
+
+  const currentPath = getRoutePath(routeOrPath)
+  if (!currentPath.includes('/exposed/')) return targetLocation
+
+  const query = routeOrPath && typeof routeOrPath === 'object' ? { ...routeOrPath.query } : {}
+  const preservedQuery = {}
+
+  if (query.variant) preservedQuery.variant = query.variant
+  if (query.preview) preservedQuery.preview = query.preview
+
+  return {
+    ...targetLocation,
+    query: {
+      ...(targetLocation.query || {}),
+      ...preservedQuery,
+    },
+  }
+}
+
 export function resolveBackFallbackLocation(routeOrPath = null, options = {}) {
   const currentPath = getRoutePath(routeOrPath)
 
