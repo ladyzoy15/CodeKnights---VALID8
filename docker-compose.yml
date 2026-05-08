@@ -1,207 +1,241 @@
-# =============================================================================
-# Aura — Single Compose File
-# Usage:
-#   Development:  docker compose --profile dev up --build
-#   Production:   docker compose --profile prod up --build
-#
-# Each service loads its own .env file from its subfolder.
-# Copy each service's .env.example to .env and fill in the values before running.
-# =============================================================================
-
-x-backend-volumes: &backend-volumes
-  - import_storage:/app/storage/imports
-  - branding_storage:/app/storage/school_logos
-  - insightface_storage:/root/.insightface
-
+name: codeknights20-Aura_integrated
 services:
-
-  # ---------------------------------------------------------------------------
-  # Infrastructure
-  # ---------------------------------------------------------------------------
-
-  postgres:
-    build:
-      context: ./database
-    image: aura-postgres:latest
-    restart: unless-stopped
-    env_file:
-      - ./database/.env
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fastapi_db
     ports:
-      - "${DB_PORT:-5432}:5432"
+      # Expose Postgres on 5432 (Standard)
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker-init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d fastapi_db" ]
       interval: 5s
       timeout: 5s
-      retries: 10
-    profiles: ["dev", "prod"]
+      retries: 5
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
-    profiles: ["dev", "prod"]
+    restart: always
+    ports:
+      - "6379:6379"
 
-  # ---------------------------------------------------------------------------
-  # Init jobs — run once in order, then exit
-  # ---------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: always
+    environment:
+      - MP_DATABASE=/data/mailpit.db
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    volumes:
+      - mailpit_data:/data
 
   migrate:
     build:
       context: ./backend
-    image: aura-backend:${APP_ENV:-dev}
+    image: aura-backend:local
     command: alembic upgrade heads
     env_file:
-      - ./backend/.env
+      - ./.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+    volumes:
+      - ./backend:/app
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
     restart: "no"
-    profiles: ["dev", "prod"]
 
-  bootstrap:
-    image: aura-backend:${APP_ENV:-dev}
-    command: python bootstrap.py
+  seed:
+    image: aura-backend:local
+    command: python seeder/seed.py demo
     env_file:
-      - ./backend/.env
+      - ./.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+    volumes:
+      - .:/app
     depends_on:
       migrate:
         condition: service_completed_successfully
     restart: "no"
-    profiles: ["dev", "prod"]
-
-  seeder:
-    build:
-      context: .
-      dockerfile: ./seeder/Dockerfile
-    image: aura-seeder:${APP_ENV:-dev}
-    env_file:
-      - ./seeder/.env
-    depends_on:
-      bootstrap:
-        condition: service_completed_successfully
-    restart: "no"
-    profiles: ["dev", "prod"]
-
-  # ---------------------------------------------------------------------------
-  # Application services
-  # ---------------------------------------------------------------------------
 
   backend:
     build:
       context: ./backend
-    image: aura-backend:${APP_ENV:-dev}
+    image: aura-backend:local
     ports:
-      - "8001:8000"
+      - "8000:8000"
     env_file:
-      - ./backend/.env
-    volumes: *backend-volumes
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
+      - ./.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AUTH_ENABLE_MFA=false
+      - ALLOW_LIVENESS_BYPASS_WHEN_MODEL_MISSING=false
+      - LOGIN_URL=http://localhost:5173
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+      - UVICORN_WORKERS=1
+      - EVENT_STATUS_SYNC_ENABLED=${EVENT_STATUS_SYNC_ENABLED:-true}
+      - EVENT_STATUS_SYNC_INTERVAL_SECONDS=${EVENT_STATUS_SYNC_INTERVAL_SECONDS:-60}
+      - IMPORT_STORAGE_DIR=/tmp/valid8_imports
+      - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
+      - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
+      - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
+    volumes:
+      - ./backend:/app
+      - import_storage:/tmp/valid8_imports
+      - branding_storage:/tmp/valid8_school_logos
+      - insightface_models:/root/.insightface
     restart: unless-stopped
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_started
-      bootstrap:
+      seed:
         condition: service_completed_successfully
-    profiles: ["dev", "prod"]
 
   worker:
-    image: aura-backend:${APP_ENV:-dev}
-    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=4
+    image: aura-backend:local
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info
     env_file:
-      - ./backend/.env
-    volumes: *backend-volumes
+      - ./.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AUTH_ENABLE_MFA=false
+      - ALLOW_LIVENESS_BYPASS_WHEN_MODEL_MISSING=false
+      - LOGIN_URL=http://localhost:5173
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+      - EVENT_STATUS_SYNC_ENABLED=${EVENT_STATUS_SYNC_ENABLED:-true}
+      - EVENT_STATUS_SYNC_INTERVAL_SECONDS=${EVENT_STATUS_SYNC_INTERVAL_SECONDS:-60}
+      - IMPORT_STORAGE_DIR=/tmp/valid8_imports
+      - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
+      - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
+      - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
+    volumes:
+      - ./backend:/app
+      - import_storage:/tmp/valid8_imports
+      - branding_storage:/tmp/valid8_school_logos
     restart: unless-stopped
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_started
-      bootstrap:
+      seed:
         condition: service_completed_successfully
-    profiles: ["dev", "prod"]
 
   beat:
-    image: aura-backend:${APP_ENV:-dev}
-    command: celery -A app.workers.celery_app.celery_app beat --loglevel=info
+    image: aura-backend:local
+    command: celery -A app.workers.celery_app.celery_app beat --loglevel=info --schedule /tmp/celerybeat-schedule
     env_file:
-      - ./backend/.env
+      - ./.env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AUTH_ENABLE_MFA=false
+      - ALLOW_LIVENESS_BYPASS_WHEN_MODEL_MISSING=false
+      - LOGIN_URL=http://localhost:5173
+      - CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+      - EVENT_STATUS_SYNC_ENABLED=${EVENT_STATUS_SYNC_ENABLED:-true}
+      - EVENT_STATUS_SYNC_INTERVAL_SECONDS=${EVENT_STATUS_SYNC_INTERVAL_SECONDS:-60}
+      - IMPORT_STORAGE_DIR=/tmp/valid8_imports
+      - SCHOOL_LOGO_STORAGE_DIR=/tmp/valid8_school_logos
+      - SCHOOL_LOGO_MAX_FILE_SIZE_MB=2
+      - EMAIL_TRANSPORT=${EMAIL_TRANSPORT:-disabled}
+      - EMAIL_TIMEOUT_SECONDS=${EMAIL_TIMEOUT_SECONDS:-20}
+    volumes:
+      - ./backend:/app
+      - import_storage:/tmp/valid8_imports
+      - branding_storage:/tmp/valid8_school_logos
     restart: unless-stopped
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_started
-      bootstrap:
+      seed:
         condition: service_completed_successfully
-    profiles: ["dev", "prod"]
-
-  assistant:
-    build: ./assistant
-    image: aura-assistant:${APP_ENV:-dev}
-    ports:
-      - "8500:8500"
-    env_file:
-      - ./assistant/.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    profiles: ["dev", "prod"]
 
   frontend:
     build:
       context: ./frontend-web
-    image: aura-frontend:${APP_ENV:-dev}
     ports:
       - "5173:80"
-    env_file:
-      - ./frontend-web/.env
+    environment:
+      - PORT=80
+      - BACKEND_ORIGIN=${BACKEND_ORIGIN:-http://backend:8000}
+      - ASSISTANT_ORIGIN=${ASSISTANT_ORIGIN:-http://assistant:8500}
+      - AURA_API_BASE_URL=${AURA_API_BASE_URL:-/__backend__}
+      - AURA_API_TIMEOUT_MS=${AURA_API_TIMEOUT_MS:-15000}
+      - AURA_ASSISTANT_BASE_URL=${AURA_ASSISTANT_BASE_URL:-/__assistant__}
     depends_on:
-      backend:
+      - backend
+      - assistant
+    restart: unless-stopped
+
+  assistant:
+    build:
+      context: ./assistant
+    env_file:
+      - ./.env
+    environment:
+      - TENANT_DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+      - APP_DATABASE_URL=postgresql://postgres:postgres@db:5432/fastapi_db
+      - ASSISTANT_DB_URL=postgresql://postgres:postgres@db:5432/ai_assistant
+      - ASSISTANT_AUTO_MIGRATE=true
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - BACKEND_API_BASE_URL=${BACKEND_API_BASE_URL:-http://backend:8000}
+    depends_on:
+      db:
         condition: service_healthy
     restart: unless-stopped
-    profiles: ["dev", "prod"]
-
-  # ---------------------------------------------------------------------------
-  # Dev-only services
-  # ---------------------------------------------------------------------------
 
   pgadmin:
     image: dpage/pgadmin4
-    restart: unless-stopped
-    env_file:
-      - ./database/.env
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
     ports:
       - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
-    profiles: ["dev"]
 
-  log-viewer:
-    build: ./docker-log-viewer
-    image: aura-log-viewer:latest
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    profiles: ["dev"]
+  dashboard:
+    image: alpine
+    depends_on:
+      frontend:
+        condition: service_started
+    command: >
+      sh -c "echo ' ' &&
+             echo '-------------------------------------------------------' &&
+             echo '   🚀 AURA SYSTEM IS READY!' &&
+             echo '-------------------------------------------------------' &&
+             echo 'Frontend:        http://localhost:5173' &&
+             echo 'Backend API:     http://localhost:8000' &&
+             echo 'pgAdmin (DB):    http://localhost:5050 (admin@example.com / admin123)' &&
+             echo 'Mailpit (Email): http://localhost:8025' &&
+             echo 'Database Port:   5432 (for external tools)' &&
+             echo '-------------------------------------------------------'"
 
 volumes:
   postgres_data:
   import_storage:
   branding_storage:
-  insightface_storage:
-  pgadmin_data:
+  insightface_models:
   mailpit_data:
