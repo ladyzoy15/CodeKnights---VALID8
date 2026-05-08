@@ -1,13 +1,15 @@
-# Use official Python base image (3.11+ required by pinned dependencies like numpy==2.4.4)
 FROM python:3.11-slim
 
-# Set working directory inside the container
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-# Install build tools and CMake
-RUN apt-get update && apt-get install -y \
-    cmake \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    cmake \
+    curl \
     libglib2.0-0 \
     libgl1 \
     libsm6 \
@@ -15,17 +17,18 @@ RUN apt-get update && apt-get install -y \
     libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements.txt file into the container
+# Install python dependencies
 COPY requirements.txt .
-
-# Install the Python dependencies
 RUN pip install --default-timeout=100 --no-cache-dir -r requirements.txt
 
-# Copy all backend source code into the container
+# Copy application code
 COPY . .
 
-# Expose the port FastAPI will run on
+# Create non-root user
+RUN useradd --create-home --no-log-init appuser && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
-# Command to run the FastAPI app without hot reload so requests are not dropped mid-flight
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command (can be overridden in docker-compose)
+CMD ["sh", "/app/scripts/run-service.sh"]
