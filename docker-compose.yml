@@ -1,4 +1,4 @@
-name: codeknights20-Aura_update4
+name: codeknights20-Aura_update5
 
 services:
   db:
@@ -24,7 +24,7 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "6379:6379"
+      - "6380:6379"
 
   mailpit:
     image: axllent/mailpit:v1.27
@@ -32,8 +32,8 @@ services:
     environment:
       - MP_DATABASE=/data/mailpit.db
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "1026:1025"
+      - "8026:8025"
     volumes:
       - mailpit_data:/data
 
@@ -70,7 +70,7 @@ services:
   backend:
     image: rizal-backend:local
     ports:
-      - "8000:8000"
+      - "8001:8000"
     env_file:
       - ./.env
     environment:
@@ -176,7 +176,7 @@ services:
     build:
       context: ./Frontend
     ports:
-      - "5173:80"
+      - "5174:80"
     environment:
       - PORT=80
       - BACKEND_ORIGIN=${BACKEND_ORIGIN:-http://backend:8000}
@@ -213,7 +213,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin123
     ports:
-      - "5050:80"
+      - "5051:80"
     depends_on:
       db:
         condition: service_healthy
