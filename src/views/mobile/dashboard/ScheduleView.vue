@@ -39,10 +39,18 @@
           :is-attended="isEventAttended(event)"
           :attendance-record="getAttendanceRecord(event)"
           :event-time-status="getEventTimeStatusFor(event)"
+          :excuse-letter="hasLetterForEvent(event.id)"
           @click="handleEventClick"
           @open-detail="handleOpenDetail"
+          @submit-excuse="handleOpenExcuseModal"
         />
       </div>
+
+      <ExcuseLetterSubmitModal
+        v-model="isExcuseModalOpen"
+        :event="selectedEventForExcuse"
+        @submitted="handleExcuseSubmitted"
+      />
       
       <div v-else class="empty-state dashboard-enter dashboard-enter--3">
         <p>No events found for this category.</p>
@@ -57,9 +65,11 @@ import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EventCard from '@/components/mobile/dashboard/EventCard.vue'
 import TopBar from '@/components/mobile/dashboard/TopBar.vue'
+import ExcuseLetterSubmitModal from '@/components/desktop/events/ExcuseLetterSubmitModal.vue'
 
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
+import { useExcuseLetters } from '@/composables/useExcuseLetters'
 import { studentDashboardPreviewData } from '@/data/studentDashboardPreview.js'
 import { getEventTimeStatus, resolveApiBaseUrl } from '@/services/backendApi.js'
 import { resolveAttendanceActionState, resolveEventLifecycleStatus } from '@/services/attendanceFlow.js'
@@ -83,7 +93,11 @@ const {
   refreshAttendanceRecords,
   unreadAnnouncements,
 } = useDashboardSession()
+const { fetchStudentLetters, letters: excuseLetters, hasLetterForEvent } = useExcuseLetters()
+
 const showNotifications = ref(false)
+const isExcuseModalOpen = ref(false)
+const selectedEventForExcuse = ref(null)
 
 const router = useRouter()
 const route = useRoute()
@@ -277,6 +291,16 @@ function handleOpenDetail(event) {
   router.push(resolveEventDetailLocation(route, event.id))
 }
 
+function handleOpenExcuseModal(event) {
+  selectedEventForExcuse.value = event
+  isExcuseModalOpen.value = true
+}
+
+async function handleExcuseSubmitted() {
+  // Reload letters to update cards
+  await fetchStudentLetters()
+}
+
 function isEventAttended(event) {
   if (props.preview) {
     return activeAttendanceRecords.value.some((attendance) => {
@@ -312,6 +336,7 @@ onBeforeUnmount(() => {
 onMounted(() => {
   if (props.preview) return
   refreshAttendanceRecords({ limit: 200 }).catch(() => null)
+  fetchStudentLetters().catch(() => null)
 })
 </script>
 

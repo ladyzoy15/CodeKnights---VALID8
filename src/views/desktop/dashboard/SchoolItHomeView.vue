@@ -180,7 +180,7 @@
                 </div>
               </div>
 
-              <button class="school-it-home__ghost-pill" type="button" @click="router.push({ name: settingsRouteName })">
+              <button class="school-it-home__ghost-pill" type="button" @click="router.push({ name: 'SchoolItUsers' })">
                 <span>Access Structure</span>
                 <ArrowRight :size="14" />
               </button>

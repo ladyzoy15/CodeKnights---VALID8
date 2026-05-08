@@ -148,7 +148,22 @@ const { sessionHasRole } = useDashboardSession()
 const isStudent = computed(() => sessionHasRole('Student'))
 
 const canSubmitExcuse = computed(() => {
-  return isStudent.value && normalizedStatus.value === 'upcoming' && !props.excuseLetter
+  if (!isStudent.value || props.excuseLetter) return false
+  
+  const lifecycleStatus = normalizedStatus.value
+  const isPast = lifecycleStatus === 'completed'
+  const isUpcoming = lifecycleStatus === 'upcoming'
+  
+  // For upcoming events, always allow
+  if (isUpcoming) return true
+  
+  // For past events, only allow if the student was absent or unmarked
+  if (isPast) {
+    const attendanceStatus = props.attendanceRecord?.status?.toLowerCase()
+    return !attendanceStatus || attendanceStatus === 'absent'
+  }
+  
+  return false
 })
 
 // ── Derived State ───────────────────────────────────────────────────

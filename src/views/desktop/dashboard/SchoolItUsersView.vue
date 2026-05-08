@@ -14,7 +14,7 @@
       </div>
 
       <div class="school-it-users__body">
-        <h1 class="school-it-users__title dashboard-enter dashboard-enter--2">Students</h1>
+        <h1 class="school-it-users__title dashboard-enter dashboard-enter--2">Colleges & Students</h1>
 
         <div class="school-it-users__layout">
           <div class="school-it-users__main">
@@ -42,6 +42,7 @@
                 <span class="school-it-users__add-college-copy">Add<br>College</span>
               </button>
             </div>
+          </section>
 
             <Transition
               name="school-it-users-college-panel"
@@ -107,7 +108,7 @@
                 </div>
               </div>
             </Transition>
-          </section>
+
 
           <section v-if="departmentCards.length" class="school-it-users__department-list">
             <div
@@ -201,7 +202,7 @@
               ]"
             >
               <div class="school-it-users__hero-card-copy">
-                <h2 class="school-it-users__overview-title" v-html="card.titleHtml" />
+                <h2 class="school-it-users__overview-title" v-html="card.titleHtml"></h2>
                 <span v-if="card.meta" class="school-it-users__overview-meta">{{ card.meta }}</span>
               </div>
 
@@ -545,8 +546,8 @@ function buildInitials(value) {
 }
 
 function normalizeWorkspaceEntityId(value) {
-  const normalizedValue = Number(value)
-  return Number.isInteger(normalizedValue) && normalizedValue > 0 ? normalizedValue : null
+  if (value == null || value === '') return null
+  return value
 }
 
 function isStudentUser(user) {
@@ -645,6 +646,7 @@ async function submitCollege() {
           }
           : await updateDepartment(apiBaseUrl.value, authToken, resolvedDepartmentId, {
             name: normalizedName,
+            school_id: schoolId.value,
           })
       )
       : (
@@ -652,6 +654,7 @@ async function submitCollege() {
           ? createPreviewDepartment(normalizedName)
           : await createDepartment(apiBaseUrl.value, authToken, {
             name: normalizedName,
+            school_id: schoolId.value,
           })
       )
 

@@ -861,6 +861,47 @@ app.patch('/governance/requests/:id', async (req, res) => {
   }
 });
 
+app.get('/events/:eventId/time-status', (req, res) => {
+  const { eventId } = req.params;
+  console.log(`[GET] /api/events/${eventId}/time-status`);
+  
+  const event = (db.data.events || []).find(e => String(e.id) === String(eventId));
+  
+  const now = new Date();
+  let start = new Date();
+  let end = new Date();
+  let status = 'before_check_in';
+
+  if (event) {
+    start = new Date(event.start_datetime);
+    end = new Date(event.end_datetime);
+    if (now > end) {
+      status = 'closed';
+    } else if (now >= start) {
+      status = 'sign_out_pending';
+      const diff = (now - start) / 60000;
+      if (diff < 30) status = 'late_check_in';
+    } else {
+      const diff = (start - now) / 60000;
+      if (diff < 15) status = 'early_check_in';
+    }
+  } else {
+    // Unknown event (like ID 0 spam), return a neutral closed status
+    status = 'closed';
+  }
+
+  res.json({
+    event_id: Number(eventId),
+    event_status: status,
+    current_time: now.toISOString(),
+    sign_in_opens_at: new Date(start.getTime() - 15 * 60000).toISOString(),
+    sign_in_closes_at: new Date(start.getTime() + 30 * 60000).toISOString(),
+    sign_out_opens_at: end.toISOString(),
+    effective_sign_out_closes_at: new Date(end.getTime() + 30 * 60000).toISOString(),
+    server_timezone: 'UTC'
+  });
+});
+
 app.post('/events/:eventId/excuse-letters', async (req, res) => {
   const { eventId } = req.params;
   console.log(`[POST] /api/events/${eventId}/excuse-letters`);
@@ -875,7 +916,15 @@ app.post('/events/:eventId/excuse-letters', async (req, res) => {
   );
 
   if (existingLetter) {
-    return res.status(409).json({ error: 'You have already submitted an excuse letter for this event.' });
+    // Update existing letter instead of failing with 409
+    Object.assign(existingLetter, {
+      reason: payload.reason,
+      attachmentUrl: payload.attachment_url || payload.attachmentUrl || null,
+      submittedAt: new Date().toISOString(),
+      status: 'Pending' // Reset to pending if it was rejected/approved
+    });
+    await db.write();
+    return res.status(200).json(existingLetter);
   }
 
   const nextId = Math.max(0, ...(db.data.excuse_letters || []).map(e => Number(e.id) || 0)) + 1;
@@ -910,12 +959,23 @@ app.get('/excuse_letters', (req, res) => {
 
   if (scope === 'student' && studentId) {
     letters = letters.filter(e => String(e.studentId) === String(studentId));
-  } else if (scope === 'governance') {
-    // In a real app we'd filter by unit, for mock we return all
-    // letters = letters.filter(e => String(e.unitId) === String(unitId));
   }
+  
+  // Join with student and event data for display
+  const joinedLetters = letters.map(letter => {
+    const student = (db.data.users || []).find(u => String(u.id) === String(letter.studentId));
+    const event = (db.data.events || []).find(e => String(e.id) === String(letter.eventId));
+    
+    return {
+      ...letter,
+      studentName: student ? `${student.first_name} ${student.last_name}` : 'Unknown Student',
+      eventName: event ? event.name : 'Unknown Event',
+      course: student?.student_profile?.program_id ? 'BSIT' : 'Course', // Dummy data for course
+      yearLevel: student?.student_profile?.year_level || '-'
+    };
+  });
 
-  res.json(letters);
+  res.json(joinedLetters);
 });
 
 app.patch('/excuse_letters/:id/review', async (req, res) => {

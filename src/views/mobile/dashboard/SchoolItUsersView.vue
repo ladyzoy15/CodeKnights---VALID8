@@ -145,7 +145,7 @@
             ]"
           >
             <div class="school-it-users__hero-card-copy">
-              <h2 class="school-it-users__overview-title" v-html="card.titleHtml" />
+              <h2 class="school-it-users__overview-title" v-html="card.titleHtml"></h2>
               <span v-if="card.meta" class="school-it-users__overview-meta">{{ card.meta }}</span>
             </div>
 
@@ -563,8 +563,8 @@ function buildInitials(value) {
 }
 
 function normalizeWorkspaceEntityId(value) {
-  const normalizedValue = Number(value)
-  return Number.isInteger(normalizedValue) && normalizedValue > 0 ? normalizedValue : null
+  if (value == null || value === '') return null
+  return value
 }
 
 function isStudentUser(user) {
@@ -663,6 +663,7 @@ async function submitCollege() {
           }
           : await updateDepartment(apiBaseUrl.value, authToken, resolvedDepartmentId, {
             name: normalizedName,
+            school_id: schoolId.value,
           })
       )
       : (
@@ -670,6 +671,7 @@ async function submitCollege() {
           ? createPreviewDepartment(normalizedName)
           : await createDepartment(apiBaseUrl.value, authToken, {
             name: normalizedName,
+            school_id: schoolId.value,
           })
       )
 

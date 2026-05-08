@@ -29,6 +29,30 @@
         <span class="action-text">{{ actionText }}</span>
       </button>
 
+      <!-- Send Excuse Letter Button -->
+      <button
+        v-if="canSubmitExcuse"
+        class="excuse-btn"
+        @click.stop="emit('submit-excuse', props.event)"
+      >
+        <Send :size="14" />
+        <span>Send Excuse Letter</span>
+      </button>
+
+      <!-- Excuse Status Badge -->
+      <div
+        v-else-if="props.excuseLetter"
+        class="excuse-status-badge"
+        :class="{
+          'excuse-status-badge--pending': props.excuseLetter.status === 'Pending',
+          'excuse-status-badge--approved': props.excuseLetter.status === 'Approved',
+          'excuse-status-badge--rejected': props.excuseLetter.status === 'Rejected'
+        }"
+      >
+        <FileText :size="12" />
+        <span>Excuse {{ props.excuseLetter.status }}</span>
+      </div>
+
       <button
         class="attendance-toggle"
         :class="{
@@ -82,7 +106,8 @@
 
 <script setup>
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import { ArrowRight, Check, Clock3, Minus, X } from 'lucide-vue-next'
+import { ArrowRight, Check, Clock3, Minus, X, FileText, Send } from 'lucide-vue-next'
+import { useDashboardSession } from '@/composables/useDashboardSession'
 import {
   formatCompactDuration,
   hasSignedInAttendance,
@@ -111,9 +136,35 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  excuseLetter: {
+    type: Object,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['click', 'open-detail'])
+const emit = defineEmits(['click', 'open-detail', 'submit-excuse'])
+
+const { sessionHasRole } = useDashboardSession()
+const isStudent = computed(() => sessionHasRole('Student'))
+
+const canSubmitExcuse = computed(() => {
+  if (!isStudent.value || props.excuseLetter) return false
+  
+  const lifecycleStatus = normalizedStatus.value
+  const isPast = lifecycleStatus === 'completed'
+  const isUpcoming = lifecycleStatus === 'upcoming'
+  
+  // For upcoming events, always allow
+  if (isUpcoming) return true
+  
+  // For past events, only allow if the student was absent or unmarked
+  if (isPast) {
+    const attendanceStatus = props.attendanceRecord?.status?.toLowerCase()
+    return !attendanceStatus || attendanceStatus === 'absent'
+  }
+  
+  return false
+})
 
 // ── Derived State ───────────────────────────────────────────────────
 
@@ -531,6 +582,66 @@ watch(
 
 .action-btn--lime .action-text {
   color: var(--color-banner-text);
+}
+
+.excuse-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.event-card--white .excuse-btn {
+  background: var(--color-bg);
+  border-color: var(--color-surface-border);
+  color: var(--color-surface-text);
+}
+
+.excuse-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.event-card--white .excuse-btn:hover {
+  background: var(--color-surface-border);
+}
+
+.excuse-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.excuse-status-badge--pending {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+}
+
+.excuse-status-badge--approved {
+  background: #D1FAE5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.excuse-status-badge--rejected {
+  background: #FEE2E2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
 }
 
 .attendance-toggle {

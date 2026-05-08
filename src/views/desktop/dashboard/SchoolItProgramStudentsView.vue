@@ -1299,6 +1299,7 @@ async function handleAddStudent() {
       first_name: draft.firstName,
       middle_name: draft.middleName || null,
       last_name: draft.lastName,
+      school_id: schoolId.value,
       department_id: Number(selectedDepartment.value.id),
       program_id: Number(selectedProgram.value.id),
       year_level: draft.yearLevel,

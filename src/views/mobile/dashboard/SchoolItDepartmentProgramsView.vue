@@ -562,8 +562,8 @@ function buildProgramShortLabel(programName) {
 }
 
 function normalizeWorkspaceEntityId(value) {
-  const normalizedValue = Number(value)
-  return Number.isInteger(normalizedValue) && normalizedValue > 0 ? normalizedValue : null
+  if (value == null || value === '') return null
+  return value
 }
 
 function openAddProgramPanel() {
@@ -629,6 +629,7 @@ async function submitProgram() {
           }
           : await updateProgram(apiBaseUrl.value, authToken, resolvedProgramId, {
             name: normalizedName,
+            school_id: schoolId.value,
             department_ids: [Number(selectedDepartment.value.id)],
           })
       )
@@ -637,6 +638,7 @@ async function submitProgram() {
           ? createPreviewProgram(normalizedName)
           : await createProgram(apiBaseUrl.value, authToken, {
             name: normalizedName,
+            school_id: schoolId.value,
             department_ids: [Number(selectedDepartment.value.id)],
           })
       )
