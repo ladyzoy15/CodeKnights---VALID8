@@ -186,3 +186,15 @@ export function hasNavigableHistory(routeOrPath = null) {
 
   return Boolean(backTarget && backTarget !== currentPath)
 }
+
+export function resolveWorkspaceHomeLocation(routeOrPath = null) {
+  const currentPath = getRoutePath(routeOrPath)
+  if (currentPath.includes('/exposed/')) {
+    const segments = currentPath.split('/')
+    const exposedIndex = segments.indexOf('exposed')
+    if (exposedIndex !== -1 && segments[exposedIndex + 1]) {
+      return `/exposed/${segments[exposedIndex + 1]}`
+    }
+  }
+  return '/dashboard'
+}
