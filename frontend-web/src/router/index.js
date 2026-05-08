@@ -9,12 +9,11 @@ import {
     isSchoolItSession,
     sessionNeedsFaceRegistration,
 } from '@/composables/useDashboardSession.js'
-import { getStoredAuthMeta, hasPrivilegedPendingFace, needsStoredPasswordChange } from '@/services/localAuth.js'
+import { hasPrivilegedPendingFace, needsStoredPasswordChange } from '@/services/localAuth.js'
 import { setNavigationPending } from '@/services/navigationState.js'
-import { createPlatformView, preloadPlatformViews } from '@/router/platformView.js'
+import { createPlatformView } from '@/router/platformView.js'
 
 const AppLayout = () => import('@/layouts/AppLayout.vue')
-const NotFoundView = () => import('@/views/NotFoundView.vue')
 const authView = (viewName) => createPlatformView(`auth/${viewName}`)
 const dashboardView = (viewName) => createPlatformView(`dashboard/${viewName}`)
 const toolsView = (viewName) => createPlatformView(`tools/${viewName}`)
@@ -30,6 +29,7 @@ const WorkspacePlaceholderView = dashboardView('WorkspacePlaceholderView')
 const PrivilegedComingSoonView = dashboardView('PrivilegedComingSoonView')
 const ProfileSecurityView = dashboardView('ProfileSecurityView')
 const ProfileFaceUpdateView = dashboardView('ProfileFaceUpdateView')
+const PrivilegedFaceVerificationView = authView('PrivilegedFaceVerificationView')
 const SchoolItHomeView = dashboardView('SchoolItHomeView')
 const SchoolItUsersView = dashboardView('SchoolItUsersView')
 const SchoolItImportStudentsView = dashboardView('SchoolItImportStudentsView')
@@ -42,97 +42,21 @@ const SchoolItAttendanceMonitorView = dashboardView('SchoolItAttendanceMonitorVi
 const SchoolItEventReportsView = dashboardView('SchoolItEventReportsView')
 const SchoolItSettingsView = dashboardView('SchoolItSettingsView')
 const GovernanceWorkspaceView = dashboardView('GovernanceWorkspaceView')
-const SgMembersView = dashboardView('SgMembersView')
-const SgCreateUnitView = dashboardView('SgCreateUnitView')
+const SanctionsDashboardView = dashboardView('SanctionsDashboardView')
+const SanctionedStudentsListView = dashboardView('SanctionedStudentsListView')
+const StudentSanctionDetailView = dashboardView('StudentSanctionDetailView')
+const StudentSanctionsView = dashboardView('StudentSanctionsView')
 const GatherWelcomeView = dashboardView('GatherWelcomeView')
 const GatherAttendanceView = dashboardView('GatherAttendanceView')
+const AuraChatView = dashboardView('AuraChatView')
 
-const schoolItRoutePreloads = [
-    'dashboard/SchoolItHomeView',
-    'dashboard/SchoolItUsersView',
-    'dashboard/SchoolItImportStudentsView',
-    'dashboard/SchoolItDepartmentProgramsView',
-    'dashboard/SchoolItProgramStudentsView',
-    'dashboard/SchoolItUnassignedStudentsView',
-    'dashboard/SchoolItStudentCouncilView',
-    'dashboard/SchoolItScheduleView',
-    'dashboard/SchoolItAttendanceMonitorView',
-    'dashboard/SchoolItEventReportsView',
-    'dashboard/SchoolItSettingsView',
-    'dashboard/ProfileView',
-    'dashboard/EventDetailView',
-    'dashboard/WorkspacePlaceholderView',
-]
-
-const adminRoutePreloads = [
-    'dashboard/AdminWorkspaceView',
-]
-
-function preloadRouteContextViews(path = '') {
-    const normalizedPath = String(path || '')
-
-    if (normalizedPath.startsWith('/workspace') || normalizedPath.startsWith('/exposed/workspace')) {
-        void preloadPlatformViews(schoolItRoutePreloads).catch(() => null)
-        return
-    }
-
-    if (normalizedPath.startsWith('/admin') || normalizedPath.startsWith('/exposed/admin')) {
-        void preloadPlatformViews(adminRoutePreloads).catch(() => null)
-    }
-}
-
-function normalizeRoleKey(role = '') {
-    const normalizedRole = String(role || '')
-        .trim()
-        .toLowerCase()
-        .replace(/_/g, '-')
-
-    return normalizedRole === 'campus-admin' ? 'school-it' : normalizedRole
-}
-
-function getStoredRoleKeys() {
-    const authMeta = getStoredAuthMeta()
-    const storedRoles = Array.isArray(authMeta?.roles)
-        ? authMeta.roles
-        : []
-    return storedRoles
-        .map((role) => normalizeRoleKey(role))
-        .filter(Boolean)
-}
-
-function getStoredDefaultAuthenticatedRoute() {
-    const roleKeys = getStoredRoleKeys()
-    if (roleKeys.includes('school-it')) return { name: 'SchoolItHome' }
-    if (roleKeys.includes('admin')) return { name: 'AdminHome' }
-    if (roleKeys.includes('ssg') || roleKeys.includes('sg') || roleKeys.includes('org')) {
-        return { name: 'SgDashboard' }
-    }
-    return { name: 'Home' }
-}
-
-function resolveGuardFallback(to) {
-    const roleKeys = getStoredRoleKeys()
-    if (roleKeys.length === 0) {
-        clearDashboardSession()
-        return { name: 'Login' }
-    }
-
-    const defaultRoute = getStoredDefaultAuthenticatedRoute()
-    const isAdmin = roleKeys.includes('admin')
-    const isSchoolIt = roleKeys.includes('school-it')
-    const isPrivileged = isAdmin || isSchoolIt
-
-    if (isSchoolIt && to.path.startsWith('/dashboard')) return defaultRoute
-    if (isAdmin && (to.path.startsWith('/dashboard') || to.path.startsWith('/workspace') || to.name === 'PrivilegedDashboard')) {
-        return defaultRoute
-    }
-    if (!isAdmin && to.path.startsWith('/admin')) return defaultRoute
-    if (!isSchoolIt && to.path.startsWith('/workspace')) return defaultRoute
-    if (isPrivileged && to.path.startsWith('/dashboard')) return defaultRoute
-    if (!isPrivileged && to.name === 'PrivilegedDashboard') return defaultRoute
-
-    return true
-}
+const SgDashboardView = dashboardView('SgDashboardView')
+const SgMembersView = dashboardView('SgMembersView')
+const SgStudentsView = dashboardView('SgStudentsView')
+const SgAnnouncementsView = dashboardView('SgAnnouncementsView')
+const SgCreateUnitView = dashboardView('SgCreateUnitView')
+const SgEventsView = dashboardView('SgEventsView')
+const SgAttendanceView = dashboardView('SgAttendanceView')
 
 const routes = [
     // Auth routes (no layout)
@@ -143,20 +67,14 @@ const routes = [
         meta: { requiresGuest: true },
     },
     {
-        path: '/forgot-password',
-        name: 'ForgotPassword',
-        component: authView('ForgotPasswordView'),
-        meta: { requiresGuest: true },
+        path: '/quick-attendance',
+        name: 'QuickAttendance',
+        component: authView('QuickAttendanceView'),
     },
     {
         path: '/api-lab',
         name: 'ApiLab',
         component: toolsView('ApiLabView'),
-    },
-    {
-        path: '/exposed/face-scan',
-        name: 'PreviewFaceScan',
-        component: authView('QuickAttendanceView'),
     },
     {
         path: '/face-registration',
@@ -175,16 +93,6 @@ const routes = [
         meta: {
             requiresAuth: true,
             allowWithoutFaceEnrollment: true,
-        },
-    },
-    {
-        path: '/privileged-face',
-        name: 'PrivilegedFaceVerification',
-        component: authView('PrivilegedFaceVerificationView'),
-        meta: {
-            requiresAuth: true,
-            allowWithoutFaceEnrollment: true,
-            allowPrivilegedPendingFace: true,
         },
     },
     {
@@ -210,6 +118,15 @@ const routes = [
         path: '/profile/security/face',
         name: 'ProfileSecurityFace',
         component: ProfileFaceUpdateView,
+        meta: {
+            requiresAuth: true,
+            allowWithoutFaceEnrollment: true,
+        },
+    },
+    {
+        path: '/privileged/face',
+        name: 'PrivilegedFaceVerification',
+        component: PrivilegedFaceVerificationView,
         meta: {
             requiresAuth: true,
             allowWithoutFaceEnrollment: true,
@@ -259,10 +176,24 @@ const routes = [
                 props: { section: 'oversight' },
             },
             {
+                path: 'reports',
+                name: 'AdminReports',
+                component: AdminWorkspaceView,
+                props: { section: 'reports' },
+            },
+            {
                 path: 'profile',
                 name: 'AdminProfile',
                 component: AdminWorkspaceView,
                 props: { section: 'profile' },
+            },
+            {
+                path: 'chat',
+                name: 'AdminAuraChat',
+                component: AuraChatView,
+                meta: {
+                    hideMobileNav: true,
+                },
             },
         ],
     },
@@ -299,10 +230,24 @@ const routes = [
                 props: { preview: true, section: 'oversight' },
             },
             {
+                path: 'reports',
+                name: 'PreviewAdminReports',
+                component: AdminWorkspaceView,
+                props: { preview: true, section: 'reports' },
+            },
+            {
                 path: 'profile',
                 name: 'PreviewAdminProfile',
                 component: AdminWorkspaceView,
                 props: { preview: true, section: 'profile' },
+            },
+            {
+                path: 'chat',
+                name: 'PreviewAdminAuraChat',
+                component: AuraChatView,
+                meta: {
+                    hideMobileNav: true,
+                },
             },
         ],
     },
@@ -384,6 +329,14 @@ const routes = [
                 path: 'profile',
                 name: 'SchoolItProfile',
                 component: ProfileView,
+            },
+            {
+                path: 'chat',
+                name: 'SchoolItAuraChat',
+                component: AuraChatView,
+                meta: {
+                    hideMobileNav: true,
+                },
             },
         ],
     },
@@ -476,6 +429,14 @@ const routes = [
                     description: 'Profile controls will stay on the real authenticated workspace once the backend is available again.',
                 },
             },
+            {
+                path: 'chat',
+                name: 'PreviewSchoolItAuraChat',
+                component: AuraChatView,
+                meta: {
+                    hideMobileNav: true,
+                },
+            },
         ],
     },
     {
@@ -520,16 +481,21 @@ const routes = [
                 props: { preview: true },
             },
             {
+                path: 'sanctions',
+                name: 'PreviewDashboardSanctions',
+                component: StudentSanctionsView,
+                props: { preview: true },
+            },
+            {
                 path: 'profile',
                 name: 'PreviewDashboardProfile',
                 component: ProfileView,
                 props: { preview: true },
             },
             {
-                path: 'profile/security',
-                name: 'PreviewProfileSecurity',
-                component: ProfileSecurityView,
-                props: { preview: true },
+                path: 'chat',
+                name: 'PreviewDashboardAuraChat',
+                component: AuraChatView,
                 meta: {
                     hideMobileNav: true,
                 },
@@ -568,39 +534,41 @@ const routes = [
             {
                 path: '',
                 name: 'SgDashboard',
-                component: GovernanceWorkspaceView,
-                props: { section: 'overview' },
+                component: SgDashboardView,
             },
             {
                 path: 'students',
                 name: 'SgStudents',
-                component: GovernanceWorkspaceView,
-                props: { section: 'students' },
+                component: SgStudentsView,
             },
             {
                 path: 'admin',
                 name: 'SgAdmin',
-                component: GovernanceWorkspaceView,
-                props: { section: 'governance' },
+                component: SgDashboardView, // Shared modern view
             },
             {
                 path: 'members',
-                name: 'SgMembers',
-                component: SgMembersView,
+                redirect: { name: 'SgAdmin' },
             },
             {
                 path: 'events',
                 name: 'SgEvents',
-                component: GovernanceWorkspaceView,
-                props: { section: 'events' },
+                component: SgEventsView,
+            },
+            {
+                path: 'reports',
+                name: 'SgReports',
+                component: SgAttendanceView,
             },
             {
                 path: 'announcements',
-                redirect: { name: 'SgEvents' },
+                name: 'SgAnnouncements',
+                component: SgAnnouncementsView,
             },
             {
                 path: 'attendance',
-                redirect: { name: 'SgEvents' },
+                name: 'SgAttendance',
+                component: SgAttendanceView,
             },
             {
                 path: 'create-unit',
@@ -608,9 +576,32 @@ const routes = [
                 component: SgCreateUnitView,
             },
             {
+                path: 'events/sanctions',
+                name: 'SgSanctionsDashboard',
+                component: SanctionsDashboardView,
+            },
+            {
+                path: 'events/:eventId/sanctions/students',
+                name: 'SgSanctionedStudents',
+                component: SanctionedStudentsListView,
+            },
+            {
+                path: 'events/:eventId/sanctions/students/:userId',
+                name: 'SgStudentSanctionDetail',
+                component: StudentSanctionDetailView,
+            },
+            {
                 path: 'events/:id',
                 name: 'SgEventDetail',
                 component: EventDetailView,
+            },
+            {
+                path: 'chat',
+                name: 'SgAuraChat',
+                component: AuraChatView,
+                meta: {
+                    hideMobileNav: true,
+                },
             },
             {
                 path: 'gather',
@@ -658,15 +649,19 @@ const routes = [
             },
             {
                 path: 'members',
-                name: 'PreviewSgMembers',
-                component: SgMembersView,
-                props: { preview: true },
+                redirect: { name: 'PreviewSgAdmin' },
             },
             {
                 path: 'events',
                 name: 'PreviewSgEvents',
+                component: SgEventsView,
+                props: { preview: true },
+            },
+            {
+                path: 'reports',
+                name: 'PreviewSgReports',
                 component: GovernanceWorkspaceView,
-                props: { preview: true, section: 'events' },
+                props: { preview: true, section: 'reports' },
             },
             {
                 path: 'announcements',
@@ -683,10 +678,36 @@ const routes = [
                 props: { preview: true },
             },
             {
+                path: 'events/sanctions',
+                name: 'PreviewSgSanctionsDashboard',
+                component: SanctionsDashboardView,
+                props: { preview: true },
+            },
+            {
+                path: 'events/:eventId/sanctions/students',
+                name: 'PreviewSgSanctionedStudents',
+                component: SanctionedStudentsListView,
+                props: { preview: true },
+            },
+            {
+                path: 'events/:eventId/sanctions/students/:userId',
+                name: 'PreviewSgStudentSanctionDetail',
+                component: StudentSanctionDetailView,
+                props: { preview: true },
+            },
+            {
                 path: 'events/:id',
                 name: 'PreviewSgEventDetail',
                 component: EventDetailView,
                 props: { preview: true },
+            },
+            {
+                path: 'chat',
+                name: 'PreviewSgAuraChat',
+                component: AuraChatView,
+                meta: {
+                    hideMobileNav: true,
+                },
             },
             {
                 path: 'gather',
@@ -810,6 +831,19 @@ const routes = [
                 component: AnalyticsView,
             },
             {
+                path: 'sanctions',
+                name: 'DashboardSanctions',
+                component: StudentSanctionsView,
+            },
+            {
+                path: 'chat',
+                name: 'DashboardAuraChat',
+                component: AuraChatView,
+                meta: {
+                    hideMobileNav: true,
+                },
+            },
+            {
                 path: 'gather',
                 name: 'GatherWelcome',
                 component: GatherWelcomeView,
@@ -827,11 +861,6 @@ const routes = [
             },
         ],
     },
-    {
-        path: '/:pathMatch(.*)*',
-        name: 'NotFound',
-        component: NotFoundView,
-    },
 ]
 
 const router = createRouter({
@@ -847,44 +876,23 @@ router.beforeEach(async (to) => {
     setNavigationPending(true)
     const isAuthenticated = hasSessionToken()
     const mustChangePassword = needsStoredPasswordChange()
-    const privilegedPendingFace = hasPrivilegedPendingFace()
+    const pendingPrivilegedFace = hasPrivilegedPendingFace()
 
     if (to.meta.requiresAuth && !isAuthenticated) {
         return { name: 'Login' }
     }
 
-    if (to.name === 'PrivilegedFaceVerification') {
-        if (!isAuthenticated) {
-            return { name: 'Login' }
-        }
-
-        if (privilegedPendingFace) {
-            return true
-        }
-
-        if (mustChangePassword) {
-            return { name: 'ChangePassword' }
-        }
-
-        try {
-            await initializeDashboardSession()
-            return sessionNeedsFaceRegistration()
-                ? { name: 'FaceRegistration' }
-                : getDefaultAuthenticatedRoute()
-        } catch {
-            return resolveGuardFallback(to)
-        }
-    }
-
-    if (isAuthenticated && privilegedPendingFace) {
-        if (to.meta.allowPrivilegedPendingFace) {
-            return true
-        }
-        return { name: 'PrivilegedFaceVerification' }
-    }
-
     if (isAuthenticated && mustChangePassword && to.name !== 'ChangePassword') {
         return { name: 'ChangePassword' }
+    }
+
+    if (
+        isAuthenticated &&
+        pendingPrivilegedFace &&
+        !mustChangePassword &&
+        to.name !== 'PrivilegedFaceVerification'
+    ) {
+        return { name: 'PrivilegedFaceVerification' }
     }
 
     if (to.name === 'ChangePassword') {
@@ -893,13 +901,41 @@ router.beforeEach(async (to) => {
         }
 
         if (!mustChangePassword) {
+            if (pendingPrivilegedFace) {
+                return { name: 'PrivilegedFaceVerification' }
+            }
             try {
                 await initializeDashboardSession()
                 return sessionNeedsFaceRegistration()
                     ? { name: 'FaceRegistration' }
                     : getDefaultAuthenticatedRoute()
             } catch {
-                return resolveGuardFallback(to)
+                clearDashboardSession()
+                return { name: 'Login' }
+            }
+        }
+
+        return true
+    }
+
+    if (to.name === 'PrivilegedFaceVerification') {
+        if (!isAuthenticated) {
+            return { name: 'Login' }
+        }
+
+        if (mustChangePassword) {
+            return { name: 'ChangePassword' }
+        }
+
+        if (!pendingPrivilegedFace) {
+            try {
+                await initializeDashboardSession()
+                return sessionNeedsFaceRegistration()
+                    ? { name: 'FaceRegistration' }
+                    : getDefaultAuthenticatedRoute()
+            } catch {
+                clearDashboardSession()
+                return { name: 'Login' }
             }
         }
 
@@ -907,17 +943,24 @@ router.beforeEach(async (to) => {
     }
 
     if (to.meta.requiresGuest && isAuthenticated) {
+        if (pendingPrivilegedFace) {
+            return { name: 'PrivilegedFaceVerification' }
+        }
         try {
             await initializeDashboardSession()
             return sessionNeedsFaceRegistration()
                 ? { name: 'FaceRegistration' }
                 : getDefaultAuthenticatedRoute()
         } catch {
-            return getStoredDefaultAuthenticatedRoute()
+            clearDashboardSession()
+            return { name: 'Login' }
         }
     }
 
     if (to.meta.requiresAuth && isAuthenticated) {
+        if (pendingPrivilegedFace) {
+            return true
+        }
         try {
             await initializeDashboardSession()
             const defaultRoute = getDefaultAuthenticatedRoute()
@@ -953,16 +996,16 @@ router.beforeEach(async (to) => {
                 return defaultRoute
             }
         } catch {
-            return resolveGuardFallback(to)
+            clearDashboardSession()
+            return { name: 'Login' }
         }
     }
 
     return true
 })
 
-router.afterEach((to) => {
+router.afterEach(() => {
     setNavigationPending(false)
-    preloadRouteContextViews(to?.path)
 })
 
 router.onError(() => {

@@ -1,11 +1,5 @@
 import { CalendarDays, Megaphone, ClipboardCheck, Users, Eye, Building2, Landmark, UserPlus, Shield } from 'lucide-vue-next'
 
-/**
- * Permission-to-card mapping for the SG Dashboard.
- * Each module defines a card with its required permission code, label, icon, and route.
- * Grouped into sections for the dashboard layout.
- */
-
 const SG_MODULE_SECTIONS = [
   {
     id: 'event-management',
@@ -17,7 +11,7 @@ const SG_MODULE_SECTIONS = [
         label: 'Manage Events',
         description: 'Create, edit, and manage events within your council scope.',
         icon: CalendarDays,
-        route: '/governance/events',
+        route: '/sg/events',
       },
       {
         id: 'publish-announcements',
@@ -25,7 +19,7 @@ const SG_MODULE_SECTIONS = [
         label: 'Publish Announcements',
         description: 'Create and publish announcements to students.',
         icon: Megaphone,
-        route: '/governance/announcements',
+        route: '/sg/announcements',
       },
     ],
   },
@@ -39,7 +33,7 @@ const SG_MODULE_SECTIONS = [
         label: 'Manage Attendance',
         description: 'Track and manage event attendance records.',
         icon: ClipboardCheck,
-        route: '/governance/attendance',
+        route: '/sg/attendance',
       },
     ],
   },
@@ -53,7 +47,7 @@ const SG_MODULE_SECTIONS = [
         label: 'Manage Students',
         description: 'Edit and manage student profiles within scope.',
         icon: Users,
-        route: '/governance/students',
+        route: '/sg/students',
       },
       {
         id: 'view-students',
@@ -61,7 +55,7 @@ const SG_MODULE_SECTIONS = [
         label: 'View Students',
         description: 'Browse the student directory.',
         icon: Eye,
-        route: '/governance/students',
+        route: '/sg/students',
       },
     ],
   },
@@ -72,18 +66,18 @@ const SG_MODULE_SECTIONS = [
       {
         id: 'create-sg',
         permissionCode: 'create_sg',
-        label: 'Create SG',
-        description: 'Add a department council.',
+        label: 'Create College-Level Council',
+        description: 'Create college-level SG child units under this council.',
         icon: Landmark,
-        route: '/governance/create-unit',
+        route: '/sg/create-unit',
       },
       {
         id: 'create-org',
         permissionCode: 'create_org',
-        label: 'Create ORG',
-        description: 'Add a program organization.',
+        label: 'Create Organization',
+        description: 'Create student organization units under this council.',
         icon: Building2,
-        route: '/governance/create-unit',
+        route: '/sg/create-unit',
       },
       {
         id: 'manage-members',
@@ -91,7 +85,7 @@ const SG_MODULE_SECTIONS = [
         label: 'Manage Members',
         description: 'Add, edit, or remove governance members.',
         icon: UserPlus,
-        route: '/governance/members',
+        route: '/sg/members',
       },
       {
         id: 'assign-permissions',
@@ -99,19 +93,14 @@ const SG_MODULE_SECTIONS = [
         label: 'Manage Permissions',
         description: 'Grant or revoke governance permission codes for members.',
         icon: Shield,
-        route: '/governance/members',
+        route: '/sg/members',
       },
     ],
   },
 ]
 
-/**
- * Returns only the sections/modules that the user has permission for.
- * Sections with zero visible modules are excluded entirely.
- */
 export function getVisibleSections(permissionCodes = []) {
   const codeSet = new Set(permissionCodes)
-
   return SG_MODULE_SECTIONS
     .map((section) => ({
       ...section,
@@ -120,27 +109,6 @@ export function getVisibleSections(permissionCodes = []) {
     .filter((section) => section.modules.length > 0)
 }
 
-/**
- * Returns ALL sections with ALL modules — used when showing everything
- * and marking unpermitted cards as disabled visually.
- */
-export function getAllSections() {
-  return SG_MODULE_SECTIONS.map((section) => ({
-    ...section,
-    modules: [...section.modules],
-  }))
-}
-
-/**
- * Returns a flat list of all visible modules for search filtering.
- */
-export function getVisibleModules(permissionCodes = []) {
-  return getVisibleSections(permissionCodes).flatMap((section) => section.modules)
-}
-
-/**
- * Filters sections by a search query matching module labels.
- */
 export function filterSectionsBySearch(sections = [], query = '') {
   const normalizedQuery = String(query || '').trim().toLowerCase()
   if (!normalizedQuery) return sections

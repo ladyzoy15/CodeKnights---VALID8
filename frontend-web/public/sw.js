@@ -1,32 +1,17 @@
-const CACHE_NAME = 'aura-shell-v5'
-const APP_BASE_PATH = normalizeAppBasePath(self.location.pathname)
-const APP_SHELL_URL = APP_BASE_PATH
-const RUNTIME_CONFIG_PATH = appPath('runtime-config.js')
+const CACHE_NAME = 'aura-shell-v4'
+const APP_SHELL_URL = '/'
 const SHELL_ASSETS = [
-  APP_SHELL_URL,
-  appPath('manifest.webmanifest'),
-  RUNTIME_CONFIG_PATH,
-  appPath('logos/aura.png'),
-  appPath('pwa-192.png'),
-  appPath('pwa-512.png'),
-  appPath('pwa-maskable-512.png'),
+  '/',
+  '/manifest.webmanifest',
+  '/runtime-config.js',
+  '/logos/aura.png',
+  '/pwa-192.png',
+  '/pwa-512.png',
+  '/pwa-maskable-512.png',
 ]
 const LOCALHOST_HOSTNAMES = new Set(['localhost', '127.0.0.1', '[::1]'])
 const STATIC_ASSET_PATTERN = /\.(?:png|jpg|jpeg|svg|webp|woff|woff2|ttf)$/i
 const CODE_ASSET_PATTERN = /\.(?:js|css)$/i
-
-function normalizeAppBasePath(pathname = '/') {
-  const normalized = String(pathname || '/').replace(/\\/g, '/')
-  const basePath = normalized.replace(/sw\.js$/, '')
-
-  if (!basePath || basePath === '/') return '/'
-  return basePath.endsWith('/') ? basePath : `${basePath}/`
-}
-
-function appPath(path = '') {
-  const normalized = String(path || '').replace(/^\/+/, '')
-  return normalized ? `${APP_BASE_PATH}${normalized}` : APP_BASE_PATH
-}
 
 function isLocalhostHost(hostname) {
   return LOCALHOST_HOSTNAMES.has(hostname) || hostname.endsWith('.local')
@@ -52,17 +37,10 @@ async function deleteOldAuraCaches() {
 }
 
 async function cacheResponse(request, response) {
-  if (!response || !response.ok || !response.body) return response
+  if (!response || !response.ok) return response
 
-  try {
-    const cache = await caches.open(CACHE_NAME)
-    await cache.put(request, response.clone())
-  } catch (error) {
-    // Ignore clone errors for already-consumed responses
-    if (error.name !== 'TypeError') {
-      console.warn('[SW] Cache write failed:', error)
-    }
-  }
+  const cache = await caches.open(CACHE_NAME)
+  await cache.put(request, response.clone())
   return response
 }
 
@@ -70,13 +48,12 @@ async function resolveNavigationResponse(event) {
   try {
     const preloadResponse = await event.preloadResponse
     if (preloadResponse) {
-      void cacheResponse(event.request, preloadResponse.clone())
+      void cacheResponse(event.request, preloadResponse)
       return preloadResponse
     }
 
     const networkResponse = await fetch(event.request)
-    const responseToCache = networkResponse.clone()
-    void cacheResponse(event.request, responseToCache)
+    void cacheResponse(event.request, networkResponse)
     return networkResponse
   } catch {
     const cachedResponse = await caches.match(event.request)
@@ -92,9 +69,7 @@ async function resolveNavigationResponse(event) {
 async function resolveCodeAssetResponse(request) {
   try {
     const networkResponse = await fetch(request)
-    const responseToCache = networkResponse.clone()
-    void cacheResponse(request, responseToCache)
-    return networkResponse
+    return await cacheResponse(request, networkResponse)
   } catch {
     return (
       await caches.match(request)
@@ -109,9 +84,8 @@ async function resolveStaticAssetResponse(request) {
 
   try {
     const networkResponse = await fetch(request)
-    if (networkResponse.ok && networkResponse.body) {
-      const responseToCache = networkResponse.clone()
-      void cacheResponse(request, responseToCache)
+    if (networkResponse.ok) {
+      void cacheResponse(request, networkResponse)
     }
     return networkResponse
   } catch {
@@ -159,7 +133,7 @@ if (isLocalhost) {
     const requestUrl = new URL(event.request.url)
 
     if (requestUrl.origin !== self.location.origin) return
-    if (requestUrl.pathname.startsWith(appPath('__backend__')) || requestUrl.pathname.startsWith('/api/')) return
+    if (requestUrl.pathname.startsWith('/__backend__') || requestUrl.pathname.startsWith('/api/')) return
 
     if (event.request.mode === 'navigate') {
       event.respondWith(resolveNavigationResponse(event))
@@ -171,7 +145,7 @@ if (isLocalhost) {
       return
     }
 
-    if (isCacheableStaticAsset(requestUrl.pathname) || requestUrl.pathname === RUNTIME_CONFIG_PATH) {
+    if (isCacheableStaticAsset(requestUrl.pathname) || requestUrl.pathname === '/runtime-config.js') {
       event.respondWith(resolveStaticAssetResponse(event.request))
     }
   })

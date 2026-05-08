@@ -19,14 +19,6 @@ export function toOptionalFiniteNumber(value) {
     return Number.isFinite(normalized) ? normalized : null
 }
 
-function isValidLatitude(value) {
-    return Number.isFinite(value) && value >= -90 && value <= 90
-}
-
-function isValidLongitude(value) {
-    return Number.isFinite(value) && value >= -180 && value <= 180
-}
-
 export function toOptionalNonNegativeInteger(value, fallback = 0) {
     if (value == null || value === '') return fallback
     const normalized = Number(value)
@@ -35,12 +27,7 @@ export function toOptionalNonNegativeInteger(value, fallback = 0) {
 }
 
 export function toBackendDateTimeValue(value) {
-    const normalized = String(value || '').trim()
-    if (!normalized) return normalized
-
-    const parsed = new Date(normalized)
-    if (!Number.isFinite(parsed.getTime())) return normalized
-    return parsed.toISOString()
+    return String(value || '').trim()
 }
 
 export function toLocalDateTimeInputValue(value) {
@@ -115,18 +102,6 @@ export function validateEventEditorDraft(draft) {
 
     if (Boolean(draft?.geoRequired) && !providedGeoFields.every(Boolean)) {
         throw new Error('Geofence coordinates and radius are required when geolocation is enabled.')
-    }
-
-    if (geoLatitude != null && !isValidLatitude(geoLatitude)) {
-        throw new Error('Latitude must be between -90 and 90.')
-    }
-
-    if (geoLongitude != null && !isValidLongitude(geoLongitude)) {
-        throw new Error('Longitude must be between -180 and 180.')
-    }
-
-    if (geoRadius != null && geoRadius <= 0) {
-        throw new Error('Allowed radius must be greater than 0 meters.')
     }
 
     const signOutGraceMinutes = toOptionalNonNegativeInteger(draft?.signOutGraceMinutes, 0)

@@ -835,7 +835,6 @@ import {
   registerStudentFace,
   resetUserPassword,
   resolveApiBaseUrl,
-  saveFaceReference,
   updateSchoolSettings,
   verifyFaceReference,
 } from '@/services/backendApi.js'

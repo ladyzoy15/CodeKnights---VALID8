@@ -7,6 +7,8 @@ import {
 } from '@/services/backendBaseUrl.js'
 import {
     normalizeAuditLogResponse,
+    normalizeAttendanceOverviewCollection,
+    normalizeClearanceDeadlineResponse,
     normalizeCreateSchoolWithSchoolItResponse,
     normalizeAttendanceRecord,
     normalizeDepartment,
@@ -21,18 +23,26 @@ import {
     normalizeFaceStatus,
     normalizeFaceVerificationResponse,
     normalizeGovernanceMember,
+    normalizeGovernanceDashboardOverview,
     normalizeGovernanceSsgSetup,
     normalizeGovernanceStudentCandidate,
     normalizeGovernanceUnitDetail,
     normalizeNotificationDispatchSummary,
     normalizeNotificationLogItem,
+    normalizeNotificationPreference,
+    normalizeUserAppPreference,
+    normalizePaginatedSanctionRecordsResponse,
     normalizePasswordChangeResponse,
     normalizePasswordResetResponse,
     normalizeProgram,
+    normalizeSanctionConfigResponse,
+    normalizeSanctionDelegationResponse,
+    normalizeSanctionRecordResponse,
+    normalizeSanctionStudentDetailResponse,
+    normalizeSanctionsDashboardResponse,
     normalizeSchoolSettings,
     normalizeSchoolSummary,
     normalizeSchoolItAccount,
-    normalizeStudentAttendanceReport,
     normalizeStudentFaceRegistrationResponse,
     normalizeTokenPayload,
     normalizeRetentionRunResult,
@@ -46,38 +56,6 @@ import {
 } from '@/services/studentImport.js'
 import { notifySessionExpired } from '@/services/sessionExpiry.js'
 
-/**
- * Unwrap either a paginated envelope `{ data, page, total, ... }` or a legacy
- * plain array into a unified paginated shape.  Every list caller gets the same
- * structure regardless of which backend version is running.
- */
-export function extractPagedData(payload, normalizer = null) {
-    const normalize = normalizer ?? ((x) => x)
-
-    if (payload == null) {
-        return { data: [], page: 1, total: 0, total_pages: 0, limit: 0, next: null, prev: null }
-    }
-
-    if (Array.isArray(payload)) {
-        const data = payload.map(normalize)
-        return { data, page: 1, total: data.length, total_pages: 1, limit: data.length, next: null, prev: null }
-    }
-
-    if (payload && typeof payload === 'object' && Array.isArray(payload.data)) {
-        return {
-            data: payload.data.map(normalize),
-            page: payload.page ?? 1,
-            total: payload.total ?? 0,
-            total_pages: payload.total_pages ?? 0,
-            limit: payload.limit ?? 0,
-            next: payload.next ?? null,
-            prev: payload.prev ?? null,
-        }
-    }
-
-    return { data: [], page: 1, total: 0, total_pages: 0, limit: 0, next: null, prev: null }
-}
-
 export class BackendApiError extends Error {
     constructor(message, { status = 0, details = null } = {}) {
         super(message)
@@ -88,6 +66,10 @@ export class BackendApiError extends Error {
 }
 
 export { resolveApiBaseUrl }
+// First-time face operations can block while InsightFace models download and initialize.
+const FACE_ENGINE_BOOTSTRAP_TIMEOUT_MS = 300000
+const FACE_REGISTER_WARMUP_RETRY_DELAY_MS = 8000
+const FACE_REGISTER_WARMUP_RETRY_ATTEMPTS = 75
 
 function buildUrl(baseUrl, path, params) {
     const url = new URL(`${resolveAbsoluteApiBaseUrl(baseUrl)}${path}`)
@@ -102,87 +84,11 @@ function buildUrl(baseUrl, path, params) {
     return url.toString()
 }
 
-function normalizeErrorPath(loc = []) {
-    const segments = (Array.isArray(loc) ? loc : [loc])
-        .map((segment) => String(segment ?? '').trim())
-        .filter(Boolean)
-        .filter((segment) => !['body', 'query', 'path', 'response'].includes(segment.toLowerCase()))
-
-    return segments.join('.')
-}
-
-function extractStructuredEntryMessage(value = null) {
-    if (!value || typeof value !== 'object') return ''
-
-    const message = String(value?.msg || value?.message || value?.reason || '').trim()
-    const path = normalizeErrorPath(value?.loc)
-
-    if (path && message) return `${path}: ${message}`
-    return message || path
-}
-
-function extractBackendErrorMessage(payload, fallback = 'Request failed.') {
-    const visited = new Set()
-
-    const visit = (value) => {
-        if (typeof value === 'string') {
-            const normalized = value.trim()
-            if (normalized.startsWith('<!DOCTYPE') || normalized.startsWith('<html')) {
-                return ''
-            }
-            return normalized || ''
-        }
-
-        if (Array.isArray(value)) {
-            const messages = value
-                .map((entry) => visit(entry))
-                .filter(Boolean)
-
-            return messages.slice(0, 3).join('; ')
-        }
-
-        if (!value || typeof value !== 'object') {
-            return ''
-        }
-
-        if (visited.has(value)) {
-            return ''
-        }
-        visited.add(value)
-
-        const structuredEntryMessage = extractStructuredEntryMessage(value)
-        if (structuredEntryMessage) {
-            return structuredEntryMessage
-        }
-
-        const candidateValues = [
-            value?.detail,
-            value?.message,
-            value?.reason,
-            value?.error,
-            value?.errors,
-            value?.violations,
-            value?.title,
-        ]
-
-        for (const candidate of candidateValues) {
-            const candidateMessage = visit(candidate)
-            if (candidateMessage) {
-                return candidateMessage
-            }
-        }
-
-        return ''
-    }
-
-    return visit(payload) || String(fallback || 'Request failed.')
-}
-
 async function parseResponse(response) {
     const contentType = response.headers.get('content-type') || ''
     const isJson = contentType.includes('application/json')
 
-    let payload
+    let payload = null
     try {
         payload = isJson ? await response.json() : await response.text()
     } catch {
@@ -190,10 +96,12 @@ async function parseResponse(response) {
     }
 
     if (!response.ok) {
-        const message = extractBackendErrorMessage(
-            payload,
-            response.statusText || 'Request failed.'
-        )
+        const message =
+            payload?.detail?.message ||
+            payload?.detail ||
+            payload?.message ||
+            response.statusText ||
+            'Request failed.'
         throw new BackendApiError(String(message), {
             status: response.status,
             details: payload,
@@ -363,11 +271,11 @@ async function requestWithFallback(baseUrl, candidatePaths, options = {}, fallba
     throw lastError ?? new BackendApiError('Request failed.')
 }
 
-export async function loginForAccessToken(baseUrl, { username, password }) {
+export async function loginForAccessToken(baseUrl, { username, password, rememberMe = false }) {
     const body = new URLSearchParams({
-        grant_type: 'password',
-        username: String(username ?? '').trim(),
+        username: String(username ?? ''),
         password: String(password ?? ''),
+        remember_me: String(Boolean(rememberMe)),
     })
 
     return normalizeTokenPayload(await requestWithFallback(baseUrl, ['/token', '/api/token'], {
@@ -377,16 +285,6 @@ export async function loginForAccessToken(baseUrl, { username, password }) {
         },
         body,
     }, [404, 405]))
-}
-
-export async function loginWithGoogle(baseUrl, idToken) {
-    return normalizeTokenPayload(await request(baseUrl, '/auth/google', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id_token: String(idToken ?? '') }),
-    }))
 }
 
 export async function verifyPasswordForUser(baseUrl, {
@@ -491,7 +389,7 @@ export async function deleteProgram(baseUrl, token, programId) {
 }
 
 export async function getSchoolSettings(baseUrl, token, requestOptions = {}) {
-    return normalizeSchoolSettings(await requestWithFallback(baseUrl, ['/api/school/me', '/api/school-settings/me', '/school-settings/me'], {
+    return normalizeSchoolSettings(await requestWithFallback(baseUrl, ['/api/school/me'], {
         method: 'GET',
         token,
         ...requestOptions,
@@ -544,19 +442,14 @@ export async function updateSchoolBranding(baseUrl, token, payload = {}, logoFil
     }))
 }
 
-export async function getEventsPage(baseUrl, token, params = {}, requestOptions = {}) {
+export async function getEvents(baseUrl, token, params = {}, requestOptions = {}) {
     const payload = await requestWithFallback(baseUrl, ['/api/events/', '/events/'], {
         method: 'GET',
         token,
         params,
         ...requestOptions,
     }, [404, 405])
-    return extractPagedData(payload, normalizeEvent)
-}
-
-export async function getEvents(baseUrl, token, params = {}, requestOptions = {}) {
-    const page = await getEventsPage(baseUrl, token, params, requestOptions)
-    return page.data
+    return Array.isArray(payload) ? payload.map(normalizeEvent) : []
 }
 
 export async function getEventById(baseUrl, token, eventId) {
@@ -586,18 +479,13 @@ export async function deleteEvent(baseUrl, token, eventId, params = {}) {
     }, [404, 405])
 }
 
-export async function getUsersPage(baseUrl, token, params = {}) {
+export async function getUsers(baseUrl, token, params = {}) {
     const payload = await requestWithFallback(baseUrl, ['/api/users/', '/users/'], {
         method: 'GET',
         token,
         params,
     }, [404, 405])
-    return extractPagedData(payload, normalizeUserWithRelations)
-}
-
-export async function getUsers(baseUrl, token, params = {}) {
-    const page = await getUsersPage(baseUrl, token, params)
-    return page.data
+    return Array.isArray(payload) ? payload.map(normalizeUserWithRelations) : []
 }
 
 export async function getGovernanceAccess(baseUrl, token) {
@@ -614,6 +502,29 @@ export async function getGovernanceUnitDetail(baseUrl, token, governanceUnitId) 
     }))
 }
 
+function waitFor(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, Math.max(0, Number(ms) || 0))
+    })
+}
+
+function isFaceRuntimeWarmupError(error) {
+    if (!(error instanceof BackendApiError)) return false
+    if (Number(error.status) !== 503) return false
+
+    const message = String(error?.message || '').toLowerCase()
+    const detail = String(error?.details?.detail || '').toLowerCase()
+    const combined = `${message} ${detail}`
+
+    return (
+        combined.includes('insightface') ||
+        combined.includes('warm-up') ||
+        combined.includes('warming up') ||
+        combined.includes('model warm-up') ||
+        combined.includes('model download')
+    )
+}
+
 export async function getGovernanceUnits(baseUrl, token, params = {}) {
     const payload = await request(baseUrl, '/api/governance/units', {
         method: 'GET',
@@ -622,6 +533,13 @@ export async function getGovernanceUnits(baseUrl, token, params = {}) {
     })
 
     return Array.isArray(payload) ? payload.map(normalizeGovernanceUnitDetail) : []
+}
+
+export async function getGovernanceDashboardOverview(baseUrl, token, governanceUnitId) {
+    return normalizeGovernanceDashboardOverview(await request(baseUrl, `/api/governance/units/${governanceUnitId}/dashboard-overview`, {
+        method: 'GET',
+        token,
+    }))
 }
 
 function hasResolvedSsgUnit(setup = null) {
@@ -649,7 +567,7 @@ function pickSsgUnitFromGovernanceUnits(units = [], schoolId = null) {
 }
 
 export async function getCampusSsgSetup(baseUrl, token) {
-    let primaryError
+    let primaryError = null
 
     try {
         const setup = normalizeGovernanceSsgSetup(await request(baseUrl, '/api/governance/ssg/setup', {
@@ -764,7 +682,7 @@ export async function searchGovernanceStudentCandidates(baseUrl, token, params =
         token,
         params,
     })
-    return Array.isArray(payload) ? payload.map(normalizeGovernanceStudentCandidate).filter(Boolean) : []
+    return Array.isArray(payload) ? payload.map(normalizeGovernanceStudentCandidate) : []
 }
 
 export async function assignGovernanceMember(baseUrl, token, governanceUnitId, payload) {
@@ -797,33 +715,19 @@ export async function deleteGovernanceMember(baseUrl, token, governanceMemberId)
     return true
 }
 
-export async function getGovernanceStudentsPage(baseUrl, token, params = {}) {
+export async function getGovernanceStudents(baseUrl, token, params = {}) {
     const payload = await request(baseUrl, '/api/governance/students', {
         method: 'GET',
         token,
         params,
     })
-    return extractPagedData(payload, (item) => normalizeGovernanceStudentCandidate(item) ?? item)
-}
-
-export async function getGovernanceStudents(baseUrl, token, params = {}) {
-    const page = await getGovernanceStudentsPage(baseUrl, token, params)
-    return page.data
+    return Array.isArray(payload) ? payload : []
 }
 
 export async function getGovernanceAnnouncements(baseUrl, token, governanceUnitId) {
     const payload = await request(baseUrl, `/api/governance/units/${governanceUnitId}/announcements`, {
         method: 'GET',
         token,
-    })
-    return Array.isArray(payload) ? payload : []
-}
-
-export async function getGovernanceAnnouncementMonitor(baseUrl, token, params = {}) {
-    const payload = await request(baseUrl, '/api/governance/announcements/monitor', {
-        method: 'GET',
-        token,
-        params,
     })
     return Array.isArray(payload) ? payload : []
 }
@@ -955,6 +859,42 @@ export async function getMyNotificationInbox(baseUrl, token, params = {}) {
     return Array.isArray(payload) ? payload.map(normalizeNotificationLogItem).filter(Boolean) : []
 }
 
+export async function getMyNotificationPreferences(baseUrl, token) {
+    return normalizeNotificationPreference(await request(baseUrl, '/api/notifications/preferences/me', {
+        method: 'GET',
+        token,
+    }))
+}
+
+export async function updateMyNotificationPreferences(baseUrl, token, payload) {
+    return normalizeNotificationPreference(await request(baseUrl, '/api/notifications/preferences/me', {
+        method: 'PUT',
+        token,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    }))
+}
+
+export async function getMyUserAppPreferences(baseUrl, token) {
+    return normalizeUserAppPreference(await request(baseUrl, '/api/users/preferences/me', {
+        method: 'GET',
+        token,
+    }))
+}
+
+export async function updateMyUserAppPreferences(baseUrl, token, payload) {
+    return normalizeUserAppPreference(await request(baseUrl, '/api/users/preferences/me', {
+        method: 'PUT',
+        token,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    }))
+}
+
 export async function dispatchMissedEventNotifications(baseUrl, token, params = {}) {
     return normalizeNotificationDispatchSummary(await request(baseUrl, '/api/notifications/dispatch/missed-events', {
         method: 'POST',
@@ -1024,6 +964,105 @@ export async function runGovernanceRetention(baseUrl, token, payload, params = {
     }))
 }
 
+export async function getEventSanctionConfig(baseUrl, token, eventId) {
+    return normalizeSanctionConfigResponse(await request(baseUrl, `/api/sanctions/events/${eventId}/config`, {
+        method: 'GET',
+        token,
+    }))
+}
+
+export async function upsertEventSanctionConfig(baseUrl, token, eventId, payload) {
+    return normalizeSanctionConfigResponse(await request(baseUrl, `/api/sanctions/events/${eventId}/config`, {
+        method: 'PUT',
+        token,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    }))
+}
+
+export async function getEventSanctionedStudents(baseUrl, token, eventId, params = {}) {
+    return normalizePaginatedSanctionRecordsResponse(await request(baseUrl, `/api/sanctions/events/${eventId}/students`, {
+        method: 'GET',
+        token,
+        params,
+    }))
+}
+
+export async function approveEventStudentSanction(baseUrl, token, eventId, userId) {
+    return normalizeSanctionRecordResponse(await request(baseUrl, `/api/sanctions/events/${eventId}/students/${userId}/approve`, {
+        method: 'POST',
+        token,
+    }))
+}
+
+export async function getEventSanctionDelegation(baseUrl, token, eventId) {
+    const payload = await request(baseUrl, `/api/sanctions/events/${eventId}/delegation`, {
+        method: 'GET',
+        token,
+    })
+    return Array.isArray(payload)
+        ? payload.map(normalizeSanctionDelegationResponse)
+        : []
+}
+
+export async function upsertEventSanctionDelegation(baseUrl, token, eventId, payload) {
+    const response = await request(baseUrl, `/api/sanctions/events/${eventId}/delegation`, {
+        method: 'PUT',
+        token,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+    return Array.isArray(response)
+        ? response.map(normalizeSanctionDelegationResponse)
+        : []
+}
+
+export async function getSanctionsDashboard(baseUrl, token) {
+    return normalizeSanctionsDashboardResponse(await request(baseUrl, '/api/sanctions/dashboard', {
+        method: 'GET',
+        token,
+    }))
+}
+
+export async function getMySanctions(baseUrl, token) {
+    const payload = await request(baseUrl, '/api/sanctions/students/me', {
+        method: 'GET',
+        token,
+    })
+    return Array.isArray(payload)
+        ? payload.map(normalizeSanctionRecordResponse)
+        : []
+}
+
+export async function getStudentSanctionsDetail(baseUrl, token, userId) {
+    return normalizeSanctionStudentDetailResponse(await request(baseUrl, `/api/sanctions/students/${userId}`, {
+        method: 'GET',
+        token,
+    }))
+}
+
+export async function createClearanceDeadline(baseUrl, token, payload) {
+    return normalizeClearanceDeadlineResponse(await request(baseUrl, '/api/sanctions/clearance-deadline', {
+        method: 'POST',
+        token,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    }))
+}
+
+export async function getActiveClearanceDeadline(baseUrl, token) {
+    return normalizeClearanceDeadlineResponse(await request(baseUrl, '/api/sanctions/clearance-deadline', {
+        method: 'GET',
+        token,
+    }))
+}
+
 export async function createUser(baseUrl, token, payload) {
     return normalizeUserCreateResponse(await requestWithFallback(baseUrl, ['/api/users/', '/users/'], {
         method: 'POST',
@@ -1080,26 +1119,6 @@ export async function startStudentImport(baseUrl, token, previewToken) {
     }))
 }
 
-export async function retryFailedStudentImport(baseUrl, token, jobId, rowNumbers = []) {
-    const normalizedRowNumbers = Array.isArray(rowNumbers)
-        ? rowNumbers.map((value) => Number(value)).filter((value) => Number.isFinite(value))
-        : []
-
-    const payload = normalizedRowNumbers.length
-        ? { row_numbers: normalizedRowNumbers }
-        : null
-
-    return normalizeImportJobCreateResponse(await request(baseUrl, `/api/admin/import-students/retry-failed/${jobId}`, {
-        method: 'POST',
-        token,
-        timeoutMs: resolveImportApiTimeoutMs(),
-        headers: payload ? {
-            'Content-Type': 'application/json',
-        } : undefined,
-        body: payload ? JSON.stringify(payload) : undefined,
-    }))
-}
-
 export async function getStudentImportStatus(baseUrl, token, jobId) {
     return normalizeImportJobStatus(await request(baseUrl, `/api/admin/import-status/${jobId}`, {
         method: 'GET',
@@ -1133,10 +1152,12 @@ async function downloadBinary(baseUrl, path, { token, params } = {}) {
                 payload = null
             }
 
-            const message = extractBackendErrorMessage(
-                payload,
-                response.statusText || 'Request failed.'
-            )
+            const message =
+                payload?.detail?.message ||
+                payload?.detail ||
+                payload?.message ||
+                response.statusText ||
+                'Request failed.'
 
             throw new BackendApiError(String(message), {
                 status: response.status,
@@ -1203,6 +1224,12 @@ export async function removeInvalidPreviewRows(baseUrl, token, previewToken) {
 
 export async function downloadImportErrors(baseUrl, token, jobId) {
     return downloadBinary(baseUrl, `/api/admin/import-errors/${jobId}/download`, {
+        token,
+    })
+}
+
+export async function downloadEventSanctionsExport(baseUrl, token, eventId) {
+    return downloadBinary(baseUrl, `/api/sanctions/events/${eventId}/export`, {
         token,
     })
 }
@@ -1281,16 +1308,6 @@ export async function changePassword(baseUrl, token, payload, endpoint = '/auth/
     }))
 }
 
-export async function forgotPassword(baseUrl, email) {
-    return request(baseUrl, '/auth/forgot-password', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-    })
-}
-
 function normalizeStudentAttendanceResponsePayload(payload = []) {
     if (!Array.isArray(payload)) return []
 
@@ -1331,22 +1348,6 @@ export async function getMyAttendance(baseUrl, token, params = {}, requestOption
     return normalizeAttendanceCollectionPayload(payload)
 }
 
-export async function getStudentAttendanceReport(baseUrl, token, studentProfileId, params = {}) {
-    const normalizedStudentProfileId = Number(studentProfileId)
-    if (!Number.isFinite(normalizedStudentProfileId) || normalizedStudentProfileId <= 0) {
-        throw new BackendApiError('A valid student profile is required for attendance details.')
-    }
-
-    return normalizeStudentAttendanceReport(await requestWithFallback(baseUrl, [
-        `/api/attendance/students/${normalizedStudentProfileId}/report`,
-        `/attendance/students/${normalizedStudentProfileId}/report`,
-    ], {
-        method: 'GET',
-        token,
-        params,
-    }, [404, 405]))
-}
-
 export async function createAnnouncement(baseUrl, token, payload) {
     return requestWithFallback(baseUrl, ['/api/announcements', '/announcements'], {
         method: 'POST',
@@ -1358,16 +1359,6 @@ export async function createAnnouncement(baseUrl, token, payload) {
     }, [404, 405])
 }
 
-export async function getAnnouncements(baseUrl, token, params = {}) {
-    const payload = await requestWithFallback(baseUrl, ['/api/announcements', '/announcements'], {
-        method: 'GET',
-        token,
-        params,
-    }, [404, 405])
-
-    return Array.isArray(payload) ? payload : []
-}
-
 /**
  * Creates a new governance event
  * @param {string} baseUrl - Base URL of the API
@@ -1375,29 +1366,61 @@ export async function getAnnouncements(baseUrl, token, params = {}) {
  * @param {Object} payload - Event data payload
  * @returns {Promise<Object>} The created event
  */
-export async function createGovernanceEvent(baseUrl, token, payload, params = {}, requestOptions = {}) {
-    const extraHeaders = requestOptions?.headers && typeof requestOptions.headers === 'object'
-        ? requestOptions.headers
-        : {}
-
+export async function createGovernanceEvent(baseUrl, token, payload, params = {}) {
     return normalizeEvent(await requestWithFallback(baseUrl, ['/api/events/', '/events/', '/api/governance/events'], {
         method: 'POST',
         token,
         params,
         headers: {
             'Content-Type': 'application/json',
-            ...extraHeaders,
         },
         body: JSON.stringify(payload),
     }, [404, 405]))
 }
 
 export async function getAttendanceSummary(baseUrl, token, params = {}) {
-    return request(baseUrl, '/attendance/summary', {
+    return requestWithFallback(baseUrl, [
+        '/api/attendance/summary',
+        '/attendance/summary',
+    ], {
         method: 'GET',
         token,
         params,
-    })
+    }, [404, 405])
+}
+
+export async function getAttendanceOverview(baseUrl, token, params = {}) {
+    const payload = await requestWithFallback(baseUrl, [
+        '/api/attendance/students/overview',
+        '/attendance/students/overview',
+    ], {
+        method: 'GET',
+        token,
+        params,
+    }, [404, 405])
+    return normalizeAttendanceOverviewCollection(payload)
+}
+
+export async function getStudentAttendanceReport(baseUrl, token, studentId, params = {}) {
+    return requestWithFallback(baseUrl, [
+        `/api/attendance/students/${studentId}/report`,
+        `/attendance/students/${studentId}/report`,
+    ], {
+        method: 'GET',
+        token,
+        params,
+    }, [404, 405])
+}
+
+export async function getStudentAttendanceStats(baseUrl, token, studentId, params = {}) {
+    return requestWithFallback(baseUrl, [
+        `/api/attendance/students/${studentId}/stats`,
+        `/attendance/students/${studentId}/stats`,
+    ], {
+        method: 'GET',
+        token,
+        params,
+    }, [404, 405])
 }
 
 export async function getEventAttendance(baseUrl, token, eventId, params = {}) {
@@ -1440,6 +1463,7 @@ export async function saveFaceReference(baseUrl, token, imageBase64) {
     return normalizeFaceReferenceResponse(await requestWithFallback(baseUrl, ['/api/auth/security/face-reference', '/auth/security/face-reference'], {
         method: 'POST',
         token,
+        timeoutMs: resolveImportApiTimeoutMs(FACE_ENGINE_BOOTSTRAP_TIMEOUT_MS),
         headers: {
             'Content-Type': 'application/json',
         },
@@ -1449,10 +1473,11 @@ export async function saveFaceReference(baseUrl, token, imageBase64) {
     }, [404, 405]))
 }
 
-export async function registerStudentFace(baseUrl, token, imageBase64) {
+async function registerStudentFaceOnce(baseUrl, token, imageBase64) {
     return normalizeStudentFaceRegistrationResponse(await requestWithFallback(baseUrl, ['/api/face/register', '/face/register'], {
         method: 'POST',
         token,
+        timeoutMs: resolveImportApiTimeoutMs(FACE_ENGINE_BOOTSTRAP_TIMEOUT_MS),
         headers: {
             'Content-Type': 'application/json',
         },
@@ -1462,10 +1487,34 @@ export async function registerStudentFace(baseUrl, token, imageBase64) {
     }))
 }
 
+export async function registerStudentFace(baseUrl, token, imageBase64) {
+    let lastError = null
+
+    for (let attempt = 0; attempt < FACE_REGISTER_WARMUP_RETRY_ATTEMPTS; attempt += 1) {
+        try {
+            return await registerStudentFaceOnce(baseUrl, token, imageBase64)
+        } catch (error) {
+            lastError = error
+
+            const shouldRetry =
+                isFaceRuntimeWarmupError(error) &&
+                attempt < FACE_REGISTER_WARMUP_RETRY_ATTEMPTS - 1
+            if (!shouldRetry) {
+                throw error
+            }
+
+            await waitFor(FACE_REGISTER_WARMUP_RETRY_DELAY_MS)
+        }
+    }
+
+    throw lastError || new BackendApiError('Unable to register face right now.')
+}
+
 export async function verifyFaceReference(baseUrl, token, payload) {
     return normalizeFaceVerificationResponse(await requestWithFallback(baseUrl, ['/api/auth/security/face-verify', '/auth/security/face-verify'], {
         method: 'POST',
         token,
+        timeoutMs: resolveImportApiTimeoutMs(FACE_ENGINE_BOOTSTRAP_TIMEOUT_MS),
         headers: {
             'Content-Type': 'application/json',
         },
@@ -1538,3 +1587,5 @@ function appendFormValue(formData, key, value) {
     if (value == null || value === '') return
     formData.append(key, String(value))
 }
+
+

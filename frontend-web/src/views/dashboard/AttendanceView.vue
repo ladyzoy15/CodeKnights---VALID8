@@ -110,30 +110,6 @@
         </section>
 
         <section v-else class="step-section step-section--success dashboard-enter dashboard-enter--3">
-          <div
-            v-if="successReceipt"
-            class="attendance-success-receipt"
-            role="status"
-            aria-live="polite"
-          >
-            <span class="attendance-success-receipt__icon" aria-hidden="true">
-              <CircleCheckBig :size="28" :stroke-width="2.4" />
-            </span>
-            <div class="attendance-success-receipt__copy">
-              <h2>{{ successReceipt.title }}</h2>
-              <p>{{ successReceipt.eventName }}</p>
-            </div>
-            <div class="attendance-success-receipt__grid">
-              <span>
-                <small>Date</small>
-                <strong>{{ successReceipt.dateLabel }}</strong>
-              </span>
-              <span>
-                <small>Time</small>
-                <strong>{{ successReceipt.timeLabel }}</strong>
-              </span>
-            </div>
-          </div>
           <p class="success-caption">{{ successMessage }}</p>
           <p v-if="successDetailMessage" class="success-detail">{{ successDetailMessage }}</p>
           <button class="success-btn" type="button" @click="goBack">
@@ -166,7 +142,6 @@ import {
   ShieldCheck,
   Zap,
   Check,
-  CircleCheckBig,
   ChevronsRight,
   ArrowUpRight,
   ArrowRight,
@@ -186,11 +161,7 @@ import {
   resolveAttendanceCompletionState,
   resolveAttendanceActionState,
 } from '@/services/attendanceFlow.js'
-import {
-  getCurrentPositionWithinAccuracyOrThrow,
-  prepareLocationAccess,
-  requestCameraPermission,
-} from '@/services/devicePermissions.js'
+import { getCurrentPositionWithinAccuracyOrThrow, requestCameraPermission } from '@/services/devicePermissions.js'
 import {
   getEventTimeStatus,
   recordFaceScanAttendance as postFaceScanAttendance,
@@ -263,7 +234,6 @@ const videoReady = ref(false)
 const faceDetected = ref(false)
 const faceScanError = ref(false)
 const faceScanProgress = ref(0)
-const lastSuccessfulAttendanceOutcome = ref(null)
 let faceDetectRaf = null
 let faceProgressRaf = null
 let retryResolve = null
@@ -283,7 +253,7 @@ const faceScanVideoReadyTimeoutMs = Number(
 const faceScanGateEnabled = import.meta.env.VITE_FACE_SCAN_GATE !== 'false'
 const faceDetectorWasmBaseUrl =
   import.meta.env.VITE_FACE_DETECTOR_WASM_URL ||
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm'
 const faceDetectorModelUrl =
   import.meta.env.VITE_FACE_DETECTOR_MODEL_URL ||
   'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite'
@@ -293,16 +263,6 @@ const faceDetectorIntervalMs = Number(import.meta.env.VITE_FACE_DETECTOR_INTERVA
 const geolocationTimeoutMs = Number(import.meta.env.VITE_GEOLOCATION_TIMEOUT_MS ?? 6000)
 const geolocationMaxAgeMs = Number(import.meta.env.VITE_GEOLOCATION_MAX_AGE_MS ?? 0)
 const geolocationHighAccuracy = import.meta.env.VITE_GEOLOCATION_HIGH_ACCURACY !== 'false'
-const successReceiptDateFormatter = new Intl.DateTimeFormat('en-PH', {
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-})
-const successReceiptTimeFormatter = new Intl.DateTimeFormat('en-PH', {
-  hour: 'numeric',
-  minute: '2-digit',
-})
 
 const steps = [
   { key: 'face', icon: ScanFace },
@@ -533,52 +493,17 @@ const successDetailMessage = computed(() => {
 
   return details.join(' ')
 })
-const successReceipt = computed(() => {
-  const outcome = lastSuccessfulAttendanceOutcome.value
-  if (!outcome) return null
-
-  const result = outcome?.result || {}
-  const record = outcome?.attendanceRecord || latestAttendanceRecord.value || {}
-  const action = normalizeFaceScanAction(result?.action)
-  const checkedOut = isFaceScanSignOutAction(action) || Boolean(result?.time_out || record?.time_out)
-  const timestamp = checkedOut
-    ? result?.time_out || record?.time_out || new Date().toISOString()
-    : result?.time_in || record?.time_in || new Date().toISOString()
-
-  return {
-    title: checkedOut ? 'Checked out successfully' : 'Checked in successfully',
-    eventName: event.value?.name || 'Event',
-    dateLabel: formatSuccessReceiptDate(timestamp),
-    timeLabel: formatSuccessReceiptTime(timestamp),
-  }
-})
 
 function normalizeFaceScanAction(action) {
   return String(action ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_')
 }
 
 function isFaceScanSignOutAction(action) {
-  return ['sign_out', 'signed_out', 'check_out', 'checkout', 'time_out', 'timeout', 'out'].includes(action)
+  return ['sign_out', 'signed_out', 'check_out', 'checkout', 'time_out', 'out'].includes(action)
 }
 
 function isFaceScanSignInAction(action) {
   return ['sign_in', 'signed_in', 'check_in', 'checkin', 'time_in', 'in'].includes(action)
-}
-
-function parseSuccessReceiptDate(value) {
-  if (!value) return null
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
-}
-
-function formatSuccessReceiptDate(value) {
-  const parsed = parseSuccessReceiptDate(value)
-  return parsed ? successReceiptDateFormatter.format(parsed) : '--'
-}
-
-function formatSuccessReceiptTime(value) {
-  const parsed = parseSuccessReceiptDate(value)
-  return parsed ? successReceiptTimeFormatter.format(parsed) : '--'
 }
 
 async function loadEventTimeStatus() {
@@ -822,30 +747,6 @@ async function getEventLocation() {
   })
 }
 
-async function warmLocationAccess() {
-  if (props.preview) return null
-
-  const access = await prepareLocationAccess({
-    enableHighAccuracy: geolocationHighAccuracy,
-    timeout: Math.max(geolocationTimeoutMs, 7000),
-    maximumAge: Math.max(geolocationMaxAgeMs, 45000),
-  }).catch(() => null)
-
-  const coords = access?.position
-  if (!coords) {
-    return access
-  }
-
-  userCoords.value = {
-    latitude: coords.latitude,
-    longitude: coords.longitude,
-    accuracy: coords.accuracy ?? null,
-    capturedAt: coords.capturedAt || new Date().toISOString(),
-  }
-
-  return access
-}
-
 function waitForLocationRetry() {
   return new Promise((resolve) => {
     locationRetryResolve = () => {
@@ -947,7 +848,7 @@ async function recordFaceScanAttendance() {
     accuracyM: userCoords.value?.accuracy ?? null,
   }
 
-  let result
+  let result = null
   try {
     result = await postFaceScanAttendance(apiBaseUrl, token, payload)
   } catch {
@@ -1075,7 +976,6 @@ async function runAttendanceFlow() {
   if (isRunning.value) return
   isRunning.value = true
   recordingFailed.value = false
-  lastSuccessfulAttendanceOutcome.value = null
 
   try {
     flowStep.value = 'face'
@@ -1118,7 +1018,6 @@ async function attemptRecordAttendance() {
         attendanceOutcome?.attendanceRecord,
         attendanceOutcome?.timeStatus,
       )
-      lastSuccessfulAttendanceOutcome.value = attendanceOutcome
       return
     } catch (error) {
       recordingFailed.value = true
@@ -1594,8 +1493,6 @@ function updateTrackMetrics() {
 let trackResizeObserver = null
 
 async function initializeAttendanceFlow() {
-  lastSuccessfulAttendanceOutcome.value = null
-
   if (!props.preview) {
     await ensureDashboardEvent(eventId.value).catch(() => null)
   }
@@ -1639,7 +1536,6 @@ async function initializeAttendanceFlow() {
     return
   }
 
-  await warmLocationAccess().catch(() => null)
   successReason.value = 'recorded'
   void runAttendanceFlow()
 }
@@ -2023,89 +1919,6 @@ onBeforeUnmount(() => {
 
 .location-retry-btn:active {
   transform: scale(0.97);
-}
-
-.attendance-success-receipt {
-  width: min(100%, 320px);
-  display: grid;
-  justify-items: center;
-  gap: 12px;
-  padding: 18px;
-  border-radius: 24px;
-  background: #ffffff;
-  box-shadow: 0 18px 44px rgba(7, 14, 23, 0.16);
-}
-
-.attendance-success-receipt__icon {
-  width: 52px;
-  height: 52px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(22, 163, 74, 0.14);
-  color: #15803d;
-}
-
-.attendance-success-receipt__copy {
-  width: 100%;
-  min-width: 0;
-  text-align: center;
-}
-
-.attendance-success-receipt__copy h2 {
-  margin: 0;
-  color: #111827;
-  font-size: 18px;
-  line-height: 1.15;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-
-.attendance-success-receipt__copy p {
-  margin: 5px 0 0;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.3;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.attendance-success-receipt__grid {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.attendance-success-receipt__grid span {
-  min-width: 0;
-  min-height: 58px;
-  padding: 10px 8px;
-  border-radius: 16px;
-  background: #f8fafc;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-}
-
-.attendance-success-receipt__grid small {
-  color: #64748b;
-  font-size: 10px;
-  line-height: 1;
-  font-weight: 800;
-}
-
-.attendance-success-receipt__grid strong {
-  color: #111827;
-  font-size: 12px;
-  line-height: 1.15;
-  font-weight: 900;
-  overflow-wrap: anywhere;
 }
 
 .success-caption {

@@ -1,6 +1,7 @@
 /**
  * useChat — AI Chat Composable
  *
+ * Owns all chat state and message logic.
  * Shared as a singleton (module-level refs) so SideNav mini-chat
  * and the floating AuraChatWindow stay perfectly in sync.
  */
@@ -16,33 +17,22 @@ import {
   AssistantApiError,
 } from '@/services/assistantApi.js'
 
-function parseThoughtsFromContent(content) {
-  const thoughts = []
-  let cleaned
-  let match
-  const re = /<thought>(.*?)<\/thought>/gis
-  while ((match = re.exec(content)) !== null) {
-    thoughts.push(match[1].trim())
-  }
-  cleaned = content.replace(/<thought>.*?<\/thought>/gis, '').trim()
-  return { cleaned, thought: thoughts.join('\n') || null }
-}
-
+// ─── Shared singleton state ───────────────────────────────────────────────────
 const messages   = ref([
   { id: 1, sender: 'ai', text: 'Hi! I am Aura AI. How can I help you today?' }
 ])
 const inputText  = ref('')
 const isTyping   = ref(false)
-const currentToolCall = ref(null)
 const typingConversationId = ref(null)
 const isMiniOpen = ref(false)
 const isFullOpen = ref(false)
-const conversationId = ref(null)
-const conversations = ref([])
+const conversationId = ref(loadStoredConversationId())
+const conversations = ref([]) // [{ conversation_id, title, last_message, updated_at }]
 const isLoadingConversations = ref(false)
 const conversationsError = ref(null)
-const copyStatus = ref('idle')
+const copyStatus = ref('idle') // idle | copied | failed
 
+// Holds a ref to the messages scroll container (set by the active chat view)
 const scrollEl   = ref(null)
 let copyResetTimer = null
 
@@ -103,16 +93,10 @@ function getAuthToken() {
   return String(localStorage.getItem('aura_token') || '').trim()
 }
 
-const _THOUGHT_TAG_RE = /<thought>.*?<\/thought>/gis
-
-function stripThoughtTags(text) {
-  return String(text || '').replace(_THOUGHT_TAG_RE, '').trim()
-}
-
 function normalizeConversationTitle(convo) {
-  const raw = stripThoughtTags(convo?.title || '')
+  const raw = String(convo?.title || '').trim()
   if (raw) return raw
-  const fallback = stripThoughtTags(convo?.last_message || '')
+  const fallback = String(convo?.last_message || '').trim()
   return fallback ? fallback.slice(0, 44) : 'New chat'
 }
 
@@ -153,6 +137,7 @@ async function copyConversation() {
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(text)
     } else {
+      // Fallback for environments where Clipboard API isn't available.
       const el = document.createElement('textarea')
       el.value = text
       el.setAttribute('readonly', '')
@@ -178,9 +163,8 @@ async function copyConversation() {
 }
 
 async function streamAiResponse(userMessage, { token, userMeta } = {}) {
-  const msgId = Date.now() + 1
-  messages.value.push({ id: msgId, sender: 'ai', text: '', visual: null })
-  const msgIdx = messages.value.length - 1
+  const aiMessage = { id: Date.now() + 1, sender: 'ai', text: '' }
+  messages.value.push(aiMessage)
 
   try {
     return await streamAssistantReply({
@@ -190,47 +174,24 @@ async function streamAiResponse(userMessage, { token, userMeta } = {}) {
       conversationId: conversationId.value,
       userMeta,
       onMessageChunk: (chunk, meta) => {
-        if (messages.value[msgIdx] !== undefined) {
-          messages.value[msgIdx] = {
-            ...messages.value[msgIdx],
-            text: (messages.value[msgIdx].text || '') + chunk,
-          }
-        }
+        aiMessage.text += chunk
         if (meta?.conversationId) {
           storeConversationId(meta.conversationId)
-          typingConversationId.value = meta.conversationId
         }
         scrollToBottom()
       },
       onVisualization: (viz, meta) => {
-        if (messages.value[msgIdx] !== undefined) {
-          messages.value[msgIdx] = {
-            ...messages.value[msgIdx],
-            visual: viz,
-          }
-        }
+        // Attach visualization data to the message object
+        aiMessage.visual = viz
         if (meta?.conversationId) {
           storeConversationId(meta.conversationId)
         }
         scrollToBottom()
       },
-      onToolCall: (toolName) => {
-        currentToolCall.value = toolName
-      },
-      onToolDone: () => {
-        currentToolCall.value = null
-      },
-      onThought: (thought) => {
-        if (messages.value[msgIdx] !== undefined) {
-          messages.value[msgIdx] = {
-            ...messages.value[msgIdx],
-            thought: (messages.value[msgIdx].thought || '') + thought,
-          }
-        }
-      },
     })
   } catch (err) {
-    const idx = messages.value.findIndex((m) => m.id === msgId)
+    // If the request fails before any chunks arrive, avoid leaving an empty bubble behind.
+    const idx = messages.value.indexOf(aiMessage)
     if (idx >= 0) messages.value.splice(idx, 1)
     throw err
   }
@@ -278,17 +239,11 @@ async function selectConversation(targetConversationId) {
       conversationId: normalized,
     })
 
-    const mapped = (convo?.messages || []).map((m, idx) => {
-      const raw = String(m?.content ?? '')
-      const { cleaned, thought } = m?.role === 'assistant' ? parseThoughtsFromContent(raw) : { cleaned: raw, thought: null }
-      return {
-        id: idx + 1,
-        sender: m?.role === 'user' ? 'user' : 'ai',
-        text: cleaned,
-        visual: m?.visual_data?.visual ?? null,
-        thought,
-      }
-    })
+    const mapped = (convo?.messages || []).map((m, idx) => ({
+      id: idx + 1,
+      sender: m?.role === 'user' ? 'user' : 'ai',
+      text: String(m?.content ?? ''),
+    }))
 
     messages.value = mapped.length
       ? mapped
@@ -364,6 +319,8 @@ async function sendMessage() {
       }
       refreshConversations()
     } catch (err) {
+      // The assistant stores conversations per-user; if the browser has a stale conversation_id
+      // (e.g., assistant restarted or user token identity changed), reset and start a new chat.
       const isConversationNotFound = err instanceof AssistantApiError
         && err.status === 404
         && /conversation not found/i.test(String(err.message || ''))
@@ -390,7 +347,6 @@ async function sendMessage() {
   } finally {
     isTyping.value = false
     typingConversationId.value = null
-    currentToolCall.value = null
     scrollToBottom()
   }
 }
@@ -400,20 +356,24 @@ function closeMini() { isMiniOpen.value = false }
 
 function openFull()  {
   isFullOpen.value = true
+  // Mini stays open in background; full window takes focus
 }
 
 function closeFull() { isFullOpen.value = false }
 
 function openPill()  {
+  // Called when user clicks the collapsed lime pill
   isMiniOpen.value = true
 }
 
 function expandToFull() {
-  isMiniOpen.value = false
+  // Called from mini chat's Maximize button
+  isMiniOpen.value = false   // hide the mini pill — full window takes over
   isFullOpen.value = true
 }
 
 function minimizeToMini() {
+  // Called from full chat's Minimize button
   isFullOpen.value = false
   isMiniOpen.value = true
 }
@@ -429,7 +389,6 @@ export function useChat() {
     messages,
     inputText,
     isTyping,
-    currentToolCall,
     typingConversationId,
     isMiniOpen,
     isFullOpen,

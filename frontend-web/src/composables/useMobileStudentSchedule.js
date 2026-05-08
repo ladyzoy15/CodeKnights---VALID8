@@ -11,7 +11,6 @@ import {
   getLatestAttendanceRecordsByEvent,
   hasSignedInAttendance,
   hasSignedOutAttendance,
-  parseAttendanceDateTime,
   parseEventDateTime,
   resolveAttendanceActionState,
   resolveAttendanceDisplayStatus,
@@ -104,8 +103,8 @@ function formatTimeRange(event) {
 }
 
 function formatAttendanceDateTime(value) {
-  const parsed = parseAttendanceDateTime(value)
-  return Number.isFinite(parsed.getTime()) ? attendanceDateTimeFormatter.format(parsed) : '--, --'
+  const parsed = parseValidEventDate(value)
+  return parsed ? attendanceDateTimeFormatter.format(parsed) : '--, --'
 }
 
 function normalizeStatus(value) {
@@ -116,15 +115,12 @@ function resolveLifecycleLabel(status) {
   return LIFECYCLE_LABELS[status] || 'Upcoming'
 }
 
-function resolveAttendancePill(attendanceRecord, lifecycleStatus = '', actionState = '') {
+function resolveAttendancePill(attendanceRecord) {
   if (!attendanceRecord) {
     return { label: 'No record yet', tone: 'muted' }
   }
 
-  const isFinalState = ['completed', 'cancelled'].includes(normalizeStatus(lifecycleStatus))
-    || actionState === 'closed'
-
-  if (hasSignedInAttendance(attendanceRecord) && !hasSignedOutAttendance(attendanceRecord) && !isFinalState) {
+  if (hasSignedInAttendance(attendanceRecord) && !hasSignedOutAttendance(attendanceRecord)) {
     return { label: 'Checked in', tone: 'neutral' }
   }
 
@@ -400,6 +396,7 @@ export function useMobileStudentSchedule(previewSource = false) {
         const timeStatus = Number.isFinite(eventId) ? eventTimeStatuses.value[eventId] ?? null : null
         const lifecycleStatus = resolveEventLifecycleStatus(event, timeStatus) || 'upcoming'
         const lifecycleLabel = resolveLifecycleLabel(lifecycleStatus)
+        const attendancePill = resolveAttendancePill(attendanceRecord)
         const actionState = resolveAttendanceActionState({
           event,
           eventStatus: lifecycleStatus,
@@ -407,7 +404,6 @@ export function useMobileStudentSchedule(previewSource = false) {
           timeStatus,
           now: new Date(),
         })
-        const attendancePill = resolveAttendancePill(attendanceRecord, lifecycleStatus, actionState)
         const primaryAction = resolvePrimaryAction(actionState)
 
         return {

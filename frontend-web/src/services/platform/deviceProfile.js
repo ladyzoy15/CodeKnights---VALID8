@@ -37,6 +37,15 @@ export function detectRuntimePlatform(options = {}) {
     }
   }
 
+  if (hasMobileUserAgent(userAgent)) {
+    return {
+      platform: MOBILE_PLATFORM,
+      strategy: 'user-agent',
+      viewportWidth,
+      userAgent,
+    }
+  }
+
   return {
     platform: viewportWidth <= MOBILE_VIEWPORT_MAX_WIDTH ? MOBILE_PLATFORM : DESKTOP_PLATFORM,
     strategy: 'viewport',

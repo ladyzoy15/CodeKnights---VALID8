@@ -4,7 +4,7 @@
  * Provides haptic feedback, status bar control, screen wake lock,
  * and app lifecycle hooks using Capacitor plugins.
  */
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Capacitor } from '@capacitor/core'
 
 const isNative = Capacitor.isNativePlatform()
@@ -13,25 +13,11 @@ let HapticsPlugin = null
 let StatusBarPlugin = null
 let AppPlugin = null
 
-function wrapPlugin(plugin, methodNames = []) {
-    if (!plugin) return null
-
-    return methodNames.reduce((wrapped, methodName) => {
-        if (typeof plugin?.[methodName] !== 'function') return wrapped
-
-        wrapped[methodName] = (...args) => plugin[methodName](...args)
-        return wrapped
-    }, {})
-}
-
 async function loadHaptics() {
     if (HapticsPlugin) return HapticsPlugin
     try {
         const mod = await import('@capacitor/haptics')
-        HapticsPlugin = wrapPlugin(mod.Haptics, [
-            'impact',
-            'notification',
-        ])
+        HapticsPlugin = mod.Haptics
         return HapticsPlugin
     } catch {
         return null
@@ -42,11 +28,7 @@ async function loadStatusBar() {
     if (StatusBarPlugin) return StatusBarPlugin
     try {
         const mod = await import('@capacitor/status-bar')
-        StatusBarPlugin = wrapPlugin(mod.StatusBar, [
-            'setBackgroundColor',
-            'hide',
-            'show',
-        ])
+        StatusBarPlugin = mod.StatusBar
         return StatusBarPlugin
     } catch {
         return null
@@ -57,9 +39,7 @@ async function loadApp() {
     if (AppPlugin) return AppPlugin
     try {
         const mod = await import('@capacitor/app')
-        AppPlugin = wrapPlugin(mod.App, [
-            'addListener',
-        ])
+        AppPlugin = mod.App
         return AppPlugin
     } catch {
         return null

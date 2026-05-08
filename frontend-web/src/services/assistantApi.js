@@ -14,7 +14,7 @@ function buildUrl(baseUrl, path) {
 }
 
 async function readErrorDetails(response) {
-  let details
+  let details = null
   try {
     details = await response.json()
   } catch {
@@ -65,9 +65,6 @@ export async function streamAssistantReply({
   userMeta = null,
   onMessageChunk,
   onVisualization,
-  onToolCall,
-  onToolDone,
-  onThought,
 } = {}) {
   const trimmed = String(message || '').trim()
   if (!trimmed) throw new AssistantApiError('Message is required.')
@@ -121,27 +118,6 @@ export async function streamAssistantReply({
       if (parsed) {
         if (parsed?.data?.conversation_id) {
           latestConversationId = parsed.data.conversation_id
-        }
-
-        if (parsed.event === 'thought') {
-          const thought = String(parsed?.data?.content ?? '')
-          if (thought && typeof onThought === 'function') {
-            onThought(thought, { conversationId: latestConversationId })
-          }
-        }
-
-        if (parsed.event === 'tool_call') {
-          const toolName = parsed?.data?.tool
-          if (toolName && typeof onToolCall === 'function') {
-            onToolCall(toolName, { conversationId: latestConversationId })
-          }
-        }
-
-        if (parsed.event === 'tool_done') {
-          const toolName = parsed?.data?.tool
-          if (toolName && typeof onToolDone === 'function') {
-            onToolDone(toolName, { conversationId: latestConversationId })
-          }
         }
 
         if (parsed.event === 'message') {

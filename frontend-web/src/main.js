@@ -4,12 +4,14 @@ import { createPinia } from 'pinia'
 import router from '@/router/index.js'
 import App from './App.vue'
 import './assets/css/main.css'
+import 'katex/dist/katex.min.css'
+import 'highlight.js/styles/github-dark.css'
 
 import { loadTheme, applyTheme } from '@/config/theme.js'
 import { clearDashboardSession, initializeDashboardSession } from '@/composables/useDashboardSession.js'
 import { installAppErrorHandling, scheduleNonCriticalStartupTask } from '@/services/appBootstrap.js'
+import { installConsoleNoiseFilters } from '@/services/consoleNoise.js'
 import { startDocumentBrandingSync } from '@/services/documentBranding.js'
-import { startNativeEventNotificationSync } from '@/services/eventNotificationSync.js'
 import { getStoredAuthMeta, hasPrivilegedPendingFace } from '@/services/localAuth.js'
 import { registerAuraServiceWorker, startMobileFullscreenSync } from '@/services/mobileFullscreen.js'
 import { startPwaInstallSync } from '@/services/pwaInstall.js'
@@ -47,6 +49,7 @@ function resolveBootstrapThemeSettings() {
 bootstrapStoredSessionPersistence()
 initializeStoredFontSize()
 applyTheme(loadTheme(resolveBootstrapThemeSettings()))
+installConsoleNoiseFilters()
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -61,7 +64,6 @@ scheduleNonCriticalStartupTask(() => startDocumentBrandingSync(router))
 scheduleNonCriticalStartupTask(() => startPwaInstallSync())
 scheduleNonCriticalStartupTask(() => registerAuraServiceWorker())
 scheduleNonCriticalStartupTask(() => startMobileFullscreenSync())
-scheduleNonCriticalStartupTask(() => startNativeEventNotificationSync())
 
 // Session expiry listener
 if (typeof window !== 'undefined') {
@@ -83,6 +85,13 @@ if (hasStoredSessionToken() && !hasPrivilegedPendingFace()) {
 
 // --- Capacitor Native Initialization ---
 if (Capacitor.isNativePlatform()) {
+  // Splash screen (auto-hides via config, but ensure it hides)
+  import('@capacitor/splash-screen').then(({ SplashScreen }) => {
+    setTimeout(() => {
+      SplashScreen.hide().catch(() => null)
+    }, 2000)
+  }).catch(() => null)
+
   // Android back button handler
   import('@capacitor/app').then(({ App: CapApp }) => {
     CapApp.addListener('backButton', ({ canGoBack }) => {

@@ -1,6 +1,5 @@
 <template>
-  <div class="sg-events-view">
-    <section class="sg-sub-page">
+  <section class="sg-sub-page">
     <header class="sg-sub-header dashboard-enter dashboard-enter--1">
       <div style="display: flex; align-items: center; gap: 16px;">
         <button class="sg-sub-back" type="button" @click="goBack">
@@ -26,15 +25,15 @@
           <span class="sg-summary-lbl">Total Events</span>
         </div>
         <div class="sg-summary-card">
-          <span class="sg-summary-val" style="color: var(--color-primary)">{{ upcomingCount }}</span>
+          <span class="sg-summary-val" style="color: #3498db">{{ upcomingCount }}</span>
           <span class="sg-summary-lbl">Upcoming</span>
         </div>
         <div class="sg-summary-card">
-          <span class="sg-summary-val" style="color: var(--color-status-compliant)">{{ ongoingCount }}</span>
+          <span class="sg-summary-val" style="color: #27ae60">{{ ongoingCount }}</span>
           <span class="sg-summary-lbl">Ongoing</span>
         </div>
         <div class="sg-summary-card">
-          <span class="sg-summary-val" style="color: var(--color-surface-text-muted)">{{ completedCount }}</span>
+          <span class="sg-summary-val" style="color: #95a5a6">{{ completedCount }}</span>
           <span class="sg-summary-lbl">Completed</span>
         </div>
       </div>
@@ -50,180 +49,96 @@
           <Search :size="18" style="color: var(--color-primary);" />
         </div>
         
-        <div class="sg-create-wrapper" :class="{ 'is-expanded': isCreating }">
-          <button v-if="!isCreating" class="sg-create-event-btn" type="button" @click="openCreateForm">
+        <div class="sg-create-wrapper" :class="{ 'is-expanded': isCreating, 'map-is-fullscreen': isMapFullscreen }">
+          <button v-show="!isCreating" class="sg-create-event-btn" type="button" @click="openCreateForm">
             <Plus :size="20" />
             <span style="margin-top: 1px;">Create<br>Event</span>
           </button>
           
-          <div v-if="isCreating" class="sg-create-form">
+          <div class="sg-create-form" v-show="isCreating">
             <header class="sg-create-form-header">
-              <div>
-                <p class="sg-create-eyebrow">New governance event</p>
-                <h2 class="sg-create-heading">Create Event</h2>
-                <p class="sg-create-copy">Set the event schedule, location, and optional attendance geofence.</p>
-              </div>
-
-              <button
-                class="sg-create-close"
-                type="button"
-                aria-label="Close create event form"
-                :disabled="isSubmitting"
-                @click="closeCreateForm"
-              >
-                <X :size="18" />
+              <button class="sg-create-event-btn sg-create-event-btn--inner" type="button" @click="closeCreateForm">
+                <Plus :size="20" />
+                <span style="margin-top: 1px;">Create<br>Event</span>
               </button>
             </header>
             
             <form class="sg-event-fields" @submit.prevent="submitEvent">
-              <div class="sg-event-fields-grid">
-                <label class="sg-field-label sg-field-label--wide">
-                  <span>Event Name</span>
-                  <input v-model="form.name" type="text" placeholder="e.g. Campus Orientation" required />
-                </label>
-
-                <label class="sg-field-label">
-                  <span>Start date & time</span>
-                  <input v-model="form.start_time" type="datetime-local" required />
-                </label>
-
-                <label class="sg-field-label">
-                  <span>End date & time</span>
-                  <input v-model="form.end_time" type="datetime-local" required />
-                </label>
-              </div>
-
-              <section class="sg-map-section">
-                <header class="sg-map-section-header">
-                  <div class="sg-map-section-title">
-                    <div>
-                      <h3>Attendance Timing</h3>
-                      <p>Prefilled from school settings. Adjust for this event if needed.</p>
-                    </div>
-                  </div>
-                </header>
-
-                <div class="sg-coord-grid">
-                  <label class="sg-field-label">
-                    <span>Early Check-In (min)</span>
-                    <input
-                      v-model="form.early_check_in_minutes"
-                      type="number"
-                      min="0"
-                      max="1440"
-                      step="1"
-                      :disabled="isSubmitting || isLoadingCreateDefaults"
-                    />
-                  </label>
-                  <label class="sg-field-label">
-                    <span>Late Threshold (min)</span>
-                    <input
-                      v-model="form.late_threshold_minutes"
-                      type="number"
-                      min="0"
-                      max="1440"
-                      step="1"
-                      :disabled="isSubmitting || isLoadingCreateDefaults"
-                    />
-                  </label>
-                  <label class="sg-field-label">
-                    <span>Sign-Out Grace (min)</span>
-                    <input
-                      v-model="form.sign_out_grace_minutes"
-                      type="number"
-                      min="0"
-                      max="1440"
-                      step="1"
-                      :disabled="isSubmitting || isLoadingCreateDefaults"
-                    />
-                  </label>
-                  <label class="sg-field-label">
-                    <span>Sign-Out Open Delay (min)</span>
-                    <input
-                      v-model="form.sign_out_open_delay_minutes"
-                      type="number"
-                      min="0"
-                      max="1440"
-                      step="1"
-                      :disabled="isSubmitting || isLoadingCreateDefaults"
-                    />
-                  </label>
-                </div>
-
-                <p class="sg-geofence-note">
-                  Event timing defaults are sourced from school settings when the form opens.
-                </p>
-              </section>
+              <label class="sg-field-label">
+                Event Name
+                <input v-model="form.name" type="text" placeholder="e.g. Orientation" required />
+              </label>
               
-              <section class="sg-map-section" :class="{ 'is-required': form.require_geofence }">
-                <header class="sg-map-section-header">
-                  <div class="sg-map-section-title">
-                    <span class="sg-map-section-icon">
-                      <MapPin :size="18" />
-                    </span>
-                    <div>
-                      <h3>Location</h3>
-                      <p>{{ geofenceSummary }}</p>
+              <label class="sg-field-label">
+                Location
+                <input v-model="form.location_name" type="text" placeholder="e.g. University Campus" required />
+              </label>
+              
+              <label class="sg-field-label">
+                Start date & time
+                <input v-model="form.start_time" type="datetime-local" required />
+              </label>
+              
+              <label class="sg-field-label">
+                End date & time
+                <input v-model="form.end_time" type="datetime-local" required />
+              </label>
+              
+              <div class="sg-map-section">
+                <p class="sg-field-label">Please Select Location for Attendance</p>
+                
+                <div style="position: relative; width: 100%; height: 200px;">
+                  <div 
+                    class="sg-map-container"
+                    :class="{ 'is-fullscreen': isMapFullscreen }"
+                  >
+                    <div id="sg-leaflet-preview" class="sg-leaflet-preview" @click="toggleFullscreenMap"></div>
+                    
+                    <div v-if="isMapFullscreen" class="sg-map-fullscreen-overlay">
+                      <button class="sg-map-confirm-btn" type="button" @click.stop="toggleFullscreenMap">
+                        Confirm Location
+                      </button>
                     </div>
                   </div>
-
-                  <label class="sg-toggle-label">
-                    <input v-model="form.require_geofence" type="checkbox" />
-                    <span class="sg-toggle-track"></span>
-                    <span>Require geofence</span>
-                  </label>
-                </header>
-
-                <EventLocationPicker
-                  v-model:location-label="form.location_name"
-                  v-model:latitude="form.latitude"
-                  v-model:longitude="form.longitude"
-                  :radius-m="form.radius_meters"
-                  :initialize-with-current-location="true"
-                  :disabled="isSubmitting"
-                />
+                </div>
+                
+                <div class="sg-map-controls">
+                  <button class="sg-map-btn" type="button" @click="useCurrentLocation">Use Current Location</button>
+                  <button class="sg-map-btn sg-map-btn--clear" type="button" @click="clearLocation">
+                    <Trash2 :size="14" style="color:#e74c3c" /> <span style="color:#e74c3c">Clear</span>
+                  </button>
+                </div>
                 
                 <div class="sg-coord-grid">
                   <label class="sg-field-label">
-                    <span>Latitude</span>
-                    <input v-model="form.latitude" type="number" step="any" placeholder="Not selected" />
+                    Latitude
+                    <input v-model="form.latitude" type="number" step="any" placeholder="0.00000" />
                   </label>
                   <label class="sg-field-label">
-                    <span>Longitude</span>
-                    <input v-model="form.longitude" type="number" step="any" placeholder="Not selected" />
+                    Longitude
+                    <input v-model="form.longitude" type="number" step="any" placeholder="0.00000" />
                   </label>
                   <label class="sg-field-label">
-                    <span>Allowed Radius</span>
-                    <input v-model="form.radius_meters" type="number" min="1" max="5000" step="1" placeholder="100 meters" />
+                    Allowed Radius
+                    <input v-model="form.radius_meters" type="number" placeholder="100 meters" />
                   </label>
                   <label class="sg-field-label">
-                    <span>Max GPS Accuracy</span>
-                    <input v-model="form.gps_accuracy" type="number" min="1" max="1000" step="1" placeholder="50 meters" />
+                    Max GPS Accuracy
+                    <input v-model="form.gps_accuracy" type="number" placeholder="50 meters" />
                   </label>
                 </div>
-
-                <p class="sg-geofence-note">
-                  {{ geofenceHelperText }}
-                </p>
-              </section>
-
-              <p v-if="createError" class="sg-create-feedback" role="alert">
-                <AlertCircle :size="16" />
-                <span>{{ createError }}</span>
-              </p>
-              
-              <div class="sg-form-actions">
-                <button class="sg-cancel-event" type="button" :disabled="isSubmitting" @click="closeCreateForm">
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  class="sg-submit-event"
-                  :disabled="isSubmitting || isLoadingCreateDefaults || !createDefaultsLoaded"
-                >
-                  {{ isLoadingCreateDefaults ? 'Loading defaults...' : isSubmitting ? 'Creating...' : 'Create Event' }}
-                </button>
+                
+                <label class="sg-checkbox-label">
+                  <input v-model="form.require_geofence" type="checkbox" />
+                  <span class="sg-checkbox-custom"></span>
+                  Require students to be inside this geofence when signing in.
+                </label>
               </div>
+              
+              <button type="submit" class="sg-submit-event" :disabled="isSubmitting">
+                {{ isSubmitting ? 'Creating...' : 'Create Event' }}
+              </button>
+              <p class="sg-form-note">New governance events are created with the default upcoming status.</p>
             </form>
           </div>
         </div>
@@ -288,25 +203,24 @@
         <p v-else class="sg-sub-empty">No events found matching your search.</p>
       </div>
     </template>
-    </section>
+  </section>
 
-    <EventEditorSheet
-      :is-open="isEventEditorOpen"
-      :event="editingEvent"
-      title="Edit Governance Event"
-      description="Update the event details using the same backend fields the governance event API accepts."
-      submit-label="Save Event"
-      :saving="isMutatingEvent"
-      :error-message="eventEditorError"
-      @close="closeEventEditor"
-      @save="saveEventEdits"
-    />
-  </div>
+  <EventEditorSheet
+    :is-open="isEventEditorOpen"
+    :event="editingEvent"
+    title="Edit Governance Event"
+    description="Update the event details using the same backend fields the governance event API accepts."
+    submit-label="Save Event"
+    :saving="isMutatingEvent"
+    :error-message="eventEditorError"
+    @close="closeEventEditor"
+    @save="saveEventEdits"
+  />
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 
 const props = defineProps({
   preview: {
@@ -314,13 +228,10 @@ const props = defineProps({
     default: false,
   },
 })
-import { AlertCircle, ArrowLeft, ArrowRight, Search, Plus, Trash2, Edit2, MapPin, X } from 'lucide-vue-next'
+import { ArrowLeft, ArrowRight, Search, Plus, Trash2, Edit2 } from 'lucide-vue-next'
 import EventEditorSheet from '@/components/events/EventEditorSheet.vue'
-import EventLocationPicker from '@/components/events/EventLocationPicker.vue'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
 import { useSgDashboard } from '@/composables/useSgDashboard.js'
-import { createIdempotencyKey } from '@/services/idempotency.js'
 import {
   BackendApiError,
   createGovernanceEvent,
@@ -330,26 +241,16 @@ import {
   getGovernanceUnitDetail,
   updateEvent as updateBackendEvent,
 } from '@/services/backendApi.js'
+import { getCurrentPositionOrThrow } from '@/services/devicePermissions.js'
 import { getStoredAuthMeta } from '@/services/localAuth.js'
 import {
   getGovernanceUnitsForAction,
   normalizeGovernanceContext,
 } from '@/services/governanceScope.js'
-import { withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
 
-const route = useRoute()
 const router = useRouter()
-const {
-  apiBaseUrl,
-  token,
-  dashboardState,
-  schoolSettings,
-  refreshSchoolSettings,
-  isSchoolItSession,
-  isAdminSession,
-} = useDashboardSession()
-const { previewBundle } = useSgPreviewBundle(() => props.preview)
-const { isLoading: sgLoading } = useSgDashboard(props.preview)
+const { apiBaseUrl, token, dashboardState, isSchoolItSession, isAdminSession } = useDashboardSession()
+const { isLoading: sgLoading } = useSgDashboard()
 const governanceUnitId = ref(null)
 const governanceContext = ref('')
 const governanceUnitDetailCache = new Map()
@@ -371,31 +272,21 @@ const eventEditorError = ref('')
 
 const isCreating = ref(false)
 const isSubmitting = ref(false)
-const createError = ref('')
-const pendingCreateRequestKey = ref('')
-const DEFAULT_EVENT_CREATE_SETTINGS = Object.freeze({
-  early_check_in_minutes: 30,
-  late_threshold_minutes: 10,
-  sign_out_grace_minutes: 15,
-  sign_out_open_delay_minutes: 0,
-})
-const createDefaultsLoaded = ref(Boolean(props.preview))
-const isLoadingCreateDefaults = ref(false)
+const isMapFullscreen = ref(false)
 const form = ref({
   name: '',
   location_name: '',
   start_time: '',
   end_time: '',
-  early_check_in_minutes: DEFAULT_EVENT_CREATE_SETTINGS.early_check_in_minutes,
-  late_threshold_minutes: DEFAULT_EVENT_CREATE_SETTINGS.late_threshold_minutes,
-  sign_out_grace_minutes: DEFAULT_EVENT_CREATE_SETTINGS.sign_out_grace_minutes,
-  sign_out_open_delay_minutes: DEFAULT_EVENT_CREATE_SETTINGS.sign_out_open_delay_minutes,
   require_geofence: false,
   latitude: null,
   longitude: null,
   radius_meters: 100,
   gps_accuracy: 50
 })
+
+let mapInstance = null
+let markerInstance = null
 
 const eventSwipeOffsets = ref({})
 const eventSwipeDragId = ref(null)
@@ -422,41 +313,6 @@ const hasOpenEventSwipe = computed(() => Object.values(eventSwipeOffsets.value).
 const upcomingCount = computed(() => events.value.filter(e => String(e.status).toLowerCase() === 'upcoming').length)
 const ongoingCount = computed(() => events.value.filter(e => ['ongoing', 'active'].includes(String(e.status).toLowerCase())).length)
 const completedCount = computed(() => events.value.filter(e => String(e.status).toLowerCase() === 'completed').length)
-const formGeofence = computed(() => getFormGeofenceValues())
-const hasCompleteGeofence = computed(() => formGeofence.value.complete)
-const geofenceSummary = computed(() => {
-  if (form.value.require_geofence) {
-    return hasCompleteGeofence.value
-      ? 'Students must be inside the selected radius to sign in.'
-      : 'Select a map point before saving a required geofence.'
-  }
-
-  return hasCompleteGeofence.value
-    ? 'A map location will be saved, but attendance can proceed without geofence enforcement.'
-    : 'Optional. Leave blank when this event does not need location-locked attendance.'
-})
-const geofenceHelperText = computed(() => {
-  if (!hasCompleteGeofence.value) {
-    return 'The app will not send radius-only data to the backend. Pick a map point to save geofence fields.'
-  }
-
-  const radius = Math.round(formGeofence.value.radius)
-  const accuracy = formGeofence.value.maxAccuracy != null
-    ? ` Devices must report ${Math.round(formGeofence.value.maxAccuracy)} m accuracy or better.`
-    : ''
-
-  return `Students inside ${radius} m of the marker are treated as inside the event area.${accuracy}`
-})
-
-watch(
-  form,
-  () => {
-    if (createError.value) {
-      createError.value = ''
-    }
-  },
-  { deep: true }
-)
 
 onMounted(() => {
   document.addEventListener('pointerdown', handleDocumentPointerDown)
@@ -464,6 +320,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
+  if (mapInstance) {
+    mapInstance.remove()
+    mapInstance = null
+    markerInstance = null
+  }
 })
 
 function formatDate(d) {
@@ -474,15 +335,15 @@ function formatDate(d) {
 
 function goBack() { 
   if (props.preview) {
-    router.push(withPreservedGovernancePreviewQuery(route, '/exposed/governance'))
+    router.push('/exposed/sg')
     return
   }
-  router.push('/governance') 
+  router.push('/sg') 
 }
 
 function goToEvent(event) {
   if (props.preview) {
-    router.push(withPreservedGovernancePreviewQuery(route, { name: 'PreviewSgEventDetail', params: { id: event.id } }))
+    router.push({ name: 'PreviewSgEventDetail', params: { id: event.id } })
     return
   }
   router.push({ name: 'SgEventDetail', params: { id: event.id } })
@@ -533,15 +394,6 @@ async function ensureGovernanceEventMutationParams(url) {
 async function saveEventEdits(payload) {
   if (!editingEvent.value?.id || isMutatingEvent.value) return
 
-  if (props.preview) {
-    replaceEventInList({
-      ...editingEvent.value,
-      ...payload,
-    })
-    closeEventEditor(true)
-    return
-  }
-
   isMutatingEvent.value = true
   eventEditorError.value = ''
 
@@ -570,15 +422,6 @@ async function deleteManagedEvent(event) {
   const confirmed = window.confirm(`Delete ${getEventDisplayName(event)}?`)
   if (!confirmed) return
 
-  if (props.preview) {
-    closeAllEventSwipes()
-    events.value = events.value.filter((entry) => Number(entry?.id) !== Number(event.id))
-    if (Number(editingEvent.value?.id) === Number(event.id)) {
-      closeEventEditor(true)
-    }
-    return
-  }
-
   isMutatingEvent.value = true
   closeAllEventSwipes()
 
@@ -601,19 +444,95 @@ async function deleteManagedEvent(event) {
   }
 }
 
-async function openCreateForm() {
-  createError.value = ''
-  const defaultsLoaded = await ensureCreateEventDefaultsLoaded()
-  if (!defaultsLoaded) return
-  resetEventForm()
+function openCreateForm() {
   isCreating.value = true
+  initMap()
 }
 
-function closeCreateForm(force = false) {
-  if (isSubmitting.value && !force) return
-  createError.value = ''
-  pendingCreateRequestKey.value = ''
+function closeCreateForm() {
   isCreating.value = false
+  setTimeout(() => {
+    if (mapInstance) {
+      mapInstance.remove()
+      mapInstance = null
+      markerInstance = null
+    }
+  }, 400) // Wait for transition
+}
+
+function initMap() {
+  if (mapInstance) return
+  nextTick(() => {
+    setTimeout(async () => {
+      const el = document.getElementById('sg-leaflet-preview')
+      if (!el) return
+      
+      try {
+        const LeafletModule = await import('leaflet')
+        await import('leaflet/dist/leaflet.css')
+        const L = LeafletModule.default || LeafletModule
+        
+        mapInstance = L.map(el).setView([14.5995, 120.9842], 13) // Default to Manila
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(mapInstance)
+        
+        // Define global L reference purely for the marker helper
+        window._sgLeaflet = L
+        
+        mapInstance.on('click', (e) => {
+          setMapMarker(e.latlng.lat, e.latlng.lng)
+        })
+        
+        if (form.value.latitude && form.value.longitude) {
+          setMapMarker(form.value.latitude, form.value.longitude)
+        }
+      } catch (err) {
+        console.error('Failed to load Leaflet:', err)
+      }
+    }, 350) // wait for element expansion animation
+  })
+}
+
+function setMapMarker(lat, lng) {
+  form.value.latitude = parseFloat(lat.toFixed(6))
+  form.value.longitude = parseFloat(lng.toFixed(6))
+  if (markerInstance) {
+    markerInstance.setLatLng([lat, lng])
+  } else {
+    const L = window._sgLeaflet
+    if (L) markerInstance = L.marker([lat, lng]).addTo(mapInstance)
+  }
+  if (mapInstance) mapInstance.setView([lat, lng])
+}
+
+async function useCurrentLocation() {
+  try {
+    const pos = await getCurrentPositionOrThrow({
+      enableHighAccuracy: true,
+      timeout: 25000,
+      maximumAge: 10000,
+    })
+    setMapMarker(pos.latitude, pos.longitude)
+  } catch (error) {
+    alert(error?.message || 'Unable to retrieve your location. Make sure GPS or device location services are turned on, then try again.')
+  }
+}
+
+function clearLocation() {
+  form.value.latitude = null
+  form.value.longitude = null
+  if (markerInstance) {
+    markerInstance.remove()
+    markerInstance = null
+  }
+}
+
+function toggleFullscreenMap() {
+  isMapFullscreen.value = !isMapFullscreen.value
+  setTimeout(() => {
+    if (mapInstance) mapInstance.invalidateSize()
+  }, 400)
 }
 
 function getEventSwipeOffset(eventId) {
@@ -645,8 +564,7 @@ function closeAllEventSwipes() {
 
 function handleDocumentPointerDown(event) {
   if (!hasOpenEventSwipe.value) return
-  const target = event.target
-  if (target instanceof Element && target.closest('.sg-event-swipe-container')) return
+  if (event.target.closest('.sg-event-swipe-container')) return
   closeAllEventSwipes()
 }
 
@@ -827,133 +745,8 @@ function toOptionalFiniteNumber(value) {
   return Number.isFinite(normalized) ? normalized : null
 }
 
-function toBoundedMinuteInteger(value, fallback = 0) {
-  const normalized = Number(value)
-  if (!Number.isFinite(normalized)) return Math.max(0, Math.min(1440, Math.round(Number(fallback) || 0)))
-  return Math.max(0, Math.min(1440, Math.round(normalized)))
-}
-
-function getActiveCreateDefaultsSource() {
-  if (props.preview) {
-    return previewBundle.value?.schoolSettings || null
-  }
-  return schoolSettings.value || null
-}
-
-function hasSchoolEventDefaults(source = null) {
-  if (!source || typeof source !== 'object') return false
-  return (
-    Number.isFinite(Number(source.event_default_early_check_in_minutes))
-    && Number.isFinite(Number(source.event_default_late_threshold_minutes))
-    && Number.isFinite(Number(source.event_default_sign_out_grace_minutes))
-  )
-}
-
-function resolveCreateEventDefaults(source = null) {
-  const resolvedEarlyCheckInMinutes = toBoundedMinuteInteger(
-    source?.event_default_early_check_in_minutes,
-    DEFAULT_EVENT_CREATE_SETTINGS.early_check_in_minutes
-  )
-  const resolvedLateThresholdMinutes = toBoundedMinuteInteger(
-    source?.event_default_late_threshold_minutes,
-    DEFAULT_EVENT_CREATE_SETTINGS.late_threshold_minutes
-  )
-  const resolvedSignOutGraceMinutes = toBoundedMinuteInteger(
-    source?.event_default_sign_out_grace_minutes,
-    DEFAULT_EVENT_CREATE_SETTINGS.sign_out_grace_minutes
-  )
-  const resolvedSignOutOpenDelayMinutes = Math.min(
-    toBoundedMinuteInteger(
-      source?.event_default_sign_out_open_delay_minutes,
-      DEFAULT_EVENT_CREATE_SETTINGS.sign_out_open_delay_minutes
-    ),
-    resolvedSignOutGraceMinutes
-  )
-
-  return {
-    early_check_in_minutes: resolvedEarlyCheckInMinutes,
-    late_threshold_minutes: resolvedLateThresholdMinutes,
-    sign_out_grace_minutes: resolvedSignOutGraceMinutes,
-    sign_out_open_delay_minutes: resolvedSignOutOpenDelayMinutes,
-  }
-}
-
-function applyCreateEventDefaults(source = null) {
-  const defaults = resolveCreateEventDefaults(source)
-  form.value.early_check_in_minutes = defaults.early_check_in_minutes
-  form.value.late_threshold_minutes = defaults.late_threshold_minutes
-  form.value.sign_out_grace_minutes = defaults.sign_out_grace_minutes
-  form.value.sign_out_open_delay_minutes = defaults.sign_out_open_delay_minutes
-}
-
-async function ensureCreateEventDefaultsLoaded(forceRefresh = false) {
-  if (props.preview) {
-    applyCreateEventDefaults(getActiveCreateDefaultsSource())
-    createDefaultsLoaded.value = true
-    return true
-  }
-
-  if (createDefaultsLoaded.value && !forceRefresh) {
-    return true
-  }
-
-  isLoadingCreateDefaults.value = true
-  try {
-    let settingsSnapshot = schoolSettings.value
-    if (!settingsSnapshot || !hasSchoolEventDefaults(settingsSnapshot) || forceRefresh) {
-      settingsSnapshot = await refreshSchoolSettings()
-    }
-    if (!hasSchoolEventDefaults(settingsSnapshot)) {
-      throw new Error('School settings are unavailable.')
-    }
-
-    applyCreateEventDefaults(settingsSnapshot)
-    createDefaultsLoaded.value = true
-    return true
-  } catch (error) {
-    createDefaultsLoaded.value = false
-    createError.value = error?.message || 'Unable to load school event defaults.'
-    return false
-  } finally {
-    isLoadingCreateDefaults.value = false
-  }
-}
-
-function isValidLatitude(value) {
-  return Number.isFinite(value) && value >= -90 && value <= 90
-}
-
-function isValidLongitude(value) {
-  return Number.isFinite(value) && value >= -180 && value <= 180
-}
-
-function getFormGeofenceValues() {
-  const latitude = toOptionalFiniteNumber(form.value.latitude)
-  const longitude = toOptionalFiniteNumber(form.value.longitude)
-  const radius = toOptionalFiniteNumber(form.value.radius_meters)
-  const maxAccuracy = toOptionalFiniteNumber(form.value.gps_accuracy)
-  const hasLatitude = latitude != null
-  const hasLongitude = longitude != null
-  const hasAnyCoordinate = hasLatitude || hasLongitude
-  const complete = hasLatitude && hasLongitude && radius != null
-
-  return {
-    latitude,
-    longitude,
-    radius,
-    maxAccuracy,
-    hasAnyCoordinate,
-    complete,
-  }
-}
-
 function toBackendDateTimeValue(value) {
-  const normalized = String(value || '').trim()
-  if (!normalized) return normalized
-
-  const parsed = new Date(normalized)
-  if (!Number.isFinite(parsed.getTime())) return normalized
-  return parsed.toISOString()
+  return String(value || '').trim()
 }
 
 function hasExplicitGovernanceEventPreference() {
@@ -1036,21 +829,8 @@ function buildEventQueryParams() {
 }
 
 function validateEventForm() {
-  if (!props.preview && !createDefaultsLoaded.value) {
-    throw new Error('School event defaults are still loading. Please try again.')
-  }
-
   const startTime = new Date(form.value.start_time)
   const endTime = new Date(form.value.end_time)
-  const geofence = getFormGeofenceValues()
-  const signOutGraceMinutes = toBoundedMinuteInteger(
-    form.value.sign_out_grace_minutes,
-    DEFAULT_EVENT_CREATE_SETTINGS.sign_out_grace_minutes
-  )
-  const signOutOpenDelayMinutes = toBoundedMinuteInteger(
-    form.value.sign_out_open_delay_minutes,
-    DEFAULT_EVENT_CREATE_SETTINGS.sign_out_open_delay_minutes
-  )
 
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
     throw new Error('Please provide valid start and end dates.')
@@ -1058,71 +838,23 @@ function validateEventForm() {
   if (endTime <= startTime) {
     throw new Error('The event end time must be later than the start time.')
   }
-  if (geofence.latitude != null && !isValidLatitude(geofence.latitude)) {
-    throw new Error('Latitude must be between -90 and 90.')
-  }
-  if (geofence.longitude != null && !isValidLongitude(geofence.longitude)) {
-    throw new Error('Longitude must be between -180 and 180.')
-  }
-  if (geofence.hasAnyCoordinate && !geofence.complete) {
-    throw new Error('Latitude, longitude, and allowed radius are required together for the event geofence.')
-  }
-  if (geofence.complete && geofence.radius <= 0) {
-    throw new Error('Allowed radius must be greater than 0 meters.')
-  }
-  if (geofence.complete && geofence.radius > 5000) {
-    throw new Error('Allowed radius cannot be greater than 5000 meters.')
-  }
-  if (geofence.complete && geofence.maxAccuracy != null && geofence.maxAccuracy <= 0) {
-    throw new Error('Max GPS accuracy must be greater than 0 meters.')
-  }
-  if (geofence.complete && geofence.maxAccuracy != null && geofence.maxAccuracy > 1000) {
-    throw new Error('Max GPS accuracy cannot be greater than 1000 meters.')
-  }
-  if (form.value.require_geofence && !geofence.complete) {
+  if (form.value.require_geofence && (form.value.latitude == null || form.value.longitude == null)) {
     throw new Error('Select a map location before requiring geofence attendance.')
-  }
-  if (signOutOpenDelayMinutes > signOutGraceMinutes) {
-    throw new Error('Sign-out open delay cannot be greater than sign-out grace minutes.')
   }
 }
 
 function buildCreateEventPayload() {
-  const geofence = getFormGeofenceValues()
-  const shouldSendGeofence = geofence.complete
-  const sourceDefaults = resolveCreateEventDefaults(getActiveCreateDefaultsSource())
-  const signOutGraceMinutes = toBoundedMinuteInteger(
-    form.value.sign_out_grace_minutes,
-    sourceDefaults.sign_out_grace_minutes
-  )
-  const signOutOpenDelayMinutes = Math.min(
-    toBoundedMinuteInteger(
-      form.value.sign_out_open_delay_minutes,
-      sourceDefaults.sign_out_open_delay_minutes
-    ),
-    signOutGraceMinutes
-  )
   const payload = {
     name: String(form.value.name || '').trim(),
     location: String(form.value.location_name || '').trim(),
     start_datetime: toBackendDateTimeValue(form.value.start_time),
     end_datetime: toBackendDateTimeValue(form.value.end_time),
     status: 'upcoming',
-    geo_required: shouldSendGeofence ? Boolean(form.value.require_geofence) : false,
-    geo_latitude: shouldSendGeofence ? geofence.latitude : null,
-    geo_longitude: shouldSendGeofence ? geofence.longitude : null,
-    geo_radius_m: shouldSendGeofence ? geofence.radius : null,
-    geo_max_accuracy_m: shouldSendGeofence ? geofence.maxAccuracy : null,
-    early_check_in_minutes: toBoundedMinuteInteger(
-      form.value.early_check_in_minutes,
-      sourceDefaults.early_check_in_minutes
-    ),
-    late_threshold_minutes: toBoundedMinuteInteger(
-      form.value.late_threshold_minutes,
-      sourceDefaults.late_threshold_minutes
-    ),
-    sign_out_grace_minutes: signOutGraceMinutes,
-    sign_out_open_delay_minutes: signOutOpenDelayMinutes,
+    geo_required: Boolean(form.value.require_geofence),
+    geo_latitude: toOptionalFiniteNumber(form.value.latitude),
+    geo_longitude: toOptionalFiniteNumber(form.value.longitude),
+    geo_radius_m: toOptionalFiniteNumber(form.value.radius_meters),
+    geo_max_accuracy_m: toOptionalFiniteNumber(form.value.gps_accuracy),
     department_ids: [],
     program_ids: [],
   }
@@ -1236,7 +968,7 @@ function canRetryCreateEvent(error) {
   )
 }
 
-async function createEventWithResolvedScope(url, payload, requestOptions = {}) {
+async function createEventWithResolvedScope(url, payload) {
   const access = await resolveGovernanceEventAccess(url)
   const attempts = await buildCreateEventAttempts(url, access, payload)
 
@@ -1250,8 +982,7 @@ async function createEventWithResolvedScope(url, payload, requestOptions = {}) {
         url,
         token.value,
         attempt.payload,
-        attempt.params,
-        requestOptions
+        attempt.params
       )
 
       if (attempt.context) {
@@ -1274,65 +1005,30 @@ async function createEventWithResolvedScope(url, payload, requestOptions = {}) {
 }
 
 async function submitEvent() {
-  if (isSubmitting.value) return
-
   isSubmitting.value = true
-  createError.value = ''
   try {
-    if (!props.preview && !createDefaultsLoaded.value) {
-      const defaultsLoaded = await ensureCreateEventDefaultsLoaded()
-      if (!defaultsLoaded) {
-        throw new Error(createError.value || 'Unable to load school event defaults.')
-      }
-    }
-
     validateEventForm()
-
-    if (props.preview) {
-      const payload = buildCreateEventPayload()
-      events.value = [
-        {
-          ...payload,
-          id: resolveNextPreviewEventId(),
-          title: payload.name,
-        },
-        ...events.value,
-      ]
-      closeCreateForm(true)
-      resetEventForm()
-      return
+    await createEventWithResolvedScope(apiBaseUrl.value, buildCreateEventPayload())
+    closeCreateForm()
+    
+    // Reset form
+    form.value = {
+      name: '', location_name: '', start_time: '', end_time: '',
+      require_geofence: false, latitude: null, longitude: null, radius_meters: 100, gps_accuracy: 50
     }
-
-    if (!pendingCreateRequestKey.value) {
-      pendingCreateRequestKey.value = createIdempotencyKey('governance-event')
-    }
-
-    await createEventWithResolvedScope(
-      apiBaseUrl.value,
-      buildCreateEventPayload(),
-      {
-        headers: {
-          'X-Idempotency-Key': pendingCreateRequestKey.value,
-        },
-      }
-    )
-    closeCreateForm(true)
-    resetEventForm()
-    pendingCreateRequestKey.value = ''
-
+    
     // Refresh events
     await loadEvents(apiBaseUrl.value)
     
   } catch (err) {
-    pendingCreateRequestKey.value = ''
-    createError.value = err?.message || 'Error creating event.'
+    alert(err?.message || 'Error creating event.')
   } finally {
     isSubmitting.value = false
   }
 }
 
 watch(
-  [apiBaseUrl, () => sgLoading.value, () => route.query?.variant],
+  [apiBaseUrl, () => sgLoading.value],
   async ([url]) => {
     if (!url || sgLoading.value) return
     await loadEvents(url)
@@ -1340,20 +1036,13 @@ watch(
   { immediate: true }
 )
 
-// Safety valve: if sgLoading never resolves, force a load attempt after 7s.
-onMounted(() => {
-  setTimeout(() => {
-    if (isLoading.value && apiBaseUrl.value) {
-      loadEvents(apiBaseUrl.value)
-    }
-  }, 7000)
-})
-
 async function loadEvents(url) {
   if (props.preview) {
-    events.value = Array.isArray(previewBundle.value?.events)
-      ? previewBundle.value.events.map((event) => ({ ...event, title: event.title || event.name }))
-      : []
+    events.value = [
+      { id: 1, title: 'Freshmen Assembly', name: 'Freshmen Assembly', status: 'upcoming', start_datetime: new Date(Date.now() + 86400000).toISOString() },
+      { id: 2, title: 'Student Council Townhall', name: 'Student Council Townhall', status: 'ongoing', start_datetime: new Date().toISOString() },
+      { id: 3, title: 'Intramurals 2026', name: 'Intramurals 2026', status: 'completed', start_datetime: new Date(Date.now() - 86400000).toISOString() }
+    ]
     isLoading.value = false
     return
   }
@@ -1411,30 +1100,6 @@ async function loadEvents(url) {
 }
 
 async function reload() { if (apiBaseUrl.value) await loadEvents(apiBaseUrl.value) }
-
-function resetEventForm() {
-  pendingCreateRequestKey.value = ''
-  const createDefaults = resolveCreateEventDefaults(getActiveCreateDefaultsSource())
-  form.value = {
-    name: '',
-    location_name: '',
-    start_time: '',
-    end_time: '',
-    early_check_in_minutes: createDefaults.early_check_in_minutes,
-    late_threshold_minutes: createDefaults.late_threshold_minutes,
-    sign_out_grace_minutes: createDefaults.sign_out_grace_minutes,
-    sign_out_open_delay_minutes: createDefaults.sign_out_open_delay_minutes,
-    require_geofence: false,
-    latitude: null,
-    longitude: null,
-    radius_meters: 100,
-    gps_accuracy: 50,
-  }
-}
-
-function resolveNextPreviewEventId() {
-  return Math.max(0, ...events.value.map((event) => Number(event.id) || 0)) + 1
-}
 </script>
 
 <style scoped>
@@ -1468,21 +1133,26 @@ function resolveNextPreviewEventId() {
   color: var(--color-text-muted);
 }
 
+/* Expanding Form Wrapper Styling */
 .sg-create-wrapper {
   position: relative;
-  background: var(--color-primary);
+  background: var(--color-primary); /* Lime Green form base */
   border-radius: 999px;
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-  max-height: 52px;
+  max-height: 52px; /* matches toolbar height */
   transform-origin: top right;
   flex-shrink: 0;
   width: auto;
 }
 .sg-create-wrapper.is-expanded {
-  max-height: 1600px;
-  border-radius: 28px;
+  max-height: 1200px;
+  border-radius: 44px;
   width: 100%;
+}
+.sg-create-wrapper.map-is-fullscreen {
+  overflow: visible !important;
+  z-index: 99999;
 }
 .sg-sub-toolbar.is-creating {
   flex-direction: column;
@@ -1509,13 +1179,17 @@ function resolveNextPreviewEventId() {
 .sg-create-event-btn:hover {
   filter: brightness(1.04);
 }
+.sg-create-event-btn--inner {
+  padding: 0;
+  min-height: auto;
+}
 
 .sg-create-form {
-  padding: 24px;
+  padding: 0 24px 32px 24px;
   color: var(--color-primary-text);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   animation: fade-in 0.4s ease forwards;
 }
 @keyframes fade-in {
@@ -1525,161 +1199,115 @@ function resolveNextPreviewEventId() {
 
 .sg-create-form-header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-}
-.sg-create-eyebrow,
-.sg-create-copy {
-  margin: 0;
-}
-.sg-create-eyebrow {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.72;
-}
-.sg-create-heading {
-  margin: 4px 0 0;
-  font-size: 24px;
-  line-height: 1.1;
-  font-weight: 900;
-  color: var(--color-primary-text);
-}
-.sg-create-copy {
-  max-width: 620px;
-  margin-top: 8px;
-  font-size: 13px;
-  line-height: 1.5;
-  opacity: 0.78;
-}
-.sg-create-close {
-  width: 42px;
-  height: 42px;
-  border: none;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
-  color: var(--color-text-primary);
-  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 160ms ease, box-shadow 160ms ease;
-}
-.sg-create-close:hover:not(:disabled),
-.sg-create-close:focus-visible {
-  background: var(--color-surface);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-surface) 24%, transparent);
-  outline: none;
+  justify-content: flex-end;
+  height: 52px; /* matches the original button height exactly */
 }
 
 .sg-event-fields {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-}
-.sg-event-fields-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 .sg-field-label {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--color-primary-text);
   padding-left: 2px;
 }
-.sg-field-label--wide {
-  grid-column: 1 / -1;
-}
-.sg-field-label input,
-.sg-field-label select {
+.sg-field-label input {
   background: var(--color-surface);
-  border: 1px solid color-mix(in srgb, var(--color-text-primary) 8%, transparent);
-  border-radius: 16px;
+  border: none;
+  border-radius: 999px;
   padding: 14px 20px;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 500;
   color: var(--color-text-primary);
   outline: none;
   width: 100%;
   box-sizing: border-box;
 }
-.sg-field-label input:focus {
-  border-color: color-mix(in srgb, var(--color-primary-dark, #111827) 28%, white);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-surface) 28%, transparent);
-}
 .sg-field-label input::placeholder {
   color: var(--color-text-muted);
 }
 
+/* Map specific styling */
 .sg-map-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px;
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
-  color: var(--color-text-primary);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
-}
-.sg-map-section.is-required {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--color-primary-dark, #111827) 20%, transparent),
-    0 18px 36px rgba(15, 23, 42, 0.1);
-}
-.sg-map-section .sg-field-label {
-  color: var(--color-text-secondary);
-}
-.sg-map-section-header,
-.sg-map-section-title,
-.sg-toggle-label,
-.sg-form-actions,
-.sg-create-feedback {
-  display: flex;
-}
-.sg-map-section-header {
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-.sg-map-section-title {
-  align-items: flex-start;
   gap: 12px;
-  min-width: 0;
+  margin-top: 8px;
 }
-.sg-map-section-title h3,
-.sg-map-section-title p,
-.sg-geofence-note {
-  margin: 0;
+.sg-map-container {
+  position: absolute; /* positioned inside the protective 200px height wrapper */
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  z-index: 10;
 }
-.sg-map-section-title h3 {
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--color-text-primary);
+@keyframes map-pop-in {
+  from { opacity: 0; transform: scale(0.98) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
-.sg-map-section-title p,
-.sg-geofence-note {
-  margin-top: 4px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
+.sg-map-container.is-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  z-index: 999999;
+  box-shadow: 0 0 100vw rgba(0,0,0,0.8);
+  animation: map-pop-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
-.sg-map-section-icon {
-  width: 38px;
-  height: 38px;
+.sg-leaflet-preview {
+  width: 100%;
+  height: 100%;
+  background: #e2e8f0;
+}
+.sg-map-fullscreen-overlay {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000; /* above leaflet ui */
+}
+.sg-map-confirm-btn {
+  background: var(--color-primary);
+  color: #000;
+  font-weight: 800;
+  padding: 12px 24px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary) 12%, white);
-  color: var(--color-primary);
-  display: inline-flex;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+
+.sg-map-controls {
+  display: flex;
+  gap: 8px;
+}
+.sg-map-btn {
+  flex: 1;
+  background: var(--color-surface);
+  border: none;
+  border-radius: 999px;
+  padding: 14px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  gap: 6px;
+  color: var(--color-text-primary);
 }
 
 .sg-coord-grid {
@@ -1688,99 +1316,53 @@ function resolveNextPreviewEventId() {
   gap: 12px;
 }
 
-.sg-toggle-label {
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--color-text-primary);
+.sg-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary-text);
   cursor: pointer;
-  white-space: nowrap;
+  margin-top: 12px;
+  margin-bottom: 24px;
 }
-.sg-toggle-label input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+.sg-checkbox-label input {
+  display: none;
 }
-.sg-toggle-track {
-  position: relative;
-  width: 44px;
+.sg-checkbox-custom {
+  width: 24px;
   height: 24px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.14);
+  border-radius: 50%;
+  background: var(--color-surface);
   display: inline-block;
   flex-shrink: 0;
-  transition: background 180ms ease;
+  position: relative;
 }
-.sg-toggle-track::after {
+.sg-checkbox-label input:checked + .sg-checkbox-custom::after {
   content: '';
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
+  top: 6px; left: 6px; right: 6px; bottom: 6px;
+  background: var(--color-primary-dark);
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
-  transition: transform 180ms ease;
-}
-.sg-toggle-label input:checked + .sg-toggle-track {
-  background: var(--color-primary);
-}
-.sg-toggle-label input:checked + .sg-toggle-track::after {
-  transform: translateX(20px);
-}
-.sg-toggle-label input:focus-visible + .sg-toggle-track {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 18%, transparent);
 }
 
-.sg-create-feedback {
-  align-items: flex-start;
-  gap: 10px;
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--color-status-non-compliant) 12%, transparent);
-  color: var(--color-status-non-compliant);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.5;
-}
-.sg-form-actions {
-  justify-content: flex-end;
-  gap: 12px;
-}
-.sg-submit-event,
-.sg-cancel-event {
-  border: none;
-  border-radius: 999px;
-  padding: 15px 22px;
-  font-size: 14px;
-  font-weight: 900;
-  cursor: pointer;
-  transition: filter 160ms ease, box-shadow 160ms ease;
-}
 .sg-submit-event {
   background: var(--color-surface);
   color: var(--color-text-primary);
+  border: none;
+  border-radius: 999px;
+  padding: 18px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  width: 100%;
 }
-.sg-cancel-event {
-  background: color-mix(in srgb, var(--color-surface) 28%, transparent);
-  color: var(--color-primary-text);
-}
-.sg-submit-event:hover:not(:disabled),
-.sg-cancel-event:hover:not(:disabled),
-.sg-submit-event:focus-visible,
-.sg-cancel-event:focus-visible {
-  filter: brightness(1.03);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-surface) 24%, transparent);
-  outline: none;
-}
-.sg-submit-event:disabled,
-.sg-cancel-event:disabled,
-.sg-create-close:disabled {
-  opacity: 0.62;
-  cursor: not-allowed;
+.sg-form-note {
+  font-size: 11px;
+  text-align: center;
+  color: color-mix(in srgb, var(--color-primary-text) 70%, transparent);
+  margin: 0;
 }
 
 .sg-summary-grid {
@@ -1817,36 +1399,6 @@ function resolveNextPreviewEventId() {
 @media (max-width: 600px) {
   .sg-summary-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-  .sg-create-form {
-    padding: 18px;
-  }
-  .sg-create-form-header,
-  .sg-map-section-header {
-    flex-direction: column;
-  }
-  .sg-create-form-header {
-    padding-right: 52px;
-  }
-  .sg-create-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-  }
-  .sg-event-fields-grid,
-  .sg-coord-grid {
-    grid-template-columns: 1fr;
-  }
-  .sg-toggle-label,
-  .sg-form-actions {
-    width: 100%;
-  }
-  .sg-form-actions {
-    flex-direction: column-reverse;
-  }
-  .sg-submit-event,
-  .sg-cancel-event {
-    width: 100%;
   }
 }
 
@@ -1904,7 +1456,7 @@ function resolveNextPreviewEventId() {
   cursor: not-allowed;
   transform: none;
 }
-.sg-action-delete { color: var(--color-status-non-compliant); }
+.sg-action-delete { color: #e74c3c; }
 .sg-action-edit { color: var(--color-text-primary); border-color: color-mix(in srgb, var(--color-text-primary) 30%, transparent); }
 
 /* Foreground Pill (The Main Row) */
@@ -1939,7 +1491,7 @@ function resolveNextPreviewEventId() {
   justify-content: center;
 }
 .sg-event-name { 
-  font-size: 18px;
+  font-size: clamp(16px, 4vw, 19px); 
   font-weight: 800; 
   color: var(--color-primary); /* The lime green from the request */
   margin: 0 0 2px 0; 
@@ -1983,6 +1535,6 @@ function resolveNextPreviewEventId() {
   font-size: 13px;
   font-weight: 800;
   color: var(--color-nav, #000); /* Black text */
-  letter-spacing: 0;
+  letter-spacing: -0.02em;
 }
 </style>

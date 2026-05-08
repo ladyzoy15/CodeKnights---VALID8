@@ -101,7 +101,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 
 const props = defineProps({
   preview: {
@@ -111,7 +111,6 @@ const props = defineProps({
 })
 import { ArrowLeft, Search, Plus, SquarePen, Trash2 } from 'lucide-vue-next'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
 import { useSgDashboard } from '@/composables/useSgDashboard.js'
 import {
   getGovernanceAccess,
@@ -121,13 +120,10 @@ import {
   deleteGovernanceAnnouncement,
 } from '@/services/backendApi.js'
 import { resolvePreferredGovernanceUnit } from '@/services/governanceScope.js'
-import { withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
 
-const route = useRoute()
 const router = useRouter()
 const { apiBaseUrl } = useDashboardSession()
-const { previewBundle } = useSgPreviewBundle(() => props.preview)
-const { isLoading: sgLoading } = useSgDashboard(props.preview)
+const { isLoading: sgLoading } = useSgDashboard()
 
 const isLoading = ref(true)
 const loadError = ref('')
@@ -156,14 +152,14 @@ function formatDate(d) {
 
 function goBack() { 
   if (props.preview) {
-    router.push(withPreservedGovernancePreviewQuery(route, '/exposed/governance'))
+    router.push('/exposed/sg')
     return
   }
-  router.push('/governance') 
+  router.push('/sg') 
 }
 
 watch(
-  [apiBaseUrl, () => sgLoading.value, () => route.query?.variant],
+  [apiBaseUrl, () => sgLoading.value],
   async ([url]) => {
     if (!url || sgLoading.value) return
     await loadData(url)
@@ -173,10 +169,10 @@ watch(
 
 async function loadData(url) {
   if (props.preview) {
-    governanceUnitId.value = Number(previewBundle.value?.activeUnit?.id || null)
-    announcements.value = Array.isArray(previewBundle.value?.announcements)
-      ? previewBundle.value.announcements.map((announcement) => ({ ...announcement }))
-      : []
+    announcements.value = [
+      { id: 1, title: 'Welcome to the New School Year', body: 'The student council welcomes all freshmen and returnees to Aura. Reach out if you need help!', status: 'published', created_at: new Date().toISOString() },
+      { id: 2, title: 'Council Elections Validation', body: 'Please ensure your biometric data is properly enrolled before the upcoming council elections.', status: 'published', created_at: new Date(Date.now() - 86400000).toISOString() },
+    ]
     isLoading.value = false
     return
   }
@@ -217,21 +213,7 @@ function closeForm() { isFormOpen.value = false; editingId.value = null }
 
 async function handleSave() {
   if (props.preview) {
-    const nextAnnouncement = {
-      id: editingId.value || resolveNextPreviewAnnouncementId(),
-      title: draft.value.title.trim(),
-      body: draft.value.body.trim(),
-      status: draft.value.status,
-      created_at: editingId.value
-        ? announcements.value.find((item) => Number(item.id) === Number(editingId.value))?.created_at || new Date().toISOString()
-        : new Date().toISOString(),
-    }
-
-    announcements.value = editingId.value
-      ? announcements.value.map((announcement) => (
-        Number(announcement.id) === Number(editingId.value) ? nextAnnouncement : announcement
-      ))
-      : [nextAnnouncement, ...announcements.value]
+    alert('Edits are disabled in preview mode.')
     closeForm()
     return
   }
@@ -254,21 +236,11 @@ async function handleSave() {
 
 async function handleDelete(ann) {
   if (!confirm('Delete this announcement?')) return
-
-  if (props.preview) {
-    announcements.value = announcements.value.filter((item) => Number(item.id) !== Number(ann?.id))
-    return
-  }
-
   try {
     const token = localStorage.getItem('aura_token') || ''
     await deleteGovernanceAnnouncement(apiBaseUrl.value, token, ann.id)
     await reload()
   } catch (e) { loadError.value = e?.message || 'Unable to delete.' }
-}
-
-function resolveNextPreviewAnnouncementId() {
-  return Math.max(0, ...announcements.value.map((announcement) => Number(announcement.id) || 0)) + 1
 }
 </script>
 
@@ -282,14 +254,14 @@ function resolveNextPreviewAnnouncementId() {
 .sg-ann-body { font-size: 13px; color: var(--color-text-muted); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .sg-ann-meta { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 .sg-ann-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px; text-transform: capitalize; }
-.sg-ann-status--draft { background: color-mix(in srgb, var(--color-status-at-risk) 15%, transparent); color: var(--color-status-at-risk); }
-.sg-ann-status--published { background: color-mix(in srgb, var(--color-status-compliant) 15%, transparent); color: var(--color-status-compliant); }
-.sg-ann-status--archived { background: color-mix(in srgb, var(--color-surface-text-muted) 14%, transparent); color: var(--color-surface-text-muted); }
+.sg-ann-status--draft { background: #f0ad4e33; color: #f0ad4e; }
+.sg-ann-status--published { background: #27ae6033; color: #27ae60; }
+.sg-ann-status--archived { background: #95a5a633; color: #95a5a6; }
 .sg-ann-date { font-size: 11px; color: var(--color-text-muted); }
 .sg-ann-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .sg-ann-btn { background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 6px; border-radius: 8px; }
 .sg-ann-btn:hover { color: var(--color-primary); }
-.sg-ann-btn--danger:hover { color: var(--color-status-non-compliant); }
+.sg-ann-btn--danger:hover { color: #e74c3c; }
 
 .sg-ann-form { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .sg-ann-form-title { font-size: 20px; font-weight: 800; color: var(--color-text-primary); }
@@ -297,7 +269,7 @@ function resolveNextPreviewAnnouncementId() {
 .sg-ann-field-label { font-size: 12px; font-weight: 600; color: var(--color-primary); }
 .sg-ann-field-input { background: var(--color-surface-border); border: none; border-radius: 12px; padding: 10px 14px; font-size: 14px; color: var(--color-text-primary); outline: none; font-family: inherit; }
 .sg-ann-field-input--textarea { resize: vertical; min-height: 80px; }
-.sg-ann-form-error { font-size: 13px; color: var(--color-status-non-compliant); }
+.sg-ann-form-error { font-size: 13px; color: #e74c3c; }
 .sg-ann-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .sg-ann-form-cancel { background: none; border: none; color: var(--color-text-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
 </style>

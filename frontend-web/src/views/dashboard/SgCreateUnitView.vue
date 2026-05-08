@@ -17,40 +17,27 @@
     </div>
 
     <template v-else>
-      <div class="sg-sub-card sg-create-card dashboard-enter dashboard-enter--2">
-        <div class="sg-create-hierarchy" aria-label="Governance hierarchy">
-          <span
-            v-for="step in hierarchySteps"
-            :key="step.id"
-            class="sg-create-hierarchy__step"
-            :class="`sg-create-hierarchy__step--${step.state}`"
-          >
-            {{ step.label }}
-          </span>
+      <div class="sg-sub-card sg-create-intro dashboard-enter dashboard-enter--2">
+        <div class="sg-create-intro__icon">
+          <component :is="childTypeIcon" :size="22" />
         </div>
-
-        <div class="sg-create-head">
-          <span class="sg-create-head__icon">
-            <component :is="childTypeIcon" :size="18" />
-          </span>
-          <div class="sg-create-head__copy">
-            <span class="sg-create-head__eyebrow">{{ workspaceLabel }}</span>
-            <h2 class="sg-create-head__title">{{ childTypeName }}</h2>
-            <p class="sg-create-head__meta">{{ contextCopy }}</p>
-          </div>
-          <span class="sg-create-head__status">{{ scopeCountLabel }}</span>
+        <div class="sg-create-intro__copy">
+          <span class="sg-create-intro__eyebrow">{{ introEyebrow }}</span>
+          <h2 class="sg-create-intro__title">{{ introTitle }}</h2>
+          <p class="sg-create-intro__description">{{ introDescription }}</p>
         </div>
+        <div class="sg-create-intro__badge">
+          <strong>{{ scopeOptions.length }}</strong>
+          <span>{{ scopeBadgeLabel }}</span>
+        </div>
+      </div>
 
+      <div class="sg-sub-card dashboard-enter dashboard-enter--3">
         <StudentCouncilSetupStage
-          compact
-          :show-header="false"
           :draft="draft"
-          acronym-label="Acronym"
-          :acronym-placeholder="acronymPlaceholder"
-          name-label="Name"
-          :name-placeholder="namePlaceholder"
-          description-label="Notes (optional)"
-          :description-placeholder="descriptionPlaceholder"
+          :eyebrow="stageEyebrow"
+          :title="childTypeName"
+          :description="stageDescription"
           :scope-label="scopeLabel"
           :scope-options="scopeOptions"
           :scope-placeholder="scopePlaceholder"
@@ -63,18 +50,17 @@
         />
       </div>
 
-      <p v-if="formError" class="sg-create-error dashboard-enter dashboard-enter--3">{{ formError }}</p>
+      <p v-if="formError" class="sg-create-error dashboard-enter dashboard-enter--4">{{ formError }}</p>
     </template>
   </section>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ArrowLeft, Building2, GraduationCap, Layers3 } from 'lucide-vue-next'
 import StudentCouncilSetupStage from '@/components/council/StudentCouncilSetupStage.vue'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
 import { useSgDashboard } from '@/composables/useSgDashboard.js'
 import {
   createGovernanceUnit,
@@ -86,20 +72,10 @@ import {
 } from '@/services/backendApi.js'
 import { resolvePreferredGovernanceUnit } from '@/services/governanceScope.js'
 import { createEmptyCouncilDraft } from '@/services/studentCouncilManagement.js'
-import { withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
 
-const props = defineProps({
-  preview: {
-    type: Boolean,
-    default: false,
-  },
-})
-
-const route = useRoute()
 const router = useRouter()
 const { apiBaseUrl, token } = useDashboardSession()
-const { previewBundle } = useSgPreviewBundle(() => props.preview)
-const { permissionCodes, isLoading: sgLoading } = useSgDashboard(props.preview)
+const { permissionCodes, isLoading: sgLoading } = useSgDashboard()
 
 const draft = ref(createEmptyCouncilDraft())
 const isSaving = ref(false)
@@ -122,24 +98,53 @@ const childType = computed(() => {
 })
 
 const childTypeName = computed(() => {
-  if (childType.value === 'SG') return 'SG Council'
-  if (childType.value === 'ORG') return 'ORG'
+  if (childType.value === 'SG') return 'College-Level Council'
+  if (childType.value === 'ORG') return 'Organization'
   return 'Unit'
 })
 
-const pageTitle = computed(() => {
-  if (childType.value === 'SG') return 'Create SG'
-  if (childType.value === 'ORG') return 'Create ORG'
-  return 'Create Unit'
-})
+const pageTitle = computed(() => `Create ${childTypeName.value}`)
 const childTypeIcon = computed(() => {
   if (childType.value === 'SG') return Building2
   if (childType.value === 'ORG') return GraduationCap
   return Layers3
 })
+const introEyebrow = computed(() => childType.value === 'SG' ? 'SSG Workspace' : 'SG Workspace')
+const introTitle = computed(() => {
+  if (childType.value === 'SG') return 'Create a department-wide student council'
+  if (childType.value === 'ORG') return 'Create one program organization under your SG'
+  return 'Create a governance unit'
+})
+const introDescription = computed(() => {
+  if (childType.value === 'SG') {
+    return 'Each college-level council belongs to one department under your active SSG. Departments that already have an active council are automatically hidden.'
+  }
+
+  if (childType.value === 'ORG') {
+    return 'Each organization belongs to one program inside your SG department. Programs that already have an active organization are automatically hidden.'
+  }
+
+  return 'Governance scope is resolved from the live backend structure before creation.'
+})
+const stageEyebrow = computed(() => childType.value === 'SG' ? 'Department Scope' : 'Program Scope')
+const stageDescription = computed(() => {
+  if (isResolvingScope.value) {
+    return 'Loading the live governance scope for this unit...'
+  }
+
+  if (childType.value === 'SG') {
+    return 'This council will represent one department. The backend currently allows one active SG per department.'
+  }
+
+  if (childType.value === 'ORG') {
+    return 'This organization will represent one program under your SG department. The backend currently allows one active ORG per program.'
+  }
+
+  return 'Complete the required details below.'
+})
 const scopeLabel = computed(() => {
-  if (childType.value === 'SG') return 'Department'
-  if (childType.value === 'ORG') return 'Program'
+  if (childType.value === 'SG') return 'College / Department Scope'
+  if (childType.value === 'ORG') return 'Program Scope'
   return ''
 })
 const scopePlaceholder = computed(() => {
@@ -160,91 +165,49 @@ const scopePlaceholder = computed(() => {
 const scopeDisabled = computed(() => isResolvingScope.value || scopeOptions.value.length === 0)
 const scopeHelper = computed(() => {
   if (isResolvingScope.value) {
-    return 'Loading available scopes.'
+    return 'We are reading the current governance hierarchy and filtering out scopes that already have an active council.'
   }
 
   if (!parentUnitId.value) {
-    return 'Parent unit unavailable.'
+    return 'Your parent governance unit is still being resolved from backend access.'
   }
 
   if (childType.value === 'SG') {
     return scopeOptions.value.length
-      ? `${scopeOptions.value.length} department${scopeOptions.value.length === 1 ? '' : 's'} available.`
-      : 'No departments left.'
+      ? `${scopeOptions.value.length} department(s) are still available for a new council under your SSG.`
+      : 'Every department already has an active college-level council under this SSG.'
   }
 
   if (childType.value === 'ORG') {
     return scopeOptions.value.length
-      ? `${scopeOptions.value.length} program${scopeOptions.value.length === 1 ? '' : 's'} available.`
-      : 'No programs left.'
+      ? `${scopeOptions.value.length} program(s) are still available for a new organization under your SG.`
+      : 'Every eligible program in this SG department already has an active organization.'
   }
 
   return ''
 })
+const scopeBadgeLabel = computed(() => {
+  if (childType.value === 'SG') return scopeOptions.value.length === 1 ? 'department left' : 'departments left'
+  if (childType.value === 'ORG') return scopeOptions.value.length === 1 ? 'program left' : 'programs left'
+  return 'options'
+})
 const submitLabel = computed(() => {
   if (isSaving.value) return 'Creating...'
-  if (isResolvingScope.value) return 'Loading...'
-  if (childType.value === 'SG') return 'Create SG'
-  if (childType.value === 'ORG') return 'Create ORG'
-  return 'Create Unit'
+  if (isResolvingScope.value) return 'Preparing scope...'
+  return `Create ${childTypeName.value}`
 })
 const submitDisabled = computed(() => {
   if (isSaving.value || isResolvingScope.value || !childType.value || !parentUnitId.value) return true
   const d = draft.value
   return !d?.acronym?.trim() || !d?.name?.trim() || !d?.scopeId
 })
-const hierarchySteps = computed(() => {
-  const order = ['SSG', 'SG', 'ORG']
-  const activeIndex = Math.max(0, order.indexOf(childType.value || 'SSG'))
 
-  return order.map((label, index) => ({
-    id: label,
-    label,
-    state: index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'pending',
-  }))
-})
-const workspaceLabel = computed(() => {
-  if (childType.value === 'SG') return 'SSG creates SG'
-  if (childType.value === 'ORG') return 'SG creates ORG'
-  return 'Governance'
-})
-const parentUnitLabel = computed(() => (
-  parentUnit.value?.unit_code
-  || parentUnit.value?.unit_name
-  || (childType.value === 'SG' ? 'SSG' : 'SG')
-))
-const contextCopy = computed(() => {
-  if (isResolvingScope.value) return 'Loading hierarchy.'
-  return `Parent: ${parentUnitLabel.value}`
-})
-const scopeCountLabel = computed(() => {
-  if (isResolvingScope.value) return 'Loading'
-  const count = scopeOptions.value.length
-  if (count <= 0) return 'None left'
-  const noun = childType.value === 'SG' ? 'dept' : 'program'
-  return `${count} ${noun}${count === 1 ? '' : 's'}`
-})
-const acronymPlaceholder = computed(() => childType.value === 'SG' ? 'e.g. CSC' : 'e.g. JPCS')
-const namePlaceholder = computed(() => childType.value === 'SG' ? 'e.g. Computing Student Council' : 'e.g. Junior Philippine Computer Society')
-const descriptionPlaceholder = computed(() => childType.value === 'SG' ? 'Short council purpose' : 'Short organization purpose')
-
-function goBack() {
-  router.push(
-    props.preview
-      ? withPreservedGovernancePreviewQuery(route, '/exposed/governance')
-      : '/governance'
-  )
-}
+function goBack() { router.push('/sg') }
 
 watch(
-  [apiBaseUrl, token, () => sgLoading.value, childType, () => props.preview, () => route.query?.variant],
-  async ([url, authToken, isLoading, currentChildType, preview]) => {
-    if (isLoading || !currentChildType) return
-    if (preview) {
-      resolvePreviewCreateContext(currentChildType)
-      return
-    }
-    if (!url || !authToken) return
+  [apiBaseUrl, token, () => sgLoading.value, childType],
+  async ([url, authToken, isLoading, currentChildType]) => {
+    if (!url || !authToken || isLoading || !currentChildType) return
     await resolveCreateContext(url, authToken, currentChildType)
   },
   { immediate: true }
@@ -276,19 +239,19 @@ function formatCreateError(error) {
   }
 
   if (normalizedMessage.includes('must include department_id')) {
-    return 'Choose a department for this SG.'
+    return 'Choose the department this college-level council will represent. SG units are department-scoped in the current backend structure.'
   }
 
   if (normalizedMessage.includes('must include program_id')) {
-    return 'Choose a program for this ORG.'
+    return 'Choose the program this organization will represent. ORG units are program-scoped in the current backend structure.'
   }
 
   if (normalizedMessage.includes('only one sg unit is allowed per department')) {
-    return 'That department already has an SG.'
+    return 'That department already has an active college-level council. Pick another department.'
   }
 
   if (normalizedMessage.includes('only one org unit is allowed per program')) {
-    return 'That program already has an ORG.'
+    return 'That program already has an active organization. Pick another program.'
   }
 
   return rawMessage
@@ -385,41 +348,11 @@ async function resolveCreateContext(url, authToken, currentChildType) {
   }
 }
 
-function resolvePreviewCreateContext(currentChildType) {
-  parentUnit.value = previewBundle.value?.activeUnit || null
-  parentUnitId.value = Number(parentUnit.value?.id || null)
-  formError.value = ''
-  isResolvingScope.value = false
-
-  const availableScopes = Array.isArray(previewBundle.value?.createUnit?.scopeOptions)
-    ? previewBundle.value.createUnit.scopeOptions
-    : []
-
-  if (previewBundle.value?.createUnit?.childType !== currentChildType) {
-    scopeOptions.value = []
-    formError.value = `Preview data for ${childTypeName.value} is unavailable right now.`
-    return
-  }
-
-  scopeOptions.value = normalizeOptions(
-    availableScopes.map((option) => ({
-      value: String(option.value),
-      label: option.label,
-    }))
-  )
-  syncDraftScopeSelection()
-}
-
 async function resetForm() {
   draft.value = createEmptyCouncilDraft()
   formError.value = ''
   isCreated.value = false
   createdUnit.value = null
-
-  if (props.preview && childType.value) {
-    resolvePreviewCreateContext(childType.value)
-    return
-  }
 
   if (apiBaseUrl.value && token.value && childType.value) {
     await resolveCreateContext(apiBaseUrl.value, token.value, childType.value)
@@ -430,21 +363,6 @@ async function resetForm() {
 
 async function handleCreate() {
   if (submitDisabled.value) return
-
-  if (props.preview) {
-    createdUnit.value = {
-      id: Date.now(),
-      unit_code: draft.value.acronym.trim(),
-      unit_name: draft.value.name.trim(),
-      unit_type: childType.value,
-      parent_unit_id: parentUnitId.value || null,
-      department_id: childType.value === 'SG' ? Number(draft.value.scopeId) : Number(parentUnit.value?.department_id) || null,
-      program_id: childType.value === 'ORG' ? Number(draft.value.scopeId) : null,
-    }
-    isCreated.value = true
-    return
-  }
-
   isSaving.value = true
   formError.value = ''
 
@@ -479,28 +397,119 @@ async function handleCreate() {
 <style scoped>
 @import '@/assets/css/sg-sub-views.css';
 
-.sg-create-card { display: flex; flex-direction: column; gap: 16px; padding: 18px 16px 20px; }
-.sg-create-hierarchy { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-.sg-create-hierarchy__step { min-height: 34px; border-radius: 14px; background: color-mix(in srgb, var(--color-field-surface) 78%, var(--color-surface)); color: var(--color-text-muted); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; letter-spacing: 0; }
-.sg-create-hierarchy__step--done { color: var(--color-text-primary); background: color-mix(in srgb, var(--color-primary) 9%, var(--color-surface)); }
-.sg-create-hierarchy__step--active { color: var(--color-banner-text); background: var(--color-primary); }
-.sg-create-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
-.sg-create-head__icon { width: 42px; height: 42px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: var(--color-nav); color: var(--color-nav-text); }
-.sg-create-head__copy { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.sg-create-head__eyebrow { font-size: 10px; font-weight: 800; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.04em; }
-.sg-create-head__title { margin: 0; font-size: 20px; line-height: 1.1; font-weight: 800; color: var(--color-text-primary); letter-spacing: 0; }
-.sg-create-head__meta { margin: 0; font-size: 12px; line-height: 1.25; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sg-create-head__status { min-height: 32px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)); color: var(--color-text-primary); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.sg-create-intro {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 22px 18px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 50%),
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)) 0%, var(--color-surface) 70%);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.sg-create-intro::after {
+  content: '';
+  position: absolute;
+  inset: auto -12% -62% 42%;
+  height: 170px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+.sg-create-intro__icon {
+  position: relative;
+  z-index: 1;
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: var(--color-banner-text);
+  box-shadow: 0 16px 30px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+.sg-create-intro__copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sg-create-intro__eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.sg-create-intro__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.sg-create-intro__description {
+  margin: 0;
+  max-width: 48ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.sg-create-intro__badge {
+  position: relative;
+  z-index: 1;
+  min-width: 92px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.sg-create-intro__badge strong {
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.sg-create-intro__badge span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 
 .sg-create-success { text-align: center; padding: 32px 24px; }
 .sg-create-success-title { font-size: 20px; font-weight: 800; color: var(--color-primary); margin-bottom: 6px; }
 .sg-create-success-copy { font-size: 14px; color: var(--color-text-muted); margin-bottom: 20px; }
 .sg-create-success-actions { display: flex; gap: 12px; justify-content: center; }
 .sg-create-back { background: none; border: none; color: var(--color-text-muted); font-size: 13px; font-weight: 600; cursor: pointer; }
-.sg-create-error { color: var(--color-status-non-compliant); font-size: 13px; text-align: center; line-height: 1.6; }
+.sg-create-error { color: #e74c3c; font-size: 13px; text-align: center; line-height: 1.6; }
 
 @media (max-width: 640px) {
-  .sg-create-head { grid-template-columns: auto minmax(0, 1fr); }
-  .sg-create-head__status { grid-column: 1 / -1; width: fit-content; }
+  .sg-create-intro {
+    grid-template-columns: 1fr;
+    justify-items: flex-start;
+  }
+
+  .sg-create-intro__badge {
+    min-width: 0;
+  }
 }
 </style>

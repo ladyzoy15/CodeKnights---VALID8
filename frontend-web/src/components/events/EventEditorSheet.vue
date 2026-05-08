@@ -5,18 +5,11 @@
       class="event-editor__backdrop"
       @click.self="emit('close')"
     >
-      <section
-        class="event-editor__sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="event-editor-title"
-      >
-        <span class="event-editor__handle" aria-hidden="true"></span>
-
+      <section class="event-editor__sheet">
         <header class="event-editor__header">
           <div>
-            <p class="event-editor__eyebrow">Event</p>
-            <h2 id="event-editor-title" class="event-editor__title">{{ title }}</h2>
+            <h2 class="event-editor__title">{{ title }}</h2>
+            <p class="event-editor__copy">{{ description }}</p>
           </div>
 
           <button
@@ -31,195 +24,227 @@
         </header>
 
         <form class="event-editor__form" @submit.prevent="handleSubmit">
-          <section class="event-editor__section">
-            <header class="event-editor__section-header">
-              <MapPin :size="17" aria-hidden="true" />
-              <h3>Details</h3>
-            </header>
+          <div class="event-editor__grid">
+            <label class="event-editor__field event-editor__field--wide">
+              <span class="event-editor__field-label">Event Name</span>
+              <input
+                v-model="draft.name"
+                class="event-editor__field-input"
+                type="text"
+                name="event_name"
+                placeholder="e.g. Campus Orientation"
+              >
+            </label>
 
-            <div class="event-editor__grid event-editor__grid--single">
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">Name</span>
-                <input
-                  v-model="draft.name"
-                  class="event-editor__field-input"
-                  type="text"
-                  name="event_name"
-                  placeholder="Campus Orientation"
-                  autocomplete="off"
+            <label class="event-editor__field event-editor__field--wide">
+              <span class="event-editor__field-label">Location</span>
+              <input
+                v-model="draft.location"
+                class="event-editor__field-input"
+                type="text"
+                name="event_location"
+                placeholder="e.g. University Campus"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Start date & time</span>
+              <input
+                v-model="draft.startTime"
+                class="event-editor__field-input"
+                type="datetime-local"
+                name="event_start_datetime"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">End date & time</span>
+              <input
+                v-model="draft.endTime"
+                class="event-editor__field-input"
+                type="datetime-local"
+                name="event_end_datetime"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Status</span>
+              <select
+                v-model="draft.status"
+                class="event-editor__field-input event-editor__field-input--select"
+                name="event_status"
+              >
+                <option
+                  v-for="option in statusOptions"
+                  :key="option.value"
+                  :value="option.value"
                 >
-              </label>
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Max GPS Accuracy</span>
+              <input
+                v-model="draft.maxAccuracyM"
+                class="event-editor__field-input"
+                type="number"
+                min="1"
+                step="1"
+                name="event_geo_max_accuracy"
+                placeholder="e.g. 50"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Open check-in before start</span>
+              <input
+                v-model="draft.earlyCheckInMinutes"
+                class="event-editor__field-input"
+                type="number"
+                min="0"
+                step="1"
+                name="event_early_check_in_minutes"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Mark late after</span>
+              <input
+                v-model="draft.lateThresholdMinutes"
+                class="event-editor__field-input"
+                type="number"
+                min="0"
+                step="1"
+                name="event_late_threshold_minutes"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Sign-out grace</span>
+              <input
+                v-model="draft.signOutGraceMinutes"
+                class="event-editor__field-input"
+                type="number"
+                min="0"
+                step="1"
+                name="event_sign_out_grace_minutes"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Sign-out open delay</span>
+              <input
+                v-model="draft.signOutOpenDelayMinutes"
+                class="event-editor__field-input"
+                type="number"
+                min="0"
+                step="1"
+                name="event_sign_out_open_delay_minutes"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Latitude</span>
+              <input
+                v-model="draft.latitude"
+                class="event-editor__field-input"
+                type="number"
+                step="any"
+                name="event_geo_latitude"
+                placeholder="e.g. 8.656681"
+              >
+            </label>
+
+            <label class="event-editor__field">
+              <span class="event-editor__field-label">Longitude</span>
+              <input
+                v-model="draft.longitude"
+                class="event-editor__field-input"
+                type="number"
+                step="any"
+                name="event_geo_longitude"
+                placeholder="e.g. 123.423068"
+              >
+            </label>
+
+            <label class="event-editor__field event-editor__field--wide">
+              <span class="event-editor__field-label">Allowed Radius</span>
+              <input
+                v-model="draft.radiusM"
+                class="event-editor__field-input"
+                type="number"
+                min="1"
+                step="1"
+                name="event_geo_radius_m"
+                placeholder="e.g. 100"
+              >
+            </label>
+          </div>
+
+          <label class="event-editor__checkbox">
+            <input
+              v-model="draft.geoRequired"
+              type="checkbox"
+              name="event_geo_required"
+            >
+            <span class="event-editor__checkbox-mark"></span>
+            Require students to be inside the event geofence to sign in.
+          </label>
+
+          <section v-if="showSanctionsPanels" class="event-editor__sanctions">
+            <p class="event-editor__section-label">Sanctions Management</p>
+
+            <div class="event-editor__sanctions-toggle">
+              <p class="event-editor__sanctions-toggle-label">Sanctions Setup</p>
+              <button
+                class="event-editor__sanctions-toggle-button"
+                :class="{ 'event-editor__sanctions-toggle-button--enabled': canConfigureEventSanctions && isEditSanctionsEnabled }"
+                type="button"
+                :disabled="saving || !canConfigureEventSanctions"
+                @click="toggleEditSanctionsEnabled"
+              >
+                {{
+                  canConfigureEventSanctions
+                    ? (isEditSanctionsEnabled ? 'Disable' : 'Enable')
+                    : 'No Access'
+                }}
+              </button>
             </div>
-          </section>
+            <p v-if="!canConfigureEventSanctions" class="event-editor__sanctions-hint">
+              Requires an active <strong>SSG/SG/ORG</strong> governance role or sanctions permission.
+            </p>
 
-          <section class="event-editor__section">
-            <header class="event-editor__section-header">
-              <CalendarClock :size="17" aria-hidden="true" />
-              <h3>Schedule</h3>
-            </header>
+            <p v-if="sanctionsLoading" class="event-editor__sanctions-loading">
+              Loading sanctions settings...
+            </p>
 
-            <div class="event-editor__grid">
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">Starts</span>
-                <input
-                  v-model="draft.startTime"
-                  class="event-editor__field-input"
-                  type="datetime-local"
-                  name="event_start_datetime"
-                >
-              </label>
-
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">Ends</span>
-                <input
-                  v-model="draft.endTime"
-                  class="event-editor__field-input"
-                  type="datetime-local"
-                  name="event_end_datetime"
-                >
-              </label>
-            </div>
-          </section>
-
-          <section class="event-editor__section">
-            <header class="event-editor__section-header">
-              <SlidersHorizontal :size="17" aria-hidden="true" />
-              <h3>Attendance</h3>
-            </header>
-
-            <div class="event-editor__grid event-editor__grid--compact">
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">Check-in opens</span>
-                <span class="event-editor__input-unit">
-                  <input
-                    v-model="draft.earlyCheckInMinutes"
-                    class="event-editor__field-input"
-                    type="number"
-                    min="0"
-                    step="1"
-                    name="event_early_check_in_minutes"
-                    inputmode="numeric"
-                  >
-                  <span>min</span>
-                </span>
-              </label>
-
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">Late after</span>
-                <span class="event-editor__input-unit">
-                  <input
-                    v-model="draft.lateThresholdMinutes"
-                    class="event-editor__field-input"
-                    type="number"
-                    min="0"
-                    step="1"
-                    name="event_late_threshold_minutes"
-                    inputmode="numeric"
-                  >
-                  <span>min</span>
-                </span>
-              </label>
-
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">Sign-out grace</span>
-                <span class="event-editor__input-unit">
-                  <input
-                    v-model="draft.signOutGraceMinutes"
-                    class="event-editor__field-input"
-                    type="number"
-                    min="0"
-                    step="1"
-                    name="event_sign_out_grace_minutes"
-                    inputmode="numeric"
-                  >
-                  <span>min</span>
-                </span>
-              </label>
-
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">Sign-out delay</span>
-                <span class="event-editor__input-unit">
-                  <input
-                    v-model="draft.signOutOpenDelayMinutes"
-                    class="event-editor__field-input"
-                    type="number"
-                    min="0"
-                    step="1"
-                    name="event_sign_out_open_delay_minutes"
-                    inputmode="numeric"
-                  >
-                  <span>min</span>
-                </span>
-              </label>
-            </div>
-          </section>
-
-          <section class="event-editor__section event-editor__section--location">
-            <header class="event-editor__section-header event-editor__section-header--split">
-              <div>
-                <div class="event-editor__section-title">
-                  <ShieldCheck :size="17" aria-hidden="true" />
-                  <h3>Location</h3>
-                </div>
-                <p class="event-editor__section-copy">{{ geofenceSummary }}</p>
-              </div>
-
-              <label class="event-editor__switch">
-                <input
-                  v-model="draft.geoRequired"
-                  type="checkbox"
-                  name="event_geo_required"
-                >
-                <span class="event-editor__switch-track"></span>
-                <span class="event-editor__switch-text">Required</span>
-              </label>
-            </header>
-
-            <div class="event-editor__grid event-editor__grid--compact">
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">Radius</span>
-                <span class="event-editor__input-unit">
-                  <input
-                    v-model="draft.radiusM"
-                    class="event-editor__field-input"
-                    type="number"
-                    min="1"
-                    step="1"
-                    name="event_geo_radius_m"
-                    placeholder="100"
-                    inputmode="numeric"
-                  >
-                  <span>m</span>
-                </span>
-              </label>
-
-              <label class="event-editor__field">
-                <span class="event-editor__field-label">GPS accuracy</span>
-                <span class="event-editor__input-unit">
-                  <input
-                    v-model="draft.maxAccuracyM"
-                    class="event-editor__field-input"
-                    type="number"
-                    min="1"
-                    step="1"
-                    name="event_geo_max_accuracy"
-                    placeholder="50"
-                    inputmode="numeric"
-                  >
-                  <span>m</span>
-                </span>
-              </label>
-            </div>
-
-            <EventLocationPicker
-              v-model:location-label="draft.location"
-              v-model:latitude="draft.latitude"
-              v-model:longitude="draft.longitude"
-              :radius-m="draft.radiusM"
-              :initialize-with-current-location="shouldInitializeLocationFromCurrent"
-              :disabled="saving"
+            <EventSanctionConfigPanel
+              v-if="canConfigureEventSanctions && isEditSanctionsEnabled"
+              v-model="sanctionConfigDraft"
+              :disabled="saving || sanctionsLoading"
+              :show-enabled-toggle="false"
             />
+
+            <EventDelegationConfigPanel
+              v-if="canConfigureEventSanctions && isEditSanctionsEnabled"
+              v-model="delegationDraft"
+              :governance-units="governanceUnits"
+              :disabled="saving || sanctionsLoading"
+            />
+
+            <p
+              v-if="sanctionsErrorMessage"
+              class="event-editor__feedback event-editor__feedback--error"
+            >
+              {{ sanctionsErrorMessage }}
+            </p>
           </section>
+
+          <p class="event-editor__note">
+            This form updates the real backend event fields supported by `PATCH /api/events/{id}`.
+          </p>
 
           <p
             v-if="feedbackMessage"
@@ -255,17 +280,13 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import {
-  CalendarClock,
-  MapPin,
-  ShieldCheck,
-  SlidersHorizontal,
-  X,
-} from 'lucide-vue-next'
-import EventLocationPicker from '@/components/events/EventLocationPicker.vue'
+import { X } from 'lucide-vue-next'
+import EventSanctionConfigPanel from '@/components/events/EventSanctionConfigPanel.vue'
+import EventDelegationConfigPanel from '@/components/events/EventDelegationConfigPanel.vue'
 import {
   buildEventUpdatePayloadFromDraft,
   createEventEditorDraft,
+  EVENT_STATUS_OPTIONS,
 } from '@/services/eventEditor.js'
 
 const props = defineProps({
@@ -283,7 +304,7 @@ const props = defineProps({
   },
   description: {
     type: String,
-    default: 'Update event details.',
+    default: 'Update the event details using the live backend event fields.',
   },
   submitLabel: {
     type: String,
@@ -297,509 +318,216 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  createDefaults: {
+  showSanctionsPanels: {
+    type: Boolean,
+    default: false,
+  },
+  canConfigureEventSanctions: {
+    type: Boolean,
+    default: true,
+  },
+  sanctionsConfig: {
     type: Object,
-    default: null,
+    default: () => ({
+      sanctions_enabled: false,
+      items: [],
+    }),
+  },
+  sanctionsDelegations: {
+    type: Array,
+    default: () => [],
+  },
+  governanceUnits: {
+    type: Array,
+    default: () => [],
+  },
+  sanctionsLoading: {
+    type: Boolean,
+    default: false,
+  },
+  sanctionsErrorMessage: {
+    type: String,
+    default: '',
   },
 })
 
 const emit = defineEmits(['close', 'save'])
 
 const draft = ref(createEventEditorDraft())
-const localError = ref('')
-const FALLBACK_CREATE_DEFAULTS = Object.freeze({
-  early_check_in_minutes: 30,
-  late_threshold_minutes: 10,
-  sign_out_grace_minutes: 15,
-  sign_out_open_delay_minutes: 0,
+const sanctionConfigDraft = ref({
+  sanctions_enabled: false,
+  items: [],
 })
+const delegationDraft = ref([])
+const isEditSanctionsEnabled = ref(false)
+const localError = ref('')
+
+const statusOptions = EVENT_STATUS_OPTIONS
 
 const feedbackMessage = computed(() => localError.value || props.errorMessage)
 const feedbackTone = computed(() => (localError.value || props.errorMessage ? 'error' : 'info'))
-const shouldInitializeLocationFromCurrent = computed(() => !props.event)
-const hasGeofencePoint = computed(() => {
-  const latitude = Number(draft.value?.latitude)
-  const longitude = Number(draft.value?.longitude)
-  const radius = Number(draft.value?.radiusM)
-  return Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(radius) && radius > 0
-})
-const geofenceSummary = computed(() => {
-  if (draft.value?.geoRequired) {
-    return hasGeofencePoint.value ? 'Location check is required.' : 'Pick a point and radius.'
-  }
-
-  return hasGeofencePoint.value ? 'Location saved as optional.' : 'Optional.'
-})
-
-function toBoundedMinuteInteger(value, fallback = 0) {
-  const normalized = Number(value)
-  if (!Number.isFinite(normalized)) {
-    return Math.max(0, Math.min(1440, Math.round(Number(fallback) || 0)))
-  }
-  return Math.max(0, Math.min(1440, Math.round(normalized)))
-}
-
-function buildCreateSeedEvent(defaults = null) {
-  const source = defaults || FALLBACK_CREATE_DEFAULTS
-  const signOutGraceMinutes = toBoundedMinuteInteger(
-    source?.sign_out_grace_minutes,
-    FALLBACK_CREATE_DEFAULTS.sign_out_grace_minutes
-  )
-  const signOutOpenDelayMinutes = Math.min(
-    toBoundedMinuteInteger(
-      source?.sign_out_open_delay_minutes,
-      FALLBACK_CREATE_DEFAULTS.sign_out_open_delay_minutes
-    ),
-    signOutGraceMinutes
-  )
-
-  return {
-    early_check_in_minutes: toBoundedMinuteInteger(
-      source?.early_check_in_minutes,
-      FALLBACK_CREATE_DEFAULTS.early_check_in_minutes
-    ),
-    late_threshold_minutes: toBoundedMinuteInteger(
-      source?.late_threshold_minutes,
-      FALLBACK_CREATE_DEFAULTS.late_threshold_minutes
-    ),
-    sign_out_grace_minutes: signOutGraceMinutes,
-    sign_out_open_delay_minutes: signOutOpenDelayMinutes,
-  }
-}
 
 watch(
-  () => [props.isOpen, props.event, props.createDefaults],
+  () => [props.isOpen, props.event, props.sanctionsConfig, props.sanctionsDelegations],
   ([isOpen]) => {
     if (!isOpen) return
-    const seedEvent = props.event || buildCreateSeedEvent(props.createDefaults)
-    draft.value = createEventEditorDraft(seedEvent)
+    draft.value = createEventEditorDraft(props.event)
+    sanctionConfigDraft.value = normalizeSanctionConfigValue(props.sanctionsConfig)
+    delegationDraft.value = normalizeSanctionDelegations(props.sanctionsDelegations)
+    isEditSanctionsEnabled.value = Boolean(
+      props.showSanctionsPanels
+      && props.canConfigureEventSanctions
+      && (
+        sanctionConfigDraft.value.sanctions_enabled
+        || delegationDraft.value.length > 0
+      )
+    )
     localError.value = ''
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 )
+
+function normalizeSanctionConfigValue(value = null) {
+  const items = Array.isArray(value?.items)
+    ? value.items.map((item) => ({
+      item_code: String(item?.item_code || '').trim(),
+      item_name: String(item?.item_name || '').trim(),
+      item_description: String(item?.item_description || '').trim(),
+    }))
+    : []
+
+  return {
+    sanctions_enabled: Boolean(value?.sanctions_enabled),
+    items,
+  }
+}
+
+function normalizeSanctionDelegations(value = []) {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => ({
+      delegated_to_governance_unit_id: Number(item?.delegated_to_governance_unit_id),
+      scope_type: String(item?.scope_type || 'unit').toLowerCase(),
+      is_active: item?.is_active !== false,
+      scope_json: item?.scope_json && typeof item.scope_json === 'object'
+        ? item.scope_json
+        : null,
+    }))
+    .filter((item) => Number.isFinite(item.delegated_to_governance_unit_id))
+}
+
+function createEmptySanctionItem() {
+  return {
+    item_code: '',
+    item_name: '',
+    item_description: '',
+  }
+}
+
+function enableEditSanctionsDraft() {
+  const currentConfig = normalizeSanctionConfigValue(sanctionConfigDraft.value)
+  sanctionConfigDraft.value = {
+    sanctions_enabled: true,
+    items: currentConfig.items.length ? currentConfig.items : [createEmptySanctionItem()],
+  }
+}
 
 function handleSubmit() {
   try {
     localError.value = ''
-    emit('save', buildEventUpdatePayloadFromDraft(draft.value))
+    const sanctionsPayload = props.showSanctionsPanels && props.canConfigureEventSanctions
+      ? (
+        isEditSanctionsEnabled.value
+          ? {
+            sanctionConfig: {
+              ...normalizeSanctionConfigValue(sanctionConfigDraft.value),
+              sanctions_enabled: true,
+            },
+            sanctionsDelegations: normalizeSanctionDelegations(delegationDraft.value),
+          }
+          : {
+            sanctionConfig: {
+              sanctions_enabled: false,
+              items: [],
+            },
+            sanctionsDelegations: [],
+          }
+      )
+      : null
+    emit(
+      'save',
+      buildEventUpdatePayloadFromDraft(draft.value),
+      sanctionsPayload
+    )
   } catch (error) {
     localError.value = error?.message || 'Unable to prepare the event update.'
   }
 }
+
+function toggleEditSanctionsEnabled() {
+  if (props.saving || !props.canConfigureEventSanctions) return
+  isEditSanctionsEnabled.value = !isEditSanctionsEnabled.value
+  if (isEditSanctionsEnabled.value) {
+    enableEditSanctionsDraft()
+    return
+  }
+
+  sanctionConfigDraft.value = {
+    sanctions_enabled: false,
+    items: [],
+  }
+  delegationDraft.value = []
+}
 </script>
 
 <style scoped>
-.event-editor__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 10px;
-  background: rgba(10, 10, 10, 0.34);
-  backdrop-filter: blur(10px);
-}
+.event-editor__backdrop{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(10,10,10,.32);backdrop-filter:blur(10px)}
+.event-editor__sheet{width:min(100%,760px);max-height:calc(100dvh - 48px);overflow:auto;padding:28px;border-radius:34px;background:var(--color-surface);box-shadow:0 22px 56px rgba(0,0,0,.18)}
+.event-editor__header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:22px}
+.event-editor__title{margin:0;font-size:26px;font-weight:800;letter-spacing:-.04em;color:var(--color-text-always-dark,#111827)}
+.event-editor__copy{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--color-text-secondary,#6b7280)}
+.event-editor__close{width:42px;height:42px;border:none;border-radius:999px;background:rgba(17,24,39,.06);color:var(--color-text-always-dark,#111827);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.event-editor__form{display:flex;flex-direction:column;gap:18px}
+.event-editor__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.event-editor__field{display:flex;flex-direction:column;gap:8px}
+.event-editor__field--wide{grid-column:1 / -1}
+.event-editor__field-label{font-size:12px;font-weight:800;letter-spacing:.02em;color:var(--color-text-secondary,#6b7280);text-transform:uppercase}
+.event-editor__field-input{width:100%;min-height:48px;padding:12px 16px;border:1px solid rgba(17,24,39,.1);border-radius:18px;background:#fff;font-size:14px;font-weight:600;color:var(--color-text-always-dark,#111827);outline:none;box-sizing:border-box}
+.event-editor__field-input:focus{border-color:color-mix(in srgb,var(--color-primary,#3b82f6) 55%,white);box-shadow:0 0 0 4px color-mix(in srgb,var(--color-primary,#3b82f6) 16%,transparent)}
+.event-editor__field-input--select{appearance:none}
+.event-editor__checkbox{display:flex;align-items:flex-start;gap:12px;font-size:14px;font-weight:600;line-height:1.5;color:var(--color-text-always-dark,#111827);cursor:pointer}
+.event-editor__checkbox input{display:none}
+.event-editor__checkbox-mark{position:relative;flex-shrink:0;width:22px;height:22px;border-radius:999px;border:1.5px solid rgba(17,24,39,.14);background:#fff}
+.event-editor__checkbox input:checked + .event-editor__checkbox-mark::after{content:'';position:absolute;inset:5px;border-radius:999px;background:var(--color-primary,#3b82f6)}
+.event-editor__sanctions{display:grid;gap:12px}
+.event-editor__section-label{margin:0;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-text-muted,#6b7280)}
+.event-editor__sanctions-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.event-editor__sanctions-toggle-label{margin:0;font-size:12px;font-weight:700;color:var(--color-text-secondary,#6b7280)}
+.event-editor__sanctions-hint{margin:0;font-size:12px;color:var(--color-text-muted,#6b7280)}
+.event-editor__sanctions-toggle-button{border:1px solid rgba(17,24,39,.16);border-radius:999px;background:transparent;color:var(--color-text-always-dark,#111827);font-size:12px;font-weight:800;min-height:34px;padding:0 14px;cursor:pointer}
+.event-editor__sanctions-toggle-button--enabled{background:var(--color-primary,#3b82f6);color:var(--color-primary-text,#fff);border-color:transparent}
+.event-editor__sanctions-toggle-button:disabled{opacity:.6;cursor:not-allowed}
+.event-editor__sanctions-loading{margin:0;font-size:13px;font-weight:700;color:var(--color-text-muted,#6b7280)}
+.event-editor__note{margin:0;font-size:12px;line-height:1.6;color:var(--color-text-secondary,#6b7280)}
+.event-editor__feedback{margin:0;padding:12px 14px;border-radius:16px;background:rgba(37,99,235,.08);font-size:13px;font-weight:700;color:#1d4ed8}
+.event-editor__feedback--error{background:rgba(220,38,38,.08);color:#b91c1c}
+.event-editor__actions{display:flex;justify-content:flex-end;gap:12px}
+.event-editor__secondary,.event-editor__primary{border:none;border-radius:999px;padding:14px 22px;font-size:14px;font-weight:800;cursor:pointer}
+.event-editor__secondary{background:rgba(17,24,39,.06);color:var(--color-text-always-dark,#111827)}
+.event-editor__primary{background:var(--color-primary,#3b82f6);color:var(--color-primary-text,#fff)}
+.event-editor__secondary:disabled,.event-editor__primary:disabled,.event-editor__close:disabled{opacity:.6;cursor:not-allowed}
+.event-editor-sheet-enter-active,.event-editor-sheet-leave-active{transition:opacity .24s ease}
+.event-editor-sheet-enter-active .event-editor__sheet,.event-editor-sheet-leave-active .event-editor__sheet{transition:transform .36s cubic-bezier(.22,1,.36,1),opacity .24s ease}
+.event-editor-sheet-enter-from,.event-editor-sheet-leave-to{opacity:0}
+.event-editor-sheet-enter-from .event-editor__sheet,.event-editor-sheet-leave-to .event-editor__sheet{transform:translateY(24px);opacity:0}
 
-.event-editor__sheet {
-  width: min(100%, 760px);
-  max-height: calc(100dvh - 20px);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 18px;
-  background: var(--color-surface);
-  color: var(--color-text-always-dark, #111827);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
-}
-
-.event-editor__handle {
-  width: 44px;
-  height: 5px;
-  border-radius: 999px;
-  margin: 10px auto 2px;
-  background: rgba(17, 24, 39, 0.16);
-  flex-shrink: 0;
-}
-
-.event-editor__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 18px 14px;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
-  flex-shrink: 0;
-}
-
-.event-editor__eyebrow {
-  margin: 0 0 3px;
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted, #9ca3af);
-}
-
-.event-editor__title {
-  margin: 0;
-  font-size: 22px;
-  line-height: 1.15;
-  font-weight: 800;
-  color: var(--color-text-always-dark, #111827);
-}
-
-.event-editor__close {
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.06);
-  color: var(--color-text-always-dark, #111827);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform 150ms ease, background 150ms ease;
-}
-
-.event-editor__close:active {
-  transform: scale(0.96);
-}
-
-.event-editor__form {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 0 18px 18px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.event-editor__section {
-  display: grid;
-  gap: 14px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
-}
-
-.event-editor__section:first-child {
-  border-top: none;
-}
-
-.event-editor__section-header,
-.event-editor__section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.event-editor__section-header {
-  color: var(--color-primary, #3b82f6);
-}
-
-.event-editor__section-header h3,
-.event-editor__section-title h3 {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.2;
-  font-weight: 900;
-  color: var(--color-text-always-dark, #111827);
-}
-
-.event-editor__section-header--split {
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.event-editor__section-copy {
-  margin: 6px 0 0;
-  color: var(--color-text-secondary, #6b7280);
-  font-size: 12px;
-  line-height: 1.35;
-  font-weight: 700;
-}
-
-.event-editor__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.event-editor__grid--single {
-  grid-template-columns: 1fr;
-}
-
-.event-editor__grid--compact {
-  gap: 10px;
-}
-
-.event-editor__field {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.event-editor__field-label {
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  color: var(--color-text-secondary, #6b7280);
-  text-transform: uppercase;
-}
-
-.event-editor__field-input {
-  width: 100%;
-  min-height: 46px;
-  padding: 11px 13px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 8px;
-  background: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text-always-dark, #111827);
-  outline: none;
-  box-sizing: border-box;
-}
-
-.event-editor__field-input:focus,
-.event-editor__input-unit:focus-within {
-  border-color: color-mix(in srgb, var(--color-primary, #3b82f6) 60%, white);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary, #3b82f6) 16%, transparent);
-}
-
-.event-editor__field-input::placeholder {
-  color: var(--color-text-muted, #9ca3af);
-}
-
-.event-editor__input-unit {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  min-height: 46px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  border-radius: 8px;
-  background: #fff;
-  overflow: hidden;
-}
-
-.event-editor__input-unit .event-editor__field-input {
-  min-height: 44px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.event-editor__input-unit > span {
-  padding: 0 12px;
-  color: var(--color-text-muted, #9ca3af);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.event-editor__switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 34px;
-  color: var(--color-text-always-dark, #111827);
-  font-size: 12px;
-  font-weight: 900;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.event-editor__switch input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.event-editor__switch-track {
-  position: relative;
-  width: 42px;
-  height: 24px;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.16);
-  transition: background 160ms ease, box-shadow 160ms ease;
-}
-
-.event-editor__switch-track::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 3px 8px rgba(17, 24, 39, 0.2);
-  transition: transform 160ms ease;
-}
-
-.event-editor__switch input:checked + .event-editor__switch-track {
-  background: var(--color-primary, #3b82f6);
-}
-
-.event-editor__switch input:checked + .event-editor__switch-track::after {
-  transform: translateX(18px);
-}
-
-.event-editor__switch input:focus-visible + .event-editor__switch-track {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary, #3b82f6) 20%, transparent);
-}
-
-.event-editor__feedback {
-  margin: 0;
-  padding: 12px 13px;
-  border-radius: 8px;
-  background: rgba(37, 99, 235, 0.08);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.4;
-  color: #1d4ed8;
-}
-
-.event-editor__feedback--error {
-  background: rgba(220, 38, 38, 0.1);
-  color: #b91c1c;
-}
-
-.event-editor__actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
-  background: var(--color-surface);
-}
-
-.event-editor__secondary,
-.event-editor__primary {
-  min-height: 46px;
-  border: none;
-  border-radius: 8px;
-  padding: 0 16px;
-  font-size: 14px;
-  font-weight: 900;
-  cursor: pointer;
-  transition: transform 150ms ease, filter 150ms ease;
-}
-
-.event-editor__secondary {
-  background: rgba(17, 24, 39, 0.07);
-  color: var(--color-text-always-dark, #111827);
-}
-
-.event-editor__primary {
-  background: var(--color-primary, #3b82f6);
-  color: var(--color-primary-text, #fff);
-}
-
-.event-editor__secondary:active,
-.event-editor__primary:active {
-  transform: scale(0.98);
-}
-
-.event-editor__secondary:disabled,
-.event-editor__primary:disabled,
-.event-editor__close:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.event-editor-sheet-enter-active,
-.event-editor-sheet-leave-active {
-  transition: opacity 0.22s ease;
-}
-
-.event-editor-sheet-enter-active .event-editor__sheet,
-.event-editor-sheet-leave-active .event-editor__sheet {
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
-}
-
-.event-editor-sheet-enter-from,
-.event-editor-sheet-leave-to {
-  opacity: 0;
-}
-
-.event-editor-sheet-enter-from .event-editor__sheet,
-.event-editor-sheet-leave-to .event-editor__sheet {
-  transform: translateY(22px);
-  opacity: 0;
-}
-
-@media (min-width: 761px) {
-  .event-editor__backdrop {
-    align-items: center;
-    padding: 24px;
-  }
-
-  .event-editor__sheet {
-    max-height: calc(100dvh - 48px);
-  }
-
-  .event-editor__handle {
-    display: none;
-  }
-
-  .event-editor__header {
-    padding: 22px 24px 16px;
-  }
-
-  .event-editor__form {
-    padding: 0 24px 24px;
-  }
-}
-
-@media (max-width: 520px) {
-  .event-editor__backdrop {
-    padding: 0;
-  }
-
-  .event-editor__sheet {
-    width: 100%;
-    max-height: 94dvh;
-    border-radius: 18px 18px 0 0;
-  }
-
-  .event-editor__grid,
-  .event-editor__grid--compact {
-    grid-template-columns: 1fr;
-  }
-
-  .event-editor__section-header--split {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .event-editor__switch {
-    justify-content: space-between;
-    width: 100%;
-    padding: 8px 0 2px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .event-editor-sheet-enter-active,
-  .event-editor-sheet-leave-active,
-  .event-editor-sheet-enter-active .event-editor__sheet,
-  .event-editor-sheet-leave-active .event-editor__sheet,
-  .event-editor__close,
-  .event-editor__secondary,
-  .event-editor__primary,
-  .event-editor__status-option,
-  .event-editor__switch-track,
-  .event-editor__switch-track::after {
-    transition: none;
-  }
+@media (max-width: 760px){
+  .event-editor__backdrop{padding:12px}
+  .event-editor__sheet{width:100%;max-height:calc(100dvh - 24px);padding:22px 18px 18px;border-radius:30px}
+  .event-editor__grid{grid-template-columns:1fr}
+  .event-editor__field--wide{grid-column:auto}
+  .event-editor__actions{flex-direction:column}
+  .event-editor__secondary,.event-editor__primary{width:100%}
 }
 </style>

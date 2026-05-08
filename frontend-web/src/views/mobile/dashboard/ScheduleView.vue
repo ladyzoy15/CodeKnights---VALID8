@@ -18,10 +18,10 @@
         </span>
       </div>
 
-      <button type="button" class="mobile-student-events__bell" aria-label="Notifications" @click="toggleNotifications">
+      <button type="button" class="mobile-student-events__bell" aria-label="Notifications">
         <Bell :size="18" :stroke-width="2" />
         <span
-          v-if="notificationBadgeCount > 0"
+          v-if="activeUnreadAnnouncements > 0"
           class="mobile-student-events__bell-dot"
           aria-hidden="true"
         ></span>
@@ -65,13 +65,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { Bell } from 'lucide-vue-next'
 import StudentScheduleDateRail from '@/components/mobile/dashboard/StudentScheduleDateRail.vue'
 import StudentScheduleEventRow from '@/components/mobile/dashboard/StudentScheduleEventRow.vue'
 import StudentScheduleFilters from '@/components/mobile/dashboard/StudentScheduleFilters.vue'
 import { useMobileStudentSchedule } from '@/composables/useMobileStudentSchedule.js'
-import { useNotifications } from '@/composables/useNotifications.js'
 
 const props = defineProps({
   preview: {
@@ -96,14 +94,6 @@ const {
   visibleRows,
   weekPages,
 } = useMobileStudentSchedule(() => props.preview)
-
-const { toggleNotifications, unreadNotifCount } = useNotifications()
-
-const notificationBadgeCount = computed(() => (
-  props.preview
-    ? 0
-    : Math.max(activeUnreadAnnouncements.value, unreadNotifCount.value)
-))
 </script>
 
 <style scoped>

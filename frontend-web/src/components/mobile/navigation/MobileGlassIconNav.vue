@@ -20,7 +20,7 @@
           :is="item.icon"
           :size="20"
           :stroke-width="isActive(item) ? 2.5 : 2"
-          :color="'var(--color-primary)'"
+          :color="isActive(item) ? 'var(--color-primary)' : '#ffffff'"
           class="mobile-glass-nav__icon"
           :class="{ 'mobile-glass-nav__icon--active': isActive(item) }"
         />

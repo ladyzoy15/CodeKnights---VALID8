@@ -12,7 +12,6 @@ import {
   getGovernanceAnnouncements,
   getGovernanceStudents,
   getGovernanceUnitDetail,
-  getGovernanceUnits,
 } from '@/services/backendApi.js'
 import {
   downloadGovernanceMasterlistCsv,
@@ -30,78 +29,11 @@ import {
   resolveEventDetailLocation,
   withPreservedGovernancePreviewQuery,
 } from '@/services/routeWorkspace.js'
-import {
-  formatTimeInDisplay,
-  formatTimeOutDisplay,
-  formatDurationDisplay,
-  formatMethodDisplay,
-  resolveAttendanceDisplayStatus,
-} from '@/services/attendanceFlow.js'
 
 const MAX_UPCOMING_EVENTS = 5
 const MAX_ANNOUNCEMENTS = 4
 const MAX_ATTENTION_ITEMS = 4
 const MAX_REPORT_EVENTS = 6
-
-function createWorkspaceStateRefs() {
-  return {
-    activeUnit: ref(null),
-    students: ref([]),
-    events: ref([]),
-    announcements: ref([]),
-    membersCount: ref(0),
-    attendanceReportsByEventId: ref({}),
-    attendanceRecordsByEventId: ref({}),
-    hasLoadedWorkspace: ref(false),
-    reportsLoading: ref(false),
-    attendanceReportsHydrated: ref(false),
-    attendanceReportsSupported: ref(false),
-    totalImportedStudents: ref(null),
-  }
-}
-
-const cachedWorkspaceState = createWorkspaceStateRefs()
-const cachedWorkspaceOwnerKey = ref('')
-let governanceWorkspaceRequestId = 0
-let governanceEventReportsRequestId = 0
-
-function resetWorkspaceData(targetState) {
-  targetState.activeUnit.value = null
-  targetState.students.value = []
-  targetState.events.value = []
-  targetState.announcements.value = []
-  targetState.membersCount.value = 0
-  targetState.totalImportedStudents.value = null
-  targetState.attendanceReportsByEventId.value = {}
-  targetState.attendanceRecordsByEventId.value = {}
-  targetState.reportsLoading.value = false
-  targetState.attendanceReportsHydrated.value = false
-  targetState.attendanceReportsSupported.value = false
-  targetState.hasLoadedWorkspace.value = false
-}
-
-function clearGovernanceWorkspaceCache() {
-  governanceWorkspaceRequestId += 1
-  governanceEventReportsRequestId += 1
-  cachedWorkspaceOwnerKey.value = ''
-  resetWorkspaceData(cachedWorkspaceState)
-}
-
-function resolveGovernanceWorkspaceOwnerKey(authToken, user = null, settings = null) {
-  const tokenSuffix = String(authToken || '').trim().slice(-24)
-  const normalizedUserId = Number(user?.id)
-  const normalizedSchoolId = Number(user?.school_id ?? settings?.school_id)
-
-  if (!tokenSuffix && !Number.isFinite(normalizedUserId) && !Number.isFinite(normalizedSchoolId)) {
-    return ''
-  }
-
-  return [
-    tokenSuffix || 'anonymous',
-    Number.isFinite(normalizedUserId) ? normalizedUserId : 'user',
-    Number.isFinite(normalizedSchoolId) ? normalizedSchoolId : 'school',
-  ].join(':')
-}
 
 function resolveSourceValue(source, fallback = null) {
   if (typeof source === 'function') return source()
@@ -194,18 +126,16 @@ function sortAnnouncements(values = []) {
 }
 
 function formatDateTime(value, options = {}) {
-  if (value === null || value === undefined || value === '') return ''
+  if (!value) return ''
 
   try {
-    const parsed = new Date(value)
-    if (Number.isNaN(parsed.getTime())) return ''
     return new Intl.DateTimeFormat('en-US', {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
       ...options,
-    }).format(parsed)
+    }).format(new Date(value))
   } catch {
     return ''
   }
@@ -953,15 +883,29 @@ function buildArrivalInsight({ event = null, attendanceRecords = [] } = {}) {
   }
 }
 
+function formatDurationLabel(value) {
+  const minutes = Number(value)
+  if (!Number.isFinite(minutes) || minutes <= 0) return 'Not available'
+  if (minutes < 60) return `${Math.round(minutes)}m`
+
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = Math.round(minutes % 60)
+  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`
+}
+
+function resolveMethodLabel(method) {
+  const normalized = String(method || '').trim().toLowerCase()
+  if (normalized === 'face_scan') return 'Face Scan'
+  if (normalized === 'manual') return 'Manual'
+  return normalized ? normalized.replace(/_/g, ' ') : 'Unknown'
+}
 
 function resolveStatusLabel(attendance = {}) {
-  const status = resolveAttendanceDisplayStatus(attendance)
-  if (status === 'excused') return 'Excused'
-  if (status === 'absent') return 'Absent'
+  const status = String(attendance?.display_status || attendance?.status || '').trim().toLowerCase()
   if (status === 'late') return 'Late'
-  if (status === 'present') return 'Present'
-  if (status === 'incomplete') return 'Waiting for Sign Out'
-  return 'No sign-in record'
+  if (status === 'absent') return 'Absent'
+  if (attendance?.completion_state === 'incomplete') return 'Waiting for Sign Out'
+  return 'Present'
 }
 
 function buildMasterlistRows(records = [], students = []) {
@@ -981,10 +925,10 @@ function buildMasterlistRows(records = [], students = []) {
         programName: String(profile?.program_name || 'N/A'),
         yearLabel: Number.isFinite(Number(profile?.year_level)) ? `Year ${profile.year_level}` : 'N/A',
         statusLabel: resolveStatusLabel(attendance),
-        timeInLabel: formatTimeInDisplay(attendance, (value) => formatDateTime(value) || 'Not recorded'),
-        timeOutLabel: formatTimeOutDisplay(attendance, (value) => formatDateTime(value) || 'Not recorded'),
-        durationLabel: formatDurationDisplay(attendance),
-        methodLabel: formatMethodDisplay(attendance),
+        timeInLabel: formatDateTime(attendance?.time_in) || 'Not recorded',
+        timeOutLabel: formatDateTime(attendance?.time_out) || (attendance?.completion_state === 'incomplete' ? 'Waiting for sign out' : 'Not recorded'),
+        durationLabel: formatDurationLabel(attendance?.duration_minutes),
+        methodLabel: resolveMethodLabel(attendance?.method),
       }
     })
     .sort((left, right) => left.studentName.localeCompare(right.studentName))
@@ -1011,23 +955,20 @@ export function useGovernanceWorkspace(options = {}) {
     schoolSettings,
   } = useSgDashboard(preview)
 
-  const workspaceState = preview ? createWorkspaceStateRefs() : cachedWorkspaceState
-  const {
-    activeUnit,
-    students,
-    events,
-    announcements,
-    membersCount,
-    attendanceReportsByEventId,
-    attendanceRecordsByEventId,
-    hasLoadedWorkspace,
-    reportsLoading,
-    attendanceReportsHydrated,
-    attendanceReportsSupported,
-    totalImportedStudents,
-  } = workspaceState
+  const activeUnit = ref(null)
+  const students = ref([])
+  const events = ref([])
+  const announcements = ref([])
+  const membersCount = ref(0)
+  const attendanceReportsByEventId = ref({})
+  const attendanceRecordsByEventId = ref({})
   const supplementalLoading = ref(false)
   const supplementalError = ref('')
+  const hasLoadedWorkspace = ref(false)
+  const reportsLoading = ref(false)
+  const attendanceReportsHydrated = ref(false)
+  const attendanceReportsSupported = ref(false)
+  const totalImportedStudents = ref(null)
   const isCreateSheetOpen = ref(false)
   const isExportingPar = ref(false)
   const isExportingMasterlist = ref(false)
@@ -1350,7 +1291,7 @@ export function useGovernanceWorkspace(options = {}) {
   const workspaceError = computed(() => supplementalError.value || error.value || '')
 
   watch(
-    [apiBaseUrl, token, () => dashboardState.initialized, () => currentUser.value?.id, () => route.query?.variant],
+    [apiBaseUrl, token, () => dashboardState.initialized, () => route.query?.variant],
     async ([url, authToken, isInitialized]) => {
       supplementalError.value = ''
 
@@ -1359,21 +1300,8 @@ export function useGovernanceWorkspace(options = {}) {
         return
       }
 
-      const nextOwnerKey = resolveGovernanceWorkspaceOwnerKey(
-        authToken,
-        currentUser.value,
-        schoolSettings.value,
-      )
-
-      if (!nextOwnerKey) {
-        clearGovernanceWorkspaceCache()
-      } else if (cachedWorkspaceOwnerKey.value !== nextOwnerKey) {
-        clearGovernanceWorkspaceCache()
-        cachedWorkspaceOwnerKey.value = nextOwnerKey
-      }
-
       if (!isInitialized || !url || !authToken) {
-        resetWorkspaceState({ clearCache: true })
+        resetWorkspaceState()
         return
       }
 
@@ -1382,17 +1310,20 @@ export function useGovernanceWorkspace(options = {}) {
     { immediate: true }
   )
 
-  function resetWorkspaceState({ clearCache = false } = {}) {
-    if (!preview && clearCache) {
-      clearGovernanceWorkspaceCache()
-    } else {
-      governanceWorkspaceRequestId += 1
-      governanceEventReportsRequestId += 1
-      resetWorkspaceData(workspaceState)
-    }
-
+  function resetWorkspaceState() {
+    activeUnit.value = null
+    students.value = []
+    events.value = []
+    announcements.value = []
+    membersCount.value = 0
+    totalImportedStudents.value = null
+    attendanceReportsByEventId.value = {}
+    attendanceRecordsByEventId.value = {}
     supplementalLoading.value = false
-    supplementalError.value = ''
+    reportsLoading.value = false
+    attendanceReportsHydrated.value = false
+    attendanceReportsSupported.value = false
+    hasLoadedWorkspace.value = false
     exportError.value = ''
   }
 
@@ -1416,23 +1347,15 @@ export function useGovernanceWorkspace(options = {}) {
   }
 
   async function loadGovernanceWorkspace(url, authToken) {
-    const requestId = ++governanceWorkspaceRequestId
-    const shouldResetReports = !hasLoadedWorkspace.value
-
     supplementalLoading.value = true
-
-    if (shouldResetReports) {
-      attendanceReportsByEventId.value = {}
-      attendanceRecordsByEventId.value = {}
-      attendanceReportsHydrated.value = false
-      attendanceReportsSupported.value = false
-      reportsLoading.value = false
-    }
+    attendanceReportsByEventId.value = {}
+    attendanceRecordsByEventId.value = {}
+    attendanceReportsHydrated.value = false
+    attendanceReportsSupported.value = false
+    reportsLoading.value = false
 
     try {
       const access = await getGovernanceAccess(url, authToken)
-      if (requestId !== governanceWorkspaceRequestId) return
-
       const resolvedUnit = resolvePreferredGovernanceUnit(access)
       const normalizedUnitId = Number(resolvedUnit?.governance_unit_id ?? resolvedUnit?.id)
       const normalizedContext = normalizeGovernanceContext(resolvedUnit?.unit_type)
@@ -1443,20 +1366,11 @@ export function useGovernanceWorkspace(options = {}) {
 
       activeUnit.value = resolvedUnit
 
-      const shouldLoadChildUnits = Number.isFinite(normalizedUnitId) && ['SSG', 'SG'].includes(normalizedContext)
-
-      const [detailResult, childUnitsResult, studentsResult, eventsResult, announcementsResult, ssgSetupResult] = await Promise.allSettled([
+      const [detailResult, studentsResult, eventsResult, announcementsResult, ssgSetupResult] = await Promise.allSettled([
         Number.isFinite(normalizedUnitId)
           ? getGovernanceUnitDetail(url, authToken, normalizedUnitId)
           : Promise.resolve(null),
-        shouldLoadChildUnits
-          ? getGovernanceUnits(url, authToken, { parent_unit_id: normalizedUnitId })
-          : Promise.resolve([]),
-        getGovernanceStudents(
-          url,
-          authToken,
-          normalizedContext ? { governance_context: normalizedContext } : {},
-        ),
+        getGovernanceStudents(url, authToken),
         getEvents(url, authToken, { governance_context: normalizedContext }),
         Number.isFinite(normalizedUnitId)
           ? getGovernanceAnnouncements(url, authToken, normalizedUnitId)
@@ -1465,25 +1379,11 @@ export function useGovernanceWorkspace(options = {}) {
           ? getCampusSsgSetup(url, authToken)
           : Promise.resolve(null),
       ])
-      if (requestId !== governanceWorkspaceRequestId) return
-
-      const mergedChildUnits = childUnitsResult.status === 'fulfilled' && Array.isArray(childUnitsResult.value)
-        ? childUnitsResult.value.map(cloneRecord)
-        : []
 
       if (detailResult.status === 'fulfilled' && detailResult.value) {
-        activeUnit.value = {
-          ...detailResult.value,
-          child_units: mergedChildUnits,
-        }
+        activeUnit.value = detailResult.value
         membersCount.value = Array.isArray(detailResult.value?.members) ? detailResult.value.members.length : 0
       } else {
-        activeUnit.value = activeUnit.value
-          ? {
-            ...activeUnit.value,
-            child_units: mergedChildUnits,
-          }
-          : activeUnit.value
         membersCount.value = 0
       }
 
@@ -1509,27 +1409,19 @@ export function useGovernanceWorkspace(options = {}) {
 
       void loadEventReports(url, authToken, events.value)
     } catch (loadError) {
-      if (requestId !== governanceWorkspaceRequestId) return
-
-      if (!hasLoadedWorkspace.value) {
-        resetWorkspaceState()
-      }
+      resetWorkspaceState()
       supplementalError.value = loadError?.message || 'Unable to load the governance workspace.'
     } finally {
-      if (requestId === governanceWorkspaceRequestId) {
-        supplementalLoading.value = false
-      }
+      supplementalLoading.value = false
     }
   }
 
   async function loadEventReports(url, authToken, scopedEvents = []) {
-    const requestId = ++governanceEventReportsRequestId
     const candidateEvents = sortGovernanceEvents(scopedEvents)
       .filter((event) => isEventLive(event) || isEventCompleted(event))
       .slice(0, MAX_REPORT_EVENTS)
 
     if (!candidateEvents.length) {
-      if (requestId !== governanceEventReportsRequestId) return
       attendanceReportsByEventId.value = {}
       attendanceRecordsByEventId.value = {}
       attendanceReportsHydrated.value = true
@@ -1581,15 +1473,12 @@ export function useGovernanceWorkspace(options = {}) {
         }
       })
 
-      if (requestId !== governanceEventReportsRequestId) return
       attendanceReportsByEventId.value = nextReports
       attendanceRecordsByEventId.value = nextRecords
       attendanceReportsSupported.value = didResolveAnyReport
       attendanceReportsHydrated.value = true
     } finally {
-      if (requestId === governanceEventReportsRequestId) {
-        reportsLoading.value = false
-      }
+      reportsLoading.value = false
     }
   }
 
@@ -1599,7 +1488,7 @@ export function useGovernanceWorkspace(options = {}) {
     exportError.value = ''
 
     try {
-      await downloadGovernanceParPdf({
+      downloadGovernanceParPdf({
         event: analyticsFocusEntry.value?.event,
         report: analyticsFocusEntry.value?.report,
         eventHealth: eventHealthInsight.value,
@@ -1619,98 +1508,10 @@ export function useGovernanceWorkspace(options = {}) {
     exportError.value = ''
 
     try {
-      await downloadGovernanceMasterlistCsv({
+      downloadGovernanceMasterlistCsv({
         event: analyticsFocusEntry.value?.event,
         report: analyticsFocusEntry.value?.report,
         rows: focusMasterlistRows.value,
-      })
-    } catch (error) {
-      exportError.value = error?.message || 'Unable to export the masterlist.'
-    } finally {
-      isExportingMasterlist.value = false
-    }
-  }
-
-  function getEventReportSnapshot(eventOrId = null) {
-    const normalizedEventId = Number(isObject(eventOrId) ? eventOrId.id : eventOrId)
-    const event = Number.isFinite(normalizedEventId)
-      ? sortedEvents.value.find((entry) => Number(entry?.id) === normalizedEventId) || null
-      : null
-
-    const report = Number.isFinite(normalizedEventId)
-      ? attendanceReportsByEventId.value[normalizedEventId] || null
-      : null
-
-    const records = Number.isFinite(normalizedEventId)
-      ? dedupeAttendanceRecords(attendanceRecordsByEventId.value[normalizedEventId] || [])
-      : []
-
-    const checkedInCount = records.filter((record) => hasSignedInAttendanceRecord(record?.attendance)).length
-    const checkedOutCount = records.filter((record) => record?.attendance?.time_out).length
-    const eventEntry = {
-      event,
-      report,
-      records,
-    }
-
-    return {
-      event,
-      report,
-      records,
-      checkedInCount,
-      checkedOutCount,
-      checkedInLabel: formatWholeNumber(checkedInCount),
-      checkedOutLabel: formatWholeNumber(checkedOutCount),
-      canExportPar: Boolean(report),
-      canExportMasterlist: records.length > 0,
-      eventHealth: buildEventHealthInsight(report ? eventEntry : null),
-      demographicBreakdown: buildDemographicInsight({
-        focusEntry: report ? eventEntry : null,
-        attendanceRecords: records,
-        students: students.value,
-      }),
-      arrivalInsights: buildArrivalInsight({
-        event,
-        attendanceRecords: records,
-      }),
-      masterlistRows: buildMasterlistRows(records, students.value),
-    }
-  }
-
-  async function exportEventPostActivityReport(eventOrId = null) {
-    const snapshot = getEventReportSnapshot(eventOrId)
-    if (!snapshot.canExportPar || isExportingPar.value) return
-
-    isExportingPar.value = true
-    exportError.value = ''
-
-    try {
-      await downloadGovernanceParPdf({
-        event: snapshot.event,
-        report: snapshot.report,
-        eventHealth: snapshot.eventHealth,
-        demographicBreakdown: snapshot.demographicBreakdown,
-        arrivalInsights: snapshot.arrivalInsights,
-      })
-    } catch (error) {
-      exportError.value = error?.message || 'Unable to export the post-activity report.'
-    } finally {
-      isExportingPar.value = false
-    }
-  }
-
-  async function exportEventMasterlist(eventOrId = null) {
-    const snapshot = getEventReportSnapshot(eventOrId)
-    if (!snapshot.canExportMasterlist || isExportingMasterlist.value) return
-
-    isExportingMasterlist.value = true
-    exportError.value = ''
-
-    try {
-      await downloadGovernanceMasterlistCsv({
-        event: snapshot.event,
-        report: snapshot.report,
-        rows: snapshot.masterlistRows,
       })
     } catch (error) {
       exportError.value = error?.message || 'Unable to export the masterlist.'
@@ -1844,7 +1645,6 @@ export function useGovernanceWorkspace(options = {}) {
     engagementTimeline,
     arrivalInsight,
     analyticsEventOptions,
-    attendanceRecordsByEventId,
     selectedAnalyticsEventId,
     activeStudentsMetric,
     totalStudentsMetric,
@@ -1855,7 +1655,6 @@ export function useGovernanceWorkspace(options = {}) {
     focusMasterlistRows,
     canExportPar,
     canExportMasterlist,
-    getEventReportSnapshot,
     isCreateSheetOpen,
     hasPermission,
     openSection,
@@ -1868,8 +1667,6 @@ export function useGovernanceWorkspace(options = {}) {
     setSelectedAnalyticsEventId,
     exportPostActivityReport,
     exportMasterlist,
-    exportEventPostActivityReport,
-    exportEventMasterlist,
     getUpcomingEventActionLabel,
     getUpcomingEventTone,
     formatStudentName,

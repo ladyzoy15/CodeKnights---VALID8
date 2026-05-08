@@ -1,168 +1,106 @@
 <template>
-  <main class="event-detail">
+  <div class="event-detail">
+    <!-- Header -->
     <header class="detail-header dashboard-enter dashboard-enter--1">
-      <button class="icon-btn icon-btn--ghost icon-btn--back" type="button" aria-label="Back" @click="goBack">
+      <button class="icon-btn icon-btn--ghost icon-btn--back" aria-label="Back" @click="goBack">
         <ArrowLeft :size="18" />
       </button>
 
       <div class="header-spacer"></div>
 
-      <button class="icon-btn icon-btn--ghost icon-btn--bell" type="button" aria-label="Notifications">
+      <button class="icon-btn icon-btn--ghost icon-btn--bell" aria-label="Notifications">
         <Bell :size="18" />
       </button>
     </header>
 
-    <section v-if="isLoadingEvent" class="empty-state empty-state--panel" aria-live="polite" aria-busy="true">
-      <p>Loading event details...</p>
-    </section>
+    <section v-if="event" class="detail-body">
+      <!-- Title -->
+      <div class="title-block dashboard-enter dashboard-enter--2">
+        <h1 class="event-title">{{ eventName }}</h1>
+        <p class="event-subtitle">Event Date & Time</p>
+        <p class="event-date">{{ dateRange }}</p>
+      </div>
 
-    <section v-else-if="eventLoadError" class="empty-state empty-state--panel" aria-live="polite">
-      <p>{{ eventLoadError }}</p>
-      <button class="detail-action detail-action--inline" type="button" @click="goBack">
-        Back to schedule
-      </button>
-    </section>
-
-    <section v-else-if="event" class="detail-body" aria-labelledby="event-detail-title">
-      <section class="event-summary dashboard-enter dashboard-enter--2">
-        <div class="event-summary__top">
-          <span :class="['status-pill', statusPillClass]">
-            <span class="status-dot" :class="statusDotClass" aria-hidden="true"></span>
-            <span>{{ statusLabel }}</span>
-          </span>
-        </div>
-        <h1 id="event-detail-title" class="event-title">{{ eventName }}</h1>
-        <div class="summary-list" aria-label="Event overview">
-          <div class="summary-item">
-            <CalendarClock :size="17" aria-hidden="true" />
-            <span>{{ dateRange }}</span>
-          </div>
-          <div class="summary-item">
-            <MapPin :size="17" aria-hidden="true" />
-            <span>{{ locationText }}</span>
+      <!-- Map -->
+      <div class="map-shell dashboard-enter dashboard-enter--3">
+        <iframe
+          v-if="mapUrl"
+          class="map-frame"
+          :src="mapUrl"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          aria-label="Event location map"
+        />
+        <div v-else class="map-fallback" aria-label="Map not available">
+          <div class="map-grid"></div>
+          <div class="map-fallback-text">
+            <span>Map preview unavailable</span>
           </div>
         </div>
-      </section>
 
-      <section class="detail-grid dashboard-enter dashboard-enter--3" aria-label="Event details">
-        <article class="detail-panel">
-          <header class="panel-header">
-            <CalendarClock :size="17" aria-hidden="true" />
-            <h2>Schedule</h2>
-          </header>
-          <div class="time-grid">
-            <div>
-              <span>Starts</span>
-              <strong>{{ startDateText }}</strong>
-              <small>{{ startTimeText }}</small>
+        <!-- Floating status pill (desktop) -->
+        <div class="status-pill status-pill--overlay">
+          <span class="status-dot" :class="statusDotClass"></span>
+          <span class="status-text">{{ statusLabel }}</span>
+        </div>
+
+        <!-- Location card -->
+        <div class="location-card">
+          <div class="location-card__content">
+            <div class="geo-columns">
+              <div class="geo-block">
+                <span class="geo-label">Latitude</span>
+                <span class="geo-value">{{ latitudeText }}</span>
+                <span class="geo-label geo-label--spaced">Longitude</span>
+                <span class="geo-value">{{ longitudeText }}</span>
+              </div>
+              <div class="geo-block geo-block--location">
+                <span class="geo-label">Location</span>
+                <span class="geo-location">{{ event.location }}</span>
+              </div>
             </div>
-            <div>
-              <span>Ends</span>
-              <strong>{{ endDateText }}</strong>
-              <small>{{ endTimeText }}</small>
+
+            <div v-if="geoMetricPills.length" class="geo-metrics">
+              <span
+                v-for="item in geoMetricPills"
+                :key="item"
+                class="geo-metric-pill"
+              >
+                {{ item }}
+              </span>
             </div>
           </div>
-        </article>
 
-        <article class="detail-panel">
-          <header class="panel-header">
-            <MapPin :size="17" aria-hidden="true" />
-            <h2>Location</h2>
-          </header>
-          <p class="venue-name">{{ locationText }}</p>
-          <p class="venue-coordinates">{{ coordinateSummary }}</p>
           <button
-            class="detail-action"
+            class="geo-action"
             type="button"
+            aria-label="Open location in Google Maps"
             :disabled="!mapDestination"
             @click="openInMaps"
           >
-            <Navigation :size="16" aria-hidden="true" />
-            Open in Maps
+            <ArrowUpRight :size="16" />
           </button>
-        </article>
-      </section>
-
-      <section class="map-panel dashboard-enter dashboard-enter--4">
-        <header class="section-header">
-          <div>
-            <p class="eyebrow">Location Preview</p>
-            <h2>Map</h2>
-          </div>
-          <span :class="['geo-state', { 'geo-state--muted': !hasGeo }]">{{ mapStateLabel }}</span>
-        </header>
-        <div class="map-shell">
-          <iframe
-            v-if="mapUrl"
-            class="map-frame"
-            :src="mapUrl"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            aria-label="Event location map"
-          />
-          <div v-else class="map-fallback" aria-label="Map not available">
-            <MapPin :size="20" aria-hidden="true" />
-            <span>Coordinates unavailable</span>
-          </div>
         </div>
-      </section>
+      </div>
 
-      <section class="geo-panel dashboard-enter dashboard-enter--5" aria-label="Attendance geofence">
-        <header class="section-header">
-          <div>
-            <p class="eyebrow">Attendance</p>
-            <h2>Geofence</h2>
-          </div>
-          <span class="geo-state">{{ geofenceRequiredLabel }}</span>
-        </header>
-        <div class="geo-list">
-          <article>
-            <Crosshair :size="16" aria-hidden="true" />
-            <span>Latitude</span>
-            <strong>{{ latitudeText }}</strong>
-          </article>
-          <article>
-            <Crosshair :size="16" aria-hidden="true" />
-            <span>Longitude</span>
-            <strong>{{ longitudeText }}</strong>
-          </article>
-          <article>
-            <Ruler :size="16" aria-hidden="true" />
-            <span>Radius</span>
-            <strong>{{ radiusText }}</strong>
-          </article>
-          <article>
-            <LocateFixed :size="16" aria-hidden="true" />
-            <span>Max Accuracy</span>
-            <strong>{{ accuracyText }}</strong>
-          </article>
-        </div>
-      </section>
+      <!-- Status pill (mobile) -->
+      <div class="status-pill status-pill--below dashboard-enter dashboard-enter--4">
+        <span class="status-dot" :class="statusDotClass"></span>
+        <span class="status-text">{{ statusLabel }}</span>
+      </div>
     </section>
 
-    <section v-else class="empty-state empty-state--panel">
+    <section v-else class="empty-state">
       <p>Event not found.</p>
-      <button class="detail-action detail-action--inline" type="button" @click="goBack">
-        Back to schedule
-      </button>
     </section>
-  </main>
+  </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ArrowLeft,
-  Bell,
-  CalendarClock,
-  Crosshair,
-  LocateFixed,
-  MapPin,
-  Navigation,
-  Ruler,
-} from 'lucide-vue-next'
-import { applyTheme, loadTheme } from '@/config/theme.js'
+import { ArrowLeft, ArrowUpRight, Bell } from 'lucide-vue-next'
+import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
 import { studentDashboardPreviewData } from '@/data/studentDashboardPreview.js'
@@ -178,12 +116,10 @@ const props = defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { ensureDashboardEvent, getDashboardEventById, token, schoolSettings } = useDashboardSession()
+const { ensureDashboardEvent, getDashboardEventById } = useDashboardSession()
 const isCouncilPreviewRoute = computed(() => props.preview && isGovernancePreviewPath(route))
 const isSchoolItPreviewRoute = computed(() => props.preview && route.path.startsWith('/exposed/workspace'))
 const { previewBundle } = useSgPreviewBundle(isCouncilPreviewRoute)
-const isLoadingEvent = ref(false)
-const eventLoadError = ref('')
 
 const eventId = computed(() => Number(route.params.id))
 const previewEvent = computed(() => {
@@ -199,65 +135,18 @@ const previewEvent = computed(() => {
 })
 const event = computed(() => props.preview ? previewEvent.value : getDashboardEventById(eventId.value))
 
-const eventName = computed(() => {
-  const name = event.value?.title || event.value?.name || event.value?.event_name
-  return String(name || 'Untitled event').trim()
-})
-
 const previewSchoolSettings = computed(() => {
   if (isCouncilPreviewRoute.value) return previewBundle.value?.schoolSettings || null
   if (isSchoolItPreviewRoute.value) return schoolItPreviewData.schoolSettings
   return studentDashboardPreviewData.schoolSettings
 })
 
-const activeSchoolSettings = computed(() => (
-  props.preview
-    ? previewSchoolSettings.value
-    : schoolSettings.value
-))
+usePreviewTheme(() => props.preview, previewSchoolSettings)
 
-watch(
-  activeSchoolSettings,
-  (nextSchoolSettings) => {
-    if (!nextSchoolSettings) return
-    applyTheme(loadTheme(nextSchoolSettings))
-  },
-  { immediate: true, deep: true }
-)
-
-watch(
-  [eventId, token],
-  async ([id, sessionToken]) => {
-    if (props.preview) return
-
-    if (!Number.isFinite(id)) {
-      eventLoadError.value = 'Event not found.'
-      return
-    }
-
-    if (!sessionToken) {
-      isLoadingEvent.value = true
-      eventLoadError.value = ''
-      return
-    }
-
-    isLoadingEvent.value = !event.value
-    eventLoadError.value = ''
-
-    try {
-      const loadedEvent = await ensureDashboardEvent(id)
-      if (!loadedEvent && !getDashboardEventById(id)) {
-        eventLoadError.value = 'Event not found.'
-      }
-    } catch (error) {
-      console.error('Unable to load event detail:', error?.message || error)
-      eventLoadError.value = error?.message || 'Unable to load this event.'
-    } finally {
-      isLoadingEvent.value = false
-    }
-  },
-  { immediate: true }
-)
+onMounted(() => {
+  if (props.preview) return
+  ensureDashboardEvent(eventId.value).catch(() => null)
+})
 
 function goBack() {
   if (hasNavigableHistory(route)) {
@@ -269,134 +158,68 @@ function goBack() {
 }
 
 const statusConfig = {
-  upcoming: { label: 'Upcoming', dot: 'dot--yellow' },
-  ongoing: { label: 'Ongoing', dot: 'dot--red' },
-  completed: { label: 'Completed', dot: 'dot--green' },
+  upcoming: { label: 'Up Coming', dot: 'dot--yellow' },
+  ongoing: { label: 'On Going', dot: 'dot--red' },
+  completed: { label: 'Done', dot: 'dot--green' },
   cancelled: { label: 'Cancelled', dot: 'dot--gray' },
 }
 
-const statusKey = computed(() => {
-  const key = String(event.value?.status || 'upcoming').toLowerCase()
-  return statusConfig[key] ? key : 'upcoming'
-})
-
-const statusLabel = computed(() => statusConfig[statusKey.value].label)
-const statusDotClass = computed(() => statusConfig[statusKey.value].dot)
-const statusPillClass = computed(() => `status-pill--${statusKey.value}`)
-
-function toValidDate(value) {
-  if (!value) return null
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-const startDate = computed(() =>
-  toValidDate(event.value?.start_datetime || event.value?.start_time || event.value?.starts_at)
-)
-const endDate = computed(() =>
-  toValidDate(event.value?.end_datetime || event.value?.end_time || event.value?.ends_at)
-)
-
-function formatDateOnly(date) {
-  if (!date) return 'Not set'
-  return new Intl.DateTimeFormat('en-PH', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date)
-}
-
-function formatTimeOnly(date) {
-  if (!date) return 'Not set'
-  return new Intl.DateTimeFormat('en-PH', {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date)
-}
-
-const startDateText = computed(() => formatDateOnly(startDate.value))
-const startTimeText = computed(() => formatTimeOnly(startDate.value))
-const endDateText = computed(() => formatDateOnly(endDate.value))
-const endTimeText = computed(() => formatTimeOnly(endDate.value))
-
-const locationText = computed(() => {
-  const location = event.value?.location || event.value?.venue || event.value?.address
-  return String(location || 'Location not set').trim()
-})
+const statusLabel = computed(() => statusConfig[event.value?.status]?.label ?? 'Upcoming')
+const statusDotClass = computed(() => statusConfig[event.value?.status]?.dot ?? 'dot--yellow')
 
 const dateRange = computed(() => {
-  const start = startDate.value
-  const end = endDate.value
-  if (!start || !end) return 'Schedule not set'
+  if (!event.value) return ''
+  const start = new Date(event.value.start_datetime)
+  const end = new Date(event.value.end_datetime)
   const datePart = start.toLocaleDateString('en-PH', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   })
-  const timePart = `${start.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}`
-  return `${datePart} at ${timePart}`
+  const timePart = `${start.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })} – ${end.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}`
+  return `${datePart} · ${timePart}`
 })
 
-const geoLatitude = computed(() => Number(event.value?.geo_latitude))
-const geoLongitude = computed(() => Number(event.value?.geo_longitude))
-function isValidLatitude(value) {
-  return Number.isFinite(value) && value >= -90 && value <= 90
-}
-
-function isValidLongitude(value) {
-  return Number.isFinite(value) && value >= -180 && value <= 180
-}
-
 const hasGeo = computed(() =>
-  isValidLatitude(geoLatitude.value) && isValidLongitude(geoLongitude.value)
+  event.value?.geo_latitude != null && event.value?.geo_longitude != null
 )
 
 const latitudeText = computed(() => {
   if (!hasGeo.value) return '--'
-  return new Intl.NumberFormat('en-PH', { maximumFractionDigits: 6 }).format(geoLatitude.value)
+  return new Intl.NumberFormat('en-PH', { maximumFractionDigits: 6 }).format(event.value.geo_latitude)
 })
 
 const longitudeText = computed(() => {
   if (!hasGeo.value) return '--'
-  return new Intl.NumberFormat('en-PH', { maximumFractionDigits: 6 }).format(geoLongitude.value)
+  return new Intl.NumberFormat('en-PH', { maximumFractionDigits: 6 }).format(event.value.geo_longitude)
 })
 
-const coordinateSummary = computed(() => {
-  if (!hasGeo.value) return 'Coordinates not configured'
-  return `${latitudeText.value}, ${longitudeText.value}`
+const geoMetricPills = computed(() => {
+  const pills = []
+  const radius = Number(event.value?.geo_radius_m)
+  const maxAccuracy = Number(event.value?.geo_max_accuracy_m)
+
+  if (Number.isFinite(radius) && radius > 0) {
+    pills.push(`Radius ${Math.round(radius)}m`)
+  }
+
+  if (Number.isFinite(maxAccuracy) && maxAccuracy > 0) {
+    pills.push(`Max GPS Accuracy ${Math.round(maxAccuracy)}m`)
+  }
+
+  return pills
 })
-
-const radiusText = computed(() => {
-  const radius = Number(event.value?.geo_radius_m ?? event.value?.geo_radius_meters)
-  return Number.isFinite(radius) && radius > 0 ? `${Math.round(radius)} m` : 'Not set'
-})
-
-const accuracyText = computed(() => {
-  const maxAccuracy = Number(event.value?.geo_max_accuracy_m ?? event.value?.geo_max_accuracy_meters)
-  return Number.isFinite(maxAccuracy) && maxAccuracy > 0 ? `${Math.round(maxAccuracy)} m` : 'Not set'
-})
-
-const mapStateLabel = computed(() => (hasGeo.value ? 'Pinned' : 'No coordinates'))
-
-function isEnabledFlag(value) {
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'number') return value === 1
-  if (typeof value === 'string') return ['1', 'true', 'yes'].includes(value.trim().toLowerCase())
-  return false
-}
-
-const geofenceRequiredLabel = computed(() => isEnabledFlag(event.value?.geo_required) ? 'Required' : 'Optional')
 
 const mapUrl = computed(() => {
   if (!hasGeo.value) return null
-  const lat = geoLatitude.value
-  const lon = geoLongitude.value
-  const configuredRadius = Number(event.value?.geo_radius_m ?? event.value?.geo_radius_meters)
-  const radius = Number.isFinite(configuredRadius) && configuredRadius > 0 ? configuredRadius : 350
+  const lat = event.value.geo_latitude
+  const lon = event.value.geo_longitude
+  const radius = typeof event.value.geo_radius_m === 'number' && event.value.geo_radius_m > 0
+    ? event.value.geo_radius_m
+    : 350
 
   const latDelta = radius / 111320
-  const longitudeMeters = 111320 * Math.cos((lat * Math.PI) / 180)
-  const lonDelta = radius / (Math.abs(longitudeMeters) > 1 ? longitudeMeters : 1)
+  const lonDelta = radius / (111320 * Math.cos((lat * Math.PI) / 180) || 1)
   const bbox = [
     (lon - lonDelta).toFixed(6),
     (lat - latDelta).toFixed(6),
@@ -409,9 +232,9 @@ const mapUrl = computed(() => {
 
 const mapDestination = computed(() => {
   if (hasGeo.value) {
-    return `${geoLatitude.value},${geoLongitude.value}`
+    return `${event.value.geo_latitude},${event.value.geo_longitude}`
   }
-  const fallback = locationText.value.trim()
+  const fallback = event.value?.location?.trim()
   return fallback || ''
 })
 
@@ -425,22 +248,15 @@ function openInMaps() {
 <style scoped>
 .event-detail {
   min-height: 100vh;
-  padding: 20px 16px 118px;
+  padding: 28px 24px 110px;
   background: var(--color-bg);
-  color: var(--color-text-primary);
 }
 
 .detail-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
   display: flex;
   align-items: center;
   gap: 12px;
-  width: min(100%, 720px);
-  margin: 0 auto 14px;
-  padding: 4px 0 8px;
-  background: var(--color-bg);
+  margin-bottom: 16px;
 }
 
 .header-spacer {
@@ -451,11 +267,11 @@ function openInMaps() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: var(--color-surface);
-  color: var(--color-surface-text);
+  color: var(--color-text-always-dark);
   border: none;
   cursor: pointer;
   transition: transform 0.15s ease;
@@ -466,220 +282,58 @@ function openInMaps() {
 }
 
 .icon-btn--ghost {
-  background: var(--color-surface);
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 88%, transparent);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--color-nav) 10%, transparent);
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
 }
 
 .detail-body {
-  display: grid;
-  gap: 14px;
-  width: 100%;
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-.event-summary,
-.detail-panel,
-.map-panel,
-.geo-panel {
-  background: var(--color-surface);
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 88%, transparent);
-  border-radius: 8px;
-  box-shadow: 0 14px 34px color-mix(in srgb, var(--color-nav) 9%, transparent);
-}
-
-.event-summary {
-  display: grid;
-  gap: 14px;
-  padding: 18px;
-}
-
-.event-summary__top {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
   align-items: center;
-  justify-content: flex-start;
+  width: 100%;
+}
+
+.title-block {
+  margin: 8px 0 14px;
+  width: 100%;
+  max-width: 360px;
+  text-align: left;
 }
 
 .event-title {
-  font-size: 24px;
-  line-height: 1.16;
+  font-size: 32px;
   font-weight: 800;
-  color: var(--color-surface-text);
-  margin: 0;
-  overflow-wrap: anywhere;
+  letter-spacing: -0.6px;
+  color: var(--color-text-always-dark);
+  margin: 0 0 6px;
 }
 
-.summary-list {
-  display: grid;
-  gap: 10px;
-}
-
-.summary-item {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-  color: var(--color-surface-text-secondary);
-  font-size: 13px;
+.event-subtitle {
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.35;
-}
-
-.summary-item svg {
-  color: var(--color-primary);
-  margin-top: 1px;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-}
-
-.detail-panel,
-.map-panel,
-.geo-panel {
-  padding: 16px;
-}
-
-.panel-header,
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.section-header {
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.panel-header h2,
-.section-header h2 {
+  color: var(--color-text-secondary);
   margin: 0;
-  font-size: 15px;
-  line-height: 1.2;
-  color: var(--color-surface-text);
 }
 
-.panel-header svg {
-  color: var(--color-primary);
-}
-
-.eyebrow {
-  margin: 0 0 3px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-surface-text-muted);
-}
-
-.time-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.time-grid div {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 82%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-bg) 38%, var(--color-surface));
-}
-
-.time-grid span,
-.geo-list span {
-  display: block;
-  margin-bottom: 5px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-surface-text-muted);
-}
-
-.time-grid strong,
-.time-grid small {
-  display: block;
-  color: var(--color-surface-text);
-}
-
-.time-grid strong {
-  font-size: 13px;
-  line-height: 1.25;
-}
-
-.time-grid small {
-  margin-top: 2px;
+.event-date {
   font-size: 12px;
-  font-weight: 700;
-  color: var(--color-surface-text-secondary);
-}
-
-.venue-name {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 800;
-  line-height: 1.25;
-  color: var(--color-surface-text);
-  overflow-wrap: anywhere;
-}
-
-.venue-coordinates {
-  margin: 6px 0 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-surface-text-muted);
-  overflow-wrap: anywhere;
-}
-
-.detail-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  width: 100%;
-  padding: 0 14px;
-  border: none;
-  border-radius: 8px;
-  background: var(--color-primary);
-  color: var(--color-banner-text);
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease;
-}
-
-.detail-action:active {
-  transform: scale(0.98);
-}
-
-.detail-action:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.detail-action--inline {
-  width: auto;
-  min-width: 156px;
-  padding: 0 18px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-top: 4px;
 }
 
 .map-shell {
   position: relative;
   width: 100%;
-  min-height: 188px;
-  aspect-ratio: 16 / 10;
-  border-radius: 8px;
+  max-width: 360px;
+  height: auto;
+  min-height: 320px;
+  aspect-ratio: 1.15 / 1;
+  border-radius: 28px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--color-bg) 48%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 82%, transparent);
+  background: var(--color-surface);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
 }
 
 .map-frame {
@@ -692,32 +346,56 @@ function openInMaps() {
   position: relative;
   width: 100%;
   height: 100%;
+  background: #f6f6f6;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   overflow: hidden;
+}
+
+.map-grid {
+  position: absolute;
+  inset: 0;
   background-image:
-    linear-gradient(to right, color-mix(in srgb, var(--color-surface-text-muted) 14%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in srgb, var(--color-surface-text-muted) 14%, transparent) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px);
   background-size: 24px 24px;
-  color: var(--color-surface-text-muted);
+}
+
+.map-fallback-text {
+  position: relative;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 600;
+  color: rgba(0,0,0,0.4);
+  background: rgba(255,255,255,0.9);
+  padding: 10px 14px;
+  border-radius: 999px;
 }
 
 .status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 30px;
-  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  gap: 8px;
+  background: #ffffff;
   border-radius: 999px;
-  padding: 0 12px;
+  padding: 8px 18px;
   font-size: 11px;
-  font-weight: 800;
-  color: var(--color-surface-text);
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 82%, transparent);
+  font-weight: 600;
+  color: var(--color-text-always-dark);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+}
+
+.status-pill--below {
+  margin: 16px auto 0;
+  width: fit-content;
+}
+
+.status-pill--overlay {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: none;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
 }
 
 .status-dot {
@@ -726,107 +404,183 @@ function openInMaps() {
   border-radius: 50%;
 }
 
-.dot--red { background: #ef4444; }
-.dot--yellow { background: #f59e0b; }
-.dot--green { background: #22c55e; }
-.dot--gray { background: var(--color-surface-text-muted); }
+.dot--red { background: #FF2B2B; }
+.dot--yellow { background: #FFDD00; }
+.dot--green { background: #00E676; }
+.dot--gray { background: #cfcfcf; }
 
-.status-pill--upcoming { background: rgba(245, 158, 11, 0.12); }
-.status-pill--ongoing { background: rgba(239, 68, 68, 0.12); }
-.status-pill--completed { background: rgba(34, 197, 94, 0.12); }
-.status-pill--cancelled { background: rgba(107, 114, 128, 0.12); }
-
-.geo-state {
+.location-card {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  right: auto;
+  width: min(320px, 88%);
+  max-width: calc(100% - 32px);
+  transform: translateX(-50%);
+  background: var(--color-primary);
+  color: var(--color-banner-text);
+  border-radius: 26px;
+  padding: 16px 18px;
   display: flex;
   align-items: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
-  color: var(--color-surface-text-secondary);
-  font-size: 11px;
-  font-weight: 800;
+  justify-content: space-between;
+  gap: 14px;
 }
 
-.geo-state--muted {
-  color: var(--color-surface-text-muted);
+.location-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
 }
 
-.geo-list {
+.geo-columns {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 96px 1fr;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+}
+
+.geo-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.geo-block--location {
+  min-width: 0;
+}
+
+.geo-label {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.geo-label--spaced {
+  margin-top: 6px;
+}
+
+.geo-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-banner-text);
+}
+
+.geo-location {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-banner-text);
+  max-width: 190px;
+}
+
+.geo-metrics {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.geo-list article {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 82%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-bg) 38%, var(--color-surface));
+.geo-metric-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: rgba(255, 255, 255, 0.16);
+  color: var(--color-banner-text);
 }
 
-.geo-list svg {
-  color: var(--color-primary);
-  margin-bottom: 8px;
+.geo-action {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-text-always-dark);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-.geo-list strong {
-  display: block;
-  min-height: 18px;
-  color: var(--color-surface-text);
-  font-size: 13px;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
+.geo-action:active {
+  transform: scale(0.95);
+}
+
+.geo-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .empty-state {
-  width: min(100%, 720px);
-  margin: 0 auto;
   text-align: center;
-  padding: 60px 16px;
-  color: var(--color-text-muted);
+  padding: 60px 0;
+  color: rgba(0,0,0,0.5);
   font-weight: 600;
-}
-
-.empty-state--panel {
-  display: grid;
-  justify-items: center;
-  gap: 14px;
-  border: 1px solid color-mix(in srgb, var(--color-surface-border) 88%, transparent);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-surface-text-muted);
-  box-shadow: 0 14px 34px color-mix(in srgb, var(--color-nav) 9%, transparent);
-}
-
-.empty-state p {
-  margin: 0;
 }
 
 @media (min-width: 768px) {
   .event-detail {
-    padding: 28px 24px 44px;
+    padding: 28px 0 40px 32px;
   }
 
   .detail-header {
-    margin-bottom: 18px;
+    margin-bottom: 0;
+    justify-content: center;
+  }
+
+  .icon-btn--back,
+  .header-spacer {
+    display: none;
   }
 
   .event-title {
     font-size: 30px;
   }
 
-  .detail-grid {
-    grid-template-columns: 1fr 1fr;
+  .detail-body {
+    max-width: 640px;
+    align-items: flex-start;
+  }
+
+  .title-block {
+    margin: 10px 0 18px;
+    max-width: 100%;
   }
 
   .map-shell {
-    min-height: 260px;
+    height: 360px;
+    max-width: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
   }
 
-  .geo-list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .location-card {
+    left: 18px;
+    bottom: 18px;
+    width: 300px;
+    transform: none;
+  }
+
+  .geo-location {
+    max-width: 220px;
+  }
+
+  .status-pill--below {
+    display: none;
+  }
+
+  .status-pill--overlay {
+    display: inline-flex;
   }
 }
 </style>

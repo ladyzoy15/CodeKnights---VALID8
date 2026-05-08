@@ -1,23 +1,19 @@
 import { computed, onBeforeMount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
-import { useGoogleLogin } from '@/composables/useGoogleLogin.js'
 import { applyTheme, loadUnbrandedTheme } from '@/config/theme.js'
 import { consumeSessionExpiredNotice } from '@/services/sessionExpiry.js'
+import { getStoredRememberMePreference } from '@/services/userPreferences.js'
 
 export function useLoginViewModel() {
   const email = ref('')
   const password = ref('')
+  const rememberMe = ref(getStoredRememberMePreference())
   const isMounted = ref(false)
   const sessionNotice = ref('')
   const router = useRouter()
   const { login, isLoading, error } = useAuth()
-  const {
-    loginWithGoogleCredential,
-    isLoading: googleLoading,
-    error: googleError,
-  } = useGoogleLogin()
-  const visibleMessage = computed(() => error.value || googleError.value || sessionNotice.value)
+  const visibleMessage = computed(() => error.value || sessionNotice.value)
 
   onBeforeMount(() => {
     applyTheme(loadUnbrandedTheme())
@@ -32,26 +28,21 @@ export function useLoginViewModel() {
   })
 
   async function handleLogin() {
-    await login(email.value, password.value)
+    await login(email.value, password.value, { rememberMe: rememberMe.value })
   }
 
-  async function handleGoogleCredential(credential) {
-    await loginWithGoogleCredential(credential)
-  }
-
-  function goToForgotPassword() {
-    router.push({ name: 'ForgotPassword' })
+  function openQuickAttendance() {
+    router.push({ name: 'QuickAttendance' })
   }
 
   return {
     email,
     password,
+    rememberMe,
     isMounted,
     isLoading,
-    googleLoading,
     visibleMessage,
     handleLogin,
-    handleGoogleCredential,
-    goToForgotPassword,
+    openQuickAttendance,
   }
 }

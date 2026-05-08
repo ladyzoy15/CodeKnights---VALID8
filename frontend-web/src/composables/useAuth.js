@@ -8,55 +8,17 @@ import {
     sessionUsesLimitedMode,
     sessionNeedsFaceRegistration,
 } from '@/composables/useDashboardSession.js'
-import { hasPrivilegedPendingFace, sanitizeToken, storeAuthMeta } from '@/services/localAuth.js'
-import { markCurrentRuntimeSession, readStoredSessionToken } from '@/services/sessionPersistence.js'
+import { hasPrivilegedPendingFace, storeAuthMeta } from '@/services/localAuth.js'
+import { markCurrentRuntimeSession } from '@/services/sessionPersistence.js'
 import { clearSessionExpiredNotice } from '@/services/sessionExpiry.js'
-
-function normalizeRoleKey(role = '') {
-    const normalizedRole = String(role || '')
-        .trim()
-        .toLowerCase()
-        .replace(/_/g, '-')
-
-    return normalizedRole === 'campus-admin' ? 'school-it' : normalizedRole
-}
-
-function resolveRouteFromRoles(roles = []) {
-    const roleKeys = Array.isArray(roles)
-        ? roles.map((role) => normalizeRoleKey(role))
-        : []
-
-    if (roleKeys.includes('school-it')) {
-        return { name: 'SchoolItHome' }
-    }
-    if (roleKeys.includes('admin')) {
-        return { name: 'AdminHome' }
-    }
-    if (roleKeys.includes('ssg') || roleKeys.includes('sg') || roleKeys.includes('org')) {
-        return { name: 'SgDashboard' }
-    }
-    return { name: 'Home' }
-}
-
-function resolveFallbackRoute(authMeta = null) {
-    if (Array.isArray(authMeta?.roles) && authMeta.roles.length > 0) {
-        return resolveRouteFromRoles(authMeta.roles)
-    }
-
-    try {
-        const storedRoles = JSON.parse(localStorage.getItem('aura_user_roles') || '[]')
-        return resolveRouteFromRoles(storedRoles)
-    } catch {
-        return resolveRouteFromRoles([])
-    }
-}
+import { storeRememberMePreference } from '@/services/userPreferences.js'
 
 export function useAuth() {
     const router = useRouter()
     const isLoading = ref(false)
     const error = ref(null)
 
-    async function login(email, password, options = {}) {
+    async function login(email, password, { rememberMe = false } = {}) {
         isLoading.value = true
         error.value = null
 
@@ -71,9 +33,10 @@ export function useAuth() {
             const tokenPayload = await loginForAccessToken(apiBaseUrl, {
                 username: email,
                 password,
+                rememberMe,
             })
 
-            const accessToken = sanitizeToken(tokenPayload?.access_token)
+            const accessToken = tokenPayload?.access_token
             if (!accessToken) {
                 throw new Error('The API did not return an access token.')
             }
@@ -81,54 +44,31 @@ export function useAuth() {
             localStorage.setItem('aura_token', accessToken)
             localStorage.setItem('aura_user_roles', JSON.stringify(tokenPayload?.roles ?? []))
             const authMeta = storeAuthMeta(tokenPayload)
+            storeRememberMePreference(rememberMe)
             markCurrentRuntimeSession()
-            const persistedToken = sanitizeToken(readStoredSessionToken())
-            if (persistedToken !== accessToken) {
-                throw new Error('Authenticated, but the session token was not persisted.')
+
+            if (authMeta.mustChangePassword) {
+                router.push({ name: 'ChangePassword' })
+                return
             }
 
             if (hasPrivilegedPendingFace(authMeta)) {
-                const nextRoute = { name: 'PrivilegedFaceVerification' }
-                if (options.preventRedirect) return nextRoute
-                router.push(nextRoute)
+                router.push({ name: 'PrivilegedFaceVerification' })
                 return
             }
 
-            if (authMeta.mustChangePassword) {
-                const nextRoute = { name: 'ChangePassword' }
-                if (options.preventRedirect) return nextRoute
-                router.push(nextRoute)
-                return
-            }
-
-            let initializedSession = null
-            try {
-                initializedSession = await initializeDashboardSession(true)
-            } catch {
-                initializedSession = null
-            }
-
-            let nextRoute = sessionNeedsFaceRegistration()
-                ? { name: 'FaceRegistration' }
-                : getDefaultAuthenticatedRoute()
+            const initializedSession = await initializeDashboardSession(true)
             if (!initializedSession?.user || sessionUsesLimitedMode()) {
-                nextRoute = resolveFallbackRoute(authMeta)
+                throw new Error('The backend did not return a complete user session. Please try again once the backend is stable.')
             }
-
-            if (options.preventRedirect) return nextRoute
-            await router.push(nextRoute)
-            
+            router.push(
+                sessionNeedsFaceRegistration()
+                    ? { name: 'FaceRegistration' }
+                    : getDefaultAuthenticatedRoute()
+            )
         } catch (err) {
-            const stillAuthenticated = Boolean(sanitizeToken(readStoredSessionToken()))
-            if (!stillAuthenticated) {
-                clearDashboardSession()
-            }
+            clearDashboardSession()
             error.value = err?.message || 'Login failed. Please try again.'
-            if (options.preventRedirect) {
-                return stillAuthenticated
-                    ? resolveFallbackRoute()
-                    : null
-            }
         } finally {
             isLoading.value = false
         }

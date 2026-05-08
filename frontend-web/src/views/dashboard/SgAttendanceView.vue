@@ -61,26 +61,15 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
 import { useSgDashboard } from '@/composables/useSgDashboard.js'
 import { getAttendanceSummary, getMyAttendance } from '@/services/backendApi.js'
-import { withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
 
-const props = defineProps({
-  preview: {
-    type: Boolean,
-    default: false,
-  },
-})
-
-const route = useRoute()
 const router = useRouter()
 const { apiBaseUrl } = useDashboardSession()
-const { previewBundle } = useSgPreviewBundle(() => props.preview)
-const { isLoading: sgLoading } = useSgDashboard(props.preview)
+const { isLoading: sgLoading } = useSgDashboard()
 
 const isLoading = ref(true)
 const loadError = ref('')
@@ -93,16 +82,10 @@ function formatDate(d) {
   catch { return d }
 }
 
-function goBack() {
-  router.push(
-    props.preview
-      ? withPreservedGovernancePreviewQuery(route, '/exposed/governance')
-      : '/governance'
-  )
-}
+function goBack() { router.push('/sg') }
 
 watch(
-  [apiBaseUrl, () => sgLoading.value, () => route.query?.variant],
+  [apiBaseUrl, () => sgLoading.value],
   async ([url]) => {
     if (!url || sgLoading.value) return
     await loadAttendance(url)
@@ -114,14 +97,6 @@ async function loadAttendance(url) {
   isLoading.value = true
   loadError.value = ''
   try {
-    if (props.preview) {
-      summary.value = previewBundle.value?.attendance?.summary || null
-      records.value = Array.isArray(previewBundle.value?.attendance?.records)
-        ? previewBundle.value.attendance.records.map((record) => ({ ...record }))
-        : []
-      return
-    }
-
     const token = localStorage.getItem('aura_token') || ''
     const [summaryData, attendanceRecords] = await Promise.allSettled([
       getAttendanceSummary(url, token),
@@ -152,8 +127,8 @@ async function reload() { if (apiBaseUrl.value) await loadAttendance(apiBaseUrl.
 .sg-att-event { font-size: 14px; font-weight: 600; color: var(--color-text-primary); }
 .sg-att-date { font-size: 12px; color: var(--color-text-muted); }
 .sg-att-status-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 10px; text-transform: capitalize; }
-.sg-att-status-badge--present { background: color-mix(in srgb, var(--color-status-compliant) 15%, transparent); color: var(--color-status-compliant); }
-.sg-att-status-badge--absent { background: color-mix(in srgb, var(--color-status-non-compliant) 14%, transparent); color: var(--color-status-non-compliant); }
-.sg-att-status-badge--late { background: color-mix(in srgb, var(--color-status-at-risk) 15%, transparent); color: var(--color-status-at-risk); }
-.sg-att-status-badge--excused { background: color-mix(in srgb, var(--color-status-excused) 14%, transparent); color: var(--color-status-excused); }
+.sg-att-status-badge--present { background: #27ae6033; color: #27ae60; }
+.sg-att-status-badge--absent { background: #e74c3c33; color: #e74c3c; }
+.sg-att-status-badge--late { background: #f0ad4e33; color: #f0ad4e; }
+.sg-att-status-badge--excused { background: #3498db33; color: #3498db; }
 </style>

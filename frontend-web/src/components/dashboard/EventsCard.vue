@@ -50,7 +50,7 @@
             </p>
           </template>
           <template v-else>
-            <p class="text-[13px]" style="color: var(--color-surface-text-muted);">No events</p>
+            <p class="text-[13px]" style="color: var(--color-surface-text-muted);">No upcoming events</p>
           </template>
         </div>
       </div>
@@ -72,13 +72,9 @@ const props = defineProps({
 defineEmits(['see-event'])
 
 const latestEvent = computed(() => {
-  const active = props.events.filter((e) => ['upcoming', 'ongoing'].includes(normalizeStatus(e.status)))
-  return active[0] ?? props.events[0] ?? null
+  const upcoming = props.events.filter((e) => e.status === 'upcoming' || e.status === 'ongoing')
+  return upcoming[0] ?? null
 })
-
-function normalizeStatus(status) {
-  return status === 'done' ? 'completed' : String(status ?? '').toLowerCase()
-}
 
 function truncate(str, len) {
   if (!str) return ''

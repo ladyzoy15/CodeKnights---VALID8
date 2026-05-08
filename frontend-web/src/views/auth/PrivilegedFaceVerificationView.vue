@@ -217,7 +217,7 @@ const scanProgress = computed(() => {
 
 const faceDetectorWasmBaseUrl =
   import.meta.env.VITE_FACE_DETECTOR_WASM_URL ||
-  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+  'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm'
 const faceDetectorModelUrl =
   import.meta.env.VITE_FACE_DETECTOR_MODEL_URL ||
   'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite'
@@ -312,7 +312,7 @@ async function loadFaceStatus() {
       return
     }
 
-    if (!nextStatus.face_verification_required) {
+    if (!nextStatus.face_verification_required && nextStatus.face_reference_enrolled) {
       await routeIntoUnlockedSession()
       return
     }
@@ -478,7 +478,7 @@ function startFaceDetection() {
 
     if (!detectStartedAt) detectStartedAt = now
     if (now - detectStartedAt > detectTimeoutMs) {
-      setPendingFaceError('Face not found.')
+      setPendingFaceError('No face detected. Please try again in a brighter area.')
       return
     }
 
@@ -497,7 +497,7 @@ function startFaceDetection() {
         return
       }
     } catch {
-      setPendingFaceError('Face not found.')
+      setPendingFaceError('Face detection failed. Please try again.')
       return
     }
 
@@ -606,7 +606,7 @@ async function captureAndSubmit() {
     }
 
     if (!verification?.matched) {
-      throw new Error('Face not match.')
+      throw new Error('Face not matched. Please try again.')
     }
 
     if (!verification?.access_token) {

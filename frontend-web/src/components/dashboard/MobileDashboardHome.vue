@@ -91,15 +91,16 @@
 
         <Transition name="mobile-search">
           <div v-if="isAiOpen" class="mobile-dashboard__ai-panel">
-            <div class="mobile-dashboard__ai-messages" ref="scrollEl">
-              <div
-                v-for="message in messages"
-                :key="message.id"
-                :class="['mobile-dashboard__bubble', message.sender === 'ai' ? 'mobile-dashboard__bubble--ai' : 'mobile-dashboard__bubble--user']"
-              >
-                {{ message.text }}
-              </div>
-            </div>
+            <TransitionGroup name="mobile-dashboard__bubble" tag="div" class="mobile-dashboard__messages-inner" ref="scrollEl">
+              <template v-for="message in messages" :key="message.id">
+                <div
+                  v-if="message.sender === 'user' || (message.text && message.text.trim().length > 0)"
+                  :class="['mobile-dashboard__bubble', message.sender === 'ai' ? 'mobile-dashboard__bubble--ai' : 'mobile-dashboard__bubble--user']"
+                >
+                  <ChatMarkdownMessage :text="message.text" />
+                </div>
+              </template>
+            </TransitionGroup>
 
             <div class="mobile-dashboard__ai-input">
               <input
@@ -175,6 +176,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, Search, Send } from 'lucide-vue-next'
 import { secondaryAuraLogo, surfaceAuraLogo } from '@/config/theme.js'
+import ChatMarkdownMessage from '@/components/ui/ChatMarkdownMessage.vue'
 import { useChat } from '@/composables/useChat.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { studentDashboardPreviewData } from '@/data/studentDashboardPreview.js'
@@ -227,7 +229,7 @@ const initials = computed(() => {
   return parts.length >= 2 ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase() : displayName.value.slice(0, 2).toUpperCase()
 })
 const avatarUrl = computed(() => activeUser.value?.student_profile?.photo_url || activeUser.value?.student_profile?.avatar_url || activeUser.value?.avatar_url || '')
-const searchableEvents = computed(() => schoolEvents.value.filter((event) => ['upcoming', 'ongoing', 'completed'].includes(normalizeStatus(event.status))))
+const searchableEvents = computed(() => schoolEvents.value.filter((event) => ['upcoming', 'ongoing'].includes(normalizeStatus(event.status))))
 const filteredEvents = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   if (!query) return searchableEvents.value
@@ -319,10 +321,9 @@ function openEvent(event) {
   if (!event?.id) return
 
   const normalizedEventId = Number(event.id)
-  const status = normalizeStatus(event.status)
   const shouldRouteToAttendance = (
-    (status === 'ongoing' && hasOpenAttendanceForEvent(normalizedEventId))
-    || (status === 'ongoing' && !hasAttendanceForEvent(normalizedEventId))
+    hasOpenAttendanceForEvent(normalizedEventId)
+    || (normalizeStatus(event.status) === 'ongoing' && !hasAttendanceForEvent(normalizedEventId))
   )
 
   if (!props.preview && shouldRouteToAttendance) {

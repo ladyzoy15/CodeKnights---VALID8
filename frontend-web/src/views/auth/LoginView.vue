@@ -27,7 +27,7 @@
             placeholder="Gmail"
             autocomplete="email"
             tone="neutral"
-            :disabled="isLoading || googleLoading"
+            :disabled="isLoading"
           />
 
           <!-- Password -->
@@ -38,21 +38,9 @@
             placeholder="Password"
             autocomplete="current-password"
             tone="neutral"
-            :disabled="isLoading || googleLoading"
+            :disabled="isLoading"
             @enter="handleLogin"
           />
-
-          <!-- Forgot Password Link -->
-          <div class="flex justify-end -mt-1">
-            <a
-              href="#"
-              class="text-[12px] font-medium transition-colors"
-              style="color: var(--color-text-secondary);"
-              @click.prevent="goToForgotPassword"
-            >
-              Forgot password?
-            </a>
-          </div>
 
           <!-- Error message -->
           <Transition name="fade">
@@ -61,6 +49,17 @@
             </p>
           </Transition>
 
+          <label class="remember-row" for="remember-me">
+            <input
+              id="remember-me"
+              v-model="rememberMe"
+              type="checkbox"
+              class="remember-row__checkbox"
+              :disabled="isLoading"
+            >
+            <span class="remember-row__label">Remember me</span>
+          </label>
+
           <!-- Login Button -->
           <BaseButton
             type="submit"
@@ -68,24 +67,26 @@
             size="md"
             class="mt-1 group"
             :loading="isLoading"
-            :disabled="googleLoading"
           >
             Log In
           </BaseButton>
 
-          <!-- Google Sign-In below Log In -->
-          <div class="flex items-center gap-3 my-1" aria-hidden="true">
-            <div class="flex-1 h-px" style="background: var(--color-border, #2a2a2a);"></div>
-            <span class="text-[11px] uppercase tracking-wide" style="color: var(--color-text-secondary);">or</span>
-            <div class="flex-1 h-px" style="background: var(--color-border, #2a2a2a);"></div>
-          </div>
+          <BaseButton
+            type="button"
+            variant="secondary"
+            size="md"
+            class="group"
+            :disabled="isLoading"
+            @click="openQuickAttendance"
+          >
+            Quick Attendance
+          </BaseButton>
 
-          <GoogleSignInButton @credential="handleGoogleCredential" />
         </form>
 
         <!-- Powered by Aura -->
         <div 
-          class="flex flex-col items-center justify-center gap-3 mt-1 transition-all duration-700 delay-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          class="flex flex-col items-center justify-center gap-2 mt-1 transition-all duration-700 delay-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
           :class="isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
         >
           <div class="flex items-center justify-center gap-2">
@@ -98,115 +99,43 @@
               Powered by Aura Ai
             </span>
           </div>
-          
-          <a
-            href="https://aura-landing-page-iota.vercel.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-[12px] font-medium transition-colors"
-            style="color: var(--color-text-secondary);"
-          >
-            Learn more about Aura Project
-          </a>
         </div>
 
       </div>
     </div>
 
-    <!-- Terms Modal -->
-    <TermsModal 
-      :isOpen="showTermsModal" 
-      @agree="handleAgree"
-      @decline="handleDecline" 
-    />
+    <!-- Footer -->
+    <footer 
+      class="pb-8 flex justify-center transition-all duration-1000 delay-300 ease-out relative z-10"
+      :class="isMounted ? 'opacity-100' : 'opacity-0'"
+    >
+      <a
+        href="#"
+        class="text-[12px] font-medium transition-colors"
+        style="color: var(--color-text-secondary);"
+      >
+        Learn more about Aura Project
+      </a>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, onBeforeMount, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import TermsModal from '@/components/auth/TermsModal.vue'
-import GoogleSignInButton from '@/components/auth/GoogleSignInButton.vue'
-import { useAuth } from '@/composables/useAuth.js'
-import { useGoogleLogin } from '@/composables/useGoogleLogin.js'
-import { applyTheme, loadUnbrandedTheme, surfaceAuraLogo } from '@/config/theme.js'
-import { consumeSessionExpiredNotice } from '@/services/sessionExpiry.js'
+import { surfaceAuraLogo } from '@/config/theme.js'
+import { useLoginViewModel } from '@/composables/useLoginViewModel.js'
 
-const email = ref('')
-const password = ref('')
-const showTermsModal = ref(false)
-const isMounted = ref(false)
-const sessionNotice = ref('')
-const router = useRouter()
-
-const { login, logout, isLoading, error } = useAuth()
 const {
-  loginWithGoogleCredential,
-  isLoading: googleLoading,
-  error: googleError,
-} = useGoogleLogin()
-const visibleMessage = computed(() => error.value || googleError.value || sessionNotice.value)
-
-const nextRoute = ref(null)
-
-onBeforeMount(() => {
-  applyTheme(loadUnbrandedTheme())
-})
-
-onMounted(() => {
-  sessionNotice.value = consumeSessionExpiredNotice()
-
-  setTimeout(() => {
-    isMounted.value = true
-  }, 50)
-})
-
-async function handleLogin() {
-  // TEMPORARY TESTING BYPASS: If you type "test" in both fields, it will skip the backend
-  if (email.value === 'test' && password.value === 'test') {
-    nextRoute.value = { name: 'PreviewHome' }
-    showTermsModal.value = true
-    return
-  }
-
-  const route = await login(email.value, password.value, { preventRedirect: true })
-  
-  if (route) {
-    // Login succeeded, token stored, session initialized.
-    // Pause routing and show Terms Modal.
-    nextRoute.value = route
-    showTermsModal.value = true
-  }
-}
-
-async function handleGoogleCredential(credential) {
-  const route = await loginWithGoogleCredential(credential, { preventRedirect: true })
-
-  if (route) {
-    nextRoute.value = route
-    showTermsModal.value = true
-  }
-}
-
-function handleAgree() {
-  showTermsModal.value = false
-  localStorage.setItem('aura_terms_agreed', 'true')
-  if (nextRoute.value) {
-    router.push(nextRoute.value)
-  }
-}
-
-function handleDecline() {
-  showTermsModal.value = false
-  // Log them out and clear session
-  logout()
-}
-
-function goToForgotPassword() {
-  router.push({ name: 'ForgotPassword' })
-}
+  email,
+  password,
+  rememberMe,
+  isMounted,
+  isLoading,
+  visibleMessage,
+  handleLogin,
+  openQuickAttendance,
+} = useLoginViewModel()
 </script>
 
 <style scoped>
@@ -227,5 +156,25 @@ function goToForgotPassword() {
 /* When keyboard is open (viewport shrinks), allow scrolling */
 .login-page {
   -webkit-overflow-scrolling: touch;
+}
+
+.remember-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 0;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.remember-row__checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.remember-row__label {
+  line-height: 1.2;
 }
 </style>

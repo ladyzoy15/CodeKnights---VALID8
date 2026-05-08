@@ -32,7 +32,7 @@
             :is="item.icon"
             :size="20"
             :stroke-width="isActive(item) ? 2.45 : 2"
-            :color="'var(--color-primary)'"
+            :color="isActive(item) ? 'var(--color-primary)' : 'var(--mobile-branded-nav-icon-idle)'"
             class="mobile-branded-nav__icon"
           />
 
