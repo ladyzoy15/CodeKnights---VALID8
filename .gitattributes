@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 *.sh text eol=lf
 *.png binary
 *.jpg binary
@@ -5,3 +6,9 @@
 *.gif binary
 *.ico binary
 *.lottie binary
+=======
+#
+# Ensure shell scripts use LF in the repo (Windows CRLF breaks `/bin/sh` inside Linux containers).
+#
+*.sh text eol=lf
+>>>>>>> mr.frontend_v7

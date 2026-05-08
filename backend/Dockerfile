@@ -16,14 +16,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --default-timeout=100 --no-cache-dir -r requirements.txt
+COPY [Bb]ackend/requirements.txt /app/backend-requirements.txt
+RUN pip install --default-timeout=100 --no-cache-dir -r /app/backend-requirements.txt
 
-COPY . .
+COPY [Bb]ackend /backend
+COPY seeder /seeder
+WORKDIR /seeder
 
-RUN useradd --create-home --no-log-init appuser && chown -R appuser:appuser /app
-USER appuser
+RUN chmod +x /seeder/entrypoint.sh
 
-EXPOSE 8000
-
-CMD ["sh", "/app/scripts/run-service.sh"]
+ENTRYPOINT ["/seeder/entrypoint.sh"]

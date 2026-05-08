@@ -1,44 +1,30 @@
-# Backend Service
+# Seeder Service
 
 <!--nav-->
-[Previous](../README.md) | [Next](docs/api-overview.md) | [Home](/README.md)
+[Previous](../README.md) | [Next](docs/01-purpose.md) | [Home](/README.md)
 
 ---
 <!--/nav-->
 
-FastAPI backend for Aura. Handles authentication, attendance, events, governance, sanctions, reports, bulk import, and face recognition.
-
-## Stack
-
-- Python + FastAPI
-- SQLAlchemy ORM + Alembic migrations
-- Celery + Redis for background jobs
-- bcrypt, JWT, InsightFace, ONNX
-
-## Setup
-
-```bash
-cd backend
-cp .env.example .env
-# fill in all values
-
-pip install -r requirements.txt
-alembic upgrade head
-uvicorn app.main:app --reload
-```
+The seeder generates deterministic demo data for Aura (schools, users, governance, events, attendance, and sanctions).
 
 ## Docs
 
-- [API Overview](docs/api-overview.md)
-- [Runtime Behavior](docs/runtime-behavior.md)
-- [Testing Guide](docs/TESTING.md)
-- API docs: `http://localhost:8000/docs` (dev only, disabled in production)
+- [Chapter 1 - Purpose and Design Philosophy](docs/01-purpose.md)
+- [Chapter 11 - Running the Seeder](docs/11-running.md)
+- [Chapter 12 - Output Files](docs/12-output.md)
 
-## Key Directories
+## Quick Start
 
-- `app/models/` — SQLAlchemy models
-- `app/routers/` — API route handlers
-- `app/services/` — business logic
-- `app/schemas/` — Pydantic request/response schemas
-- `alembic/` — database migrations
-- `tests/` — pytest test suite
+```bash
+cd seeder
+cp .env.example .env
+python seed.py demo
+```
+
+## Key Paths
+
+- `seed.py` - entry point
+- `modules/` - generation modules
+- `docs/` - full technical documentation
+- `storage/seeder_outputs/` - generated artifacts
