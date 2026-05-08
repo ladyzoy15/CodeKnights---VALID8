@@ -1,5 +1,4 @@
 name: codeknights20-Aura_update5
-
 services:
   db:
     image: postgres:15
