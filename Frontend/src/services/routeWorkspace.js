@@ -1,3 +1,6 @@
+import { resolveSgPreviewVariant } from '@/data/sgPreviewData.js'
+import { hasSeenGatherOnboarding } from '@/services/gatherOnboarding.js'
+
 function normalizeContext(value = '') {
   return String(value || '')
     .trim()
@@ -12,16 +15,34 @@ function getRoutePath(routeOrPath = '') {
   return String(routeOrPath || '')
 }
 
+export function isGovernancePreviewPath(routeOrPath = null) {
+  const path = getRoutePath(routeOrPath)
+  return path.startsWith('/exposed/governance') || path.startsWith('/exposed/sg')
+}
+
+export function hasGovernancePreviewAccess(routeOrPath = null) {
+  if (isGovernancePreviewPath(routeOrPath)) {
+    return true
+  }
+
+  if (!routeOrPath || typeof routeOrPath !== 'object') {
+    return false
+  }
+
+  const path = getRoutePath(routeOrPath)
+  return path.startsWith('/exposed/dashboard') && routeOrPath?.query?.variant != null
+}
+
 function resolveContextFromPath(path = '') {
   const normalizedPath = getRoutePath(path)
 
   if (normalizedPath.startsWith('/exposed/admin')) return 'admin_preview'
   if (normalizedPath.startsWith('/exposed/workspace')) return 'workspace_preview'
-  if (normalizedPath.startsWith('/exposed/sg')) return 'sg_preview'
+  if (isGovernancePreviewPath(normalizedPath)) return 'governance_preview'
   if (normalizedPath.startsWith('/exposed/dashboard')) return 'dashboard_preview'
   if (normalizedPath.startsWith('/admin')) return 'admin'
   if (normalizedPath.startsWith('/workspace')) return 'workspace'
-  if (normalizedPath.startsWith('/sg')) return 'sg'
+  if (normalizedPath.startsWith('/governance') || normalizedPath.startsWith('/sg')) return 'governance'
   if (normalizedPath.startsWith('/dashboard')) return 'dashboard'
   return 'dashboard'
 }
@@ -55,20 +76,18 @@ export function isPreviewWorkspaceContext(routeOrContext = null) {
   return context.endsWith('_preview')
 }
 
-export function isCouncilWorkspaceContext(routeOrContext = null) {
+export function isGovernanceWorkspaceContext(routeOrContext = null) {
   const context = normalizeContext(
     typeof routeOrContext === 'string'
       ? routeOrContext
       : resolveWorkspaceContext(routeOrContext)
   )
-  return context === 'sg' || context === 'sg_preview'
-}
-
-export const isGovernanceWorkspaceContext = isCouncilWorkspaceContext
-
-export function hasGovernancePreviewAccess(routeOrPath = null) {
-  const context = resolveWorkspaceContext(routeOrPath)
-  return context === 'sg_preview'
+  return (
+    context === 'governance'
+    || context === 'governance_preview'
+    || context === 'sg'
+    || context === 'sg_preview'
+  )
 }
 
 export function resolveStudentHomeLocation(routeOrPath = null) {
@@ -77,23 +96,111 @@ export function resolveStudentHomeLocation(routeOrPath = null) {
     : { name: 'Home' }
 }
 
-export function resolveCouncilWorkspaceLocation(routeOrPath = null) {
+export function resolveWorkspaceHomeLocation(routeOrPath = null) {
+  switch (resolveWorkspaceContext(routeOrPath)) {
+    case 'admin':
+      return { name: 'AdminHome' }
+    case 'admin_preview':
+      return { name: 'PreviewAdminHome' }
+    case 'workspace':
+      return { name: 'SchoolItHome' }
+    case 'workspace_preview':
+      return { name: 'PreviewSchoolItHome' }
+    case 'governance':
+    case 'sg':
+      return { name: 'SgDashboard' }
+    case 'governance_preview':
+    case 'sg_preview':
+      return withPreservedGovernancePreviewQuery(routeOrPath, { name: 'PreviewSgDashboard' })
+    case 'dashboard_preview':
+      return { name: 'PreviewHome' }
+    default:
+      return { name: 'Home' }
+  }
+}
+
+export function resolveChatLocation(routeOrPath = null) {
+  switch (resolveWorkspaceContext(routeOrPath)) {
+    case 'admin':
+      return { name: 'AdminAuraChat' }
+    case 'admin_preview':
+      return { name: 'PreviewAdminAuraChat' }
+    case 'workspace':
+      return { name: 'SchoolItAuraChat' }
+    case 'workspace_preview':
+      return { name: 'PreviewSchoolItAuraChat' }
+    case 'governance':
+    case 'sg':
+      return { name: 'SgAuraChat' }
+    case 'governance_preview':
+    case 'sg_preview':
+      return withPreservedGovernancePreviewQuery(routeOrPath, { name: 'PreviewSgAuraChat' })
+    case 'dashboard_preview':
+      return { name: 'PreviewDashboardAuraChat' }
+    default:
+      return { name: 'DashboardAuraChat' }
+  }
+}
+
+export function resolveGovernanceWorkspaceLocation(routeOrPath = null) {
   return isPreviewWorkspaceContext(routeOrPath)
-    ? { name: 'PreviewSgDashboard' }
+    ? withPreservedGovernancePreviewQuery(routeOrPath, { name: 'PreviewSgDashboard' })
     : { name: 'SgDashboard' }
 }
 
-export const resolveGovernanceWorkspaceLocation = resolveCouncilWorkspaceLocation
+export function isGatherWelcomePath(routeOrPath = null) {
+  const path = getRoutePath(routeOrPath)
+  return path.includes('/gather') && !path.includes('/gather/attendance')
+}
+
+export function resolveGatherWelcomeLocation(routeOrPath = null) {
+  switch (resolveWorkspaceContext(routeOrPath)) {
+    case 'governance':
+    case 'sg':
+      return { name: 'SgGatherWelcome' }
+    case 'governance_preview':
+    case 'sg_preview':
+      return withPreservedGovernancePreviewQuery(routeOrPath, { name: 'PreviewSgGatherWelcome' })
+    case 'dashboard_preview':
+      return { name: 'PreviewGatherWelcome' }
+    default:
+      return { name: 'GatherWelcome' }
+  }
+}
+
+export function resolveGatherEntryLocation(routeOrPath = null) {
+  return hasSeenGatherOnboarding()
+    ? resolveGatherAttendanceLocation(routeOrPath)
+    : resolveGatherWelcomeLocation(routeOrPath)
+}
+
+export function resolveGatherAttendanceLocation(routeOrPath = null) {
+  switch (resolveWorkspaceContext(routeOrPath)) {
+    case 'governance':
+    case 'sg':
+      return { name: 'SgGatherAttendance' }
+    case 'governance_preview':
+    case 'sg_preview':
+      return withPreservedGovernancePreviewQuery(routeOrPath, { name: 'PreviewSgGatherAttendance' })
+    case 'dashboard_preview':
+      return { name: 'PreviewGatherAttendance' }
+    default:
+      return { name: 'GatherAttendance' }
+  }
+}
 
 export function resolveEventListLocation(routeOrPath = null) {
   switch (resolveWorkspaceContext(routeOrPath)) {
+    case 'governance':
     case 'sg':
       return { name: 'SgEvents' }
     case 'workspace':
       return { name: 'SchoolItSchedule' }
     case 'workspace_preview':
       return { name: 'PreviewSchoolItSchedule' }
+    case 'governance_preview':
     case 'sg_preview':
+      return withPreservedGovernancePreviewQuery(routeOrPath, { name: 'PreviewSgEvents' })
     case 'dashboard_preview':
       return { name: 'PreviewDashboardSchedule' }
     default:
@@ -108,13 +215,16 @@ export function resolveEventDetailLocation(routeOrPath = null, eventId = null) {
     : {}
 
   switch (resolveWorkspaceContext(routeOrPath)) {
+    case 'governance':
     case 'sg':
       return { name: 'SgEventDetail', params }
     case 'workspace':
       return { name: 'SchoolItEventDetail', params }
     case 'workspace_preview':
       return { name: 'PreviewSchoolItEventDetail', params }
+    case 'governance_preview':
     case 'sg_preview':
+      return withPreservedGovernancePreviewQuery(routeOrPath, { name: 'PreviewSgEventDetail', params })
     case 'dashboard_preview':
       return { name: 'PreviewEventDetail', params }
     default:
@@ -132,6 +242,7 @@ export function resolveAttendanceLocation(routeOrPath = null, eventId = null) {
     case 'dashboard_preview':
       return { name: 'PreviewAttendance', params }
     case 'workspace_preview':
+    case 'governance_preview':
     case 'sg_preview':
     case 'admin_preview':
       return resolveEventDetailLocation(routeOrPath, eventId)
@@ -140,27 +251,6 @@ export function resolveAttendanceLocation(routeOrPath = null, eventId = null) {
         name: 'Attendance',
         params,
       }
-  }
-}
-
-export function withPreservedGovernancePreviewQuery(routeOrPath = null, targetLocation = null) {
-  if (!targetLocation || typeof targetLocation !== 'object') return targetLocation
-
-  const currentPath = getRoutePath(routeOrPath)
-  if (!currentPath.includes('/exposed/')) return targetLocation
-
-  const query = routeOrPath && typeof routeOrPath === 'object' ? { ...routeOrPath.query } : {}
-  const preservedQuery = {}
-
-  if (query.variant) preservedQuery.variant = query.variant
-  if (query.preview) preservedQuery.preview = query.preview
-
-  return {
-    ...targetLocation,
-    query: {
-      ...(targetLocation.query || {}),
-      ...preservedQuery,
-    },
   }
 }
 
@@ -187,14 +277,78 @@ export function hasNavigableHistory(routeOrPath = null) {
   return Boolean(backTarget && backTarget !== currentPath)
 }
 
-export function resolveWorkspaceHomeLocation(routeOrPath = null) {
-  const currentPath = getRoutePath(routeOrPath)
-  if (currentPath.includes('/exposed/')) {
-    const segments = currentPath.split('/')
-    const exposedIndex = segments.indexOf('exposed')
-    if (exposedIndex !== -1 && segments[exposedIndex + 1]) {
-      return `/exposed/${segments[exposedIndex + 1]}`
-    }
+export function withPreservedGovernancePreviewQuery(routeOrPath = null, target = null) {
+  if (!target || typeof routeOrPath !== 'object') {
+    return target
   }
-  return '/dashboard'
+
+  const currentPath = getRoutePath(routeOrPath)
+  const carriesGovernancePreviewVariant =
+    isGovernancePreviewPath(currentPath)
+    || routeOrPath?.query?.variant != null
+  if (!carriesGovernancePreviewVariant) {
+    return target
+  }
+
+  const variant = resolveSgPreviewVariant(routeOrPath?.query?.variant)
+
+  const targetPath = getRoutePath(target)
+  const targetName = typeof target === 'object' ? String(target?.name || '') : ''
+  const targetsPreviewRoute = targetPath.startsWith('/exposed/') || targetName.startsWith('Preview')
+  if (!targetsPreviewRoute) {
+    return target
+  }
+
+  return typeof target === 'string'
+    ? {
+      path: target,
+      query: {
+        variant,
+      },
+    }
+    : {
+      ...target,
+      query: {
+        variant,
+        ...(target?.query || {}),
+      },
+    }
+}
+
+export function toGovernancePath(path = '') {
+  const normalizedPath = String(path || '')
+
+  if (normalizedPath === '/sg') return '/governance'
+  if (normalizedPath.startsWith('/sg/')) {
+    return `/governance/${normalizedPath.slice('/sg/'.length)}`
+  }
+  if (normalizedPath === '/exposed/sg') return '/exposed/governance'
+  if (normalizedPath.startsWith('/exposed/sg/')) {
+    return `/exposed/governance/${normalizedPath.slice('/exposed/sg/'.length)}`
+  }
+
+  return normalizedPath
+}
+
+export function toPreviewGovernancePath(path = '') {
+  const canonicalPath = toGovernancePath(path)
+
+  if (canonicalPath === '/governance') return '/exposed/governance'
+  if (canonicalPath.startsWith('/governance/')) {
+    return `/exposed/governance/${canonicalPath.slice('/governance/'.length)}`
+  }
+
+  return canonicalPath
+}
+
+export function isCouncilWorkspaceContext(routeOrContext = null) {
+  return isGovernanceWorkspaceContext(routeOrContext)
+}
+
+export function resolveCouncilWorkspaceLocation(routeOrPath = null) {
+  return resolveGovernanceWorkspaceLocation(routeOrPath)
+}
+
+export function withPreservedCouncilPreviewQuery(routeOrPath = null, target = null) {
+  return withPreservedGovernancePreviewQuery(routeOrPath, target)
 }
