@@ -29,20 +29,26 @@ def seed_ci_users():
         # Create a school
         school = db.query(School).filter_by(school_code="TEST-001").first()
         if not school:
-            school = School(name="Test University", school_code="TEST-001", active=True, max_departments=10)
+            school = School(
+                legal_name="Test University", 
+                display_name="Test University", 
+                school_code="TEST-001", 
+                address="CI Test Address",
+                is_active=True
+            )
             db.add(school)
             db.flush()
             
         # Create department & program
         dept = db.query(Department).filter_by(school_id=school.id).first()
         if not dept:
-            dept = Department(school_id=school.id, name="CI Department", code="CI-DEPT")
+            dept = Department(school_id=school.id, name="CI Department")
             db.add(dept)
             db.flush()
             
-        prog = db.query(Program).filter_by(department_id=dept.id).first()
+        prog = db.query(Program).filter_by(school_id=school.id).first()
         if not prog:
-            prog = Program(department_id=dept.id, name="CI Program", code="CI-PROG")
+            prog = Program(school_id=school.id, name="CI Program")
             db.add(prog)
             db.flush()
 
@@ -50,11 +56,10 @@ def seed_ci_users():
         
         users_to_create = [
             ("campus_admin@test.com", "TestPass123!", "campus_admin", "Campus", "Admin"),
-            ("school_admin@test.com", "TestPass123!", "school_admin", "School", "Admin"),
-            ("ssg@test.com", "TestPass123!", "ssg", "SSG", "User"),
-            ("org@test.com", "TestPass123!", "organization", "Org", "User"),
             ("student@test.com", "TestPass123!", "student", "Normal", "Student"),
         ]
+        
+        from app.models.user import StudentProfile
         
         for email, pwd, role_code, fname, lname in users_to_create:
             user = db.query(User).filter_by(email=email).first()
@@ -62,8 +67,6 @@ def seed_ci_users():
                 user = User(
                     email=email,
                     school_id=school.id,
-                    department_id=dept.id if role_code == "student" else None,
-                    program_id=prog.id if role_code == "student" else None,
                     first_name=fname,
                     last_name=lname,
                     is_active=True,
@@ -72,6 +75,17 @@ def seed_ci_users():
                 user.set_password(pwd)
                 db.add(user)
                 db.flush()
+                
+                if role_code == "student":
+                    profile = StudentProfile(
+                        user_id=user.id,
+                        school_id=school.id,
+                        student_number=f"CI-{user.id}",
+                        department_id=dept.id,
+                        program_id=prog.id,
+                        year_level=1
+                    )
+                    db.add(profile)
                 
             role = roles.get(role_code)
             if role:

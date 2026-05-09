@@ -3,7 +3,7 @@ Where to use: Use this when the backend needs to store or load events and event 
 Role: Model layer. It maps Python objects to database tables and relationships.
 """
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
 
@@ -24,8 +24,10 @@ class EventStatus(PyEnum):
 class Event(Base):
     __tablename__ = "events"
     
-    id = Column(Integer, primary_key=True, index=True)
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), index=True, nullable=False)
+    id = Column(BigInteger, primary_key=True, index=True)
+    school_id = Column(BigInteger, ForeignKey("schools.id", ondelete="CASCADE"), index=True, nullable=False)
+    event_type_id = Column(BigInteger, ForeignKey("event_types.id", ondelete="SET NULL"), nullable=True)
+    
     name = Column(String(100), nullable=False)
     location = Column(String(200))
     geo_latitude = Column(Float, nullable=True)
@@ -53,27 +55,45 @@ class Event(Base):
         nullable=False,
         default=0,
     )
-    sign_out_override_until = Column(DateTime, nullable=True)
-    present_until_override_at = Column(DateTime, nullable=True)
-    late_until_override_at = Column(DateTime, nullable=True)
-    start_datetime = Column(DateTime, nullable=False)
-    end_datetime = Column(DateTime, nullable=False)
-    status = Column(Enum(EventStatus), nullable=False, default=EventStatus.UPCOMING)
-    event_type = Column(String(50), nullable=False, server_default="Regular Event")
+    sign_out_override_until = Column(DateTime(timezone=True), nullable=True)
+    present_until_override_at = Column(DateTime(timezone=True), nullable=True)
+    late_until_override_at = Column(DateTime(timezone=True), nullable=True)
     
+    # Map attributes to normalized schema column names
+    start_at = Column(DateTime(timezone=True), nullable=False)
+    end_at = Column(DateTime(timezone=True), nullable=False)
+    
+    @property
+    def start_datetime(self):
+        return self.start_at
+    
+    @start_datetime.setter
+    def start_datetime(self, value):
+        self.start_at = value
+
+    @property
+    def end_datetime(self):
+        return self.end_at
+    
+    @end_datetime.setter
+    def end_datetime(self, value):
+        self.end_at = value
+
+    status = Column(Enum(EventStatus), nullable=False, default=EventStatus.UPCOMING)
+    
+    # Relationships
+    event_type = relationship("EventType", back_populates="events")
     
     # Many-to-many relationships
     departments = relationship(
         "Department", 
         secondary=event_department_association, 
         back_populates="events",
-       
     )
     programs = relationship(
         "Program", 
         secondary=event_program_association, 
         back_populates="events",
-       
     )
     attendances = relationship(
        "Attendance",

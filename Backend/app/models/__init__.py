@@ -10,7 +10,8 @@ from app.models.department import Department
 from app.models.face_recognition import UserFaceRecognitionProfile
 from app.models.program import Program
 from app.models.event import Event
-from app.models.school import School, SchoolSetting, SchoolAuditLog
+from app.models.event_type import EventType
+from app.models.school import School, SchoolAuditLog
 from app.models.import_job import BulkImportJob, BulkImportError, EmailDeliveryLog
 from app.models.password_reset_request import PasswordResetRequest
 from app.models.platform_features import (
@@ -45,11 +46,12 @@ from app.models.sanctions import (
     SanctionDelegation,
     SanctionItem,
     SanctionRecord,
+    AcademicPeriod,
 )
 
 from .role import Role
 from .user import User, UserRole, StudentProfile
-from .attendance import Attendance  # If you have this model
+from .attendance import Attendance, AttendanceStatus, AttendanceMethod
 
 __all__ = [
     "Base",
@@ -87,10 +89,17 @@ __all__ = [
     "GovernanceUnitPermission",
     "GovernanceAnnouncement",
     "GovernanceStudentNote",
+    "Department",
+    "Program",
+    "Event",
+    "EventType",
     "EventSanctionConfig",
     "SanctionRecord",
     "SanctionItem",
     "SanctionDelegation",
     "SanctionComplianceHistory",
     "ClearanceDeadline",
+    "AcademicPeriod",
+    "AttendanceStatus",
+    "AttendanceMethod",
 ]

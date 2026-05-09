@@ -10,6 +10,7 @@ from enum import Enum
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Column,
     Date,
@@ -24,6 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from app.models.base import Base
+from app.models.core.models import AcademicPeriod
 
 
 class SanctionComplianceStatus(str, Enum):
@@ -55,17 +57,17 @@ class EventSanctionConfig(Base):
         UniqueConstraint("event_id", name="uq_event_sanction_configs_event_id"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
+
+    event_id = Column(BigInteger, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
     sanctions_enabled = Column(Boolean, nullable=False, default=False, index=True)
-    item_definitions_json = Column(JSON, nullable=False, default=list)
-    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    updated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    # item_definitions_json = Column(JSON, nullable=False, default=list) # Legacy, moved to sanction_item_templates table
+    created_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    updated_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    school = relationship("School")
+
     event = relationship("Event")
     created_by_user = relationship("User", foreign_keys=[created_by_user_id])
     updated_by_user = relationship("User", foreign_keys=[updated_by_user_id])
@@ -79,24 +81,24 @@ class SanctionRecord(Base):
         UniqueConstraint("event_id", "student_profile_id", name="uq_sanction_records_event_student"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
+
+    event_id = Column(BigInteger, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
     sanction_config_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("event_sanction_configs.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
     student_profile_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("student_profiles.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    attendance_id = Column(Integer, ForeignKey("attendances.id", ondelete="SET NULL"), nullable=True, index=True)
+    attendance_id = Column(BigInteger, ForeignKey("attendance_records.id", ondelete="SET NULL"), nullable=True, index=True)
     delegated_governance_unit_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("governance_units.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
@@ -112,13 +114,13 @@ class SanctionRecord(Base):
         default=SanctionComplianceStatus.PENDING,
         index=True,
     )
-    assigned_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    assigned_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     complied_at = Column(DateTime, nullable=True, index=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    school = relationship("School")
+
     event = relationship("Event")
     sanction_config = relationship("EventSanctionConfig", back_populates="sanction_records")
     student_profile = relationship("StudentProfile")
@@ -130,14 +132,14 @@ class SanctionRecord(Base):
 
 
 class SanctionItem(Base):
-    __tablename__ = "sanction_items"
+    __tablename__ = "sanction_record_items"
     __table_args__ = (
         UniqueConstraint("sanction_record_id", "item_code", name="uq_sanction_items_record_item_code"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     sanction_record_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("sanction_records.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -176,18 +178,18 @@ class SanctionDelegation(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
+
+    event_id = Column(BigInteger, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
     sanction_config_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("event_sanction_configs.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    delegated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    delegated_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     delegated_to_governance_unit_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("governance_units.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -206,11 +208,11 @@ class SanctionDelegation(Base):
     scope_json = Column(JSON, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     revoked_at = Column(DateTime, nullable=True)
-    revoked_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    revoked_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    school = relationship("School")
+
     event = relationship("Event")
     sanction_config = relationship("EventSanctionConfig", back_populates="sanction_delegations")
     delegated_by_user = relationship("User", foreign_keys=[delegated_by_user_id])
@@ -221,46 +223,41 @@ class SanctionDelegation(Base):
 class SanctionComplianceHistory(Base):
     __tablename__ = "sanction_compliance_history"
 
-    id = Column(Integer, primary_key=True, index=True)
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="SET NULL"), nullable=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
+
+
     sanction_record_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("sanction_records.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
-    sanction_item_id = Column(Integer, ForeignKey("sanction_items.id", ondelete="SET NULL"), nullable=True, index=True)
-    student_profile_id = Column(
-        Integer,
-        ForeignKey("student_profiles.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
+    sanction_record_item_id = Column(BigInteger, ForeignKey("sanction_record_items.id", ondelete="SET NULL"), nullable=True, index=True)
+
     complied_on = Column(Date, nullable=False, default=date.today, index=True)
-    school_year = Column(String(20), nullable=False, index=True)
-    semester = Column(String(20), nullable=False, index=True)
-    complied_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    compliance_term_label = Column(Text, nullable=False)
+    academic_period_id = Column(BigInteger, nullable=True, index=True)
+    complied_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
-    school = relationship("School")
-    event = relationship("Event")
+
+
     sanction_record = relationship("SanctionRecord", back_populates="compliance_history")
     sanction_item = relationship("SanctionItem", back_populates="compliance_history")
-    student_profile = relationship("StudentProfile")
+
     complied_by_user = relationship("User", foreign_keys=[complied_by_user_id])
 
 
 class ClearanceDeadline(Base):
     __tablename__ = "clearance_deadlines"
 
-    id = Column(Integer, primary_key=True, index=True)
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
-    declared_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
+
+    event_id = Column(BigInteger, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    declared_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     target_governance_unit_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("governance_units.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
@@ -283,7 +280,7 @@ class ClearanceDeadline(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    school = relationship("School")
+
     event = relationship("Event")
     declared_by_user = relationship("User", foreign_keys=[declared_by_user_id])
     target_governance_unit = relationship("GovernanceUnit")

@@ -1197,6 +1197,30 @@ def seed_massive_sanctions(db: Session, target_school: School, students: list[St
 
 
 
+def seed_event_types(db: Session) -> None:
+    """Seed global event types."""
+    from app.models.event_type import EventType
+    
+    types = [
+        {"name": "Regular Event", "code": "REG", "description": "Standard university event"},
+        {"name": "Assembly", "code": "ASM", "description": "General assembly or meeting"},
+        {"name": "Seminar", "code": "SEM", "description": "Educational seminar or workshop"},
+        {"name": "Organization Event", "code": "ORG", "description": "Student organization activity"},
+    ]
+    
+    for t in types:
+        exists = db.query(EventType).filter(EventType.name == t["name"], EventType.school_id.is_(None)).first()
+        if not exists:
+            db.add(EventType(
+                name=t["name"],
+                code=t["code"],
+                description=t["description"],
+                school_id=None,
+                is_active=True
+            ))
+    db.commit()
+
+
 def run_seeder() -> None:
     """Main seeder function."""
     print("Starting database seeding...")
@@ -1210,6 +1234,7 @@ def run_seeder() -> None:
 
         # Basic infra always seeded
         seed_roles(db)
+        seed_event_types(db)
         school = seed_default_school(db)
         seed_admin_user(db, school)
         

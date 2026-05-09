@@ -9,6 +9,7 @@ from datetime import datetime
 from enum import Enum
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Column,
     JSON,
@@ -125,7 +126,7 @@ class GovernanceUnit(Base):
         UniqueConstraint("school_id", "unit_code", name="uq_governance_units_school_unit_code"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     unit_code = Column(String(50), nullable=False, index=True)
     unit_name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
@@ -145,7 +146,7 @@ class GovernanceUnit(Base):
         nullable=True,
         index=True,
     )
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
+    school_id = Column(BigInteger, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
     department_id = Column(
         Integer,
         ForeignKey("departments.id", ondelete="SET NULL"),
@@ -201,14 +202,14 @@ class GovernanceMember(Base):
         UniqueConstraint("governance_unit_id", "user_id", name="uq_governance_members_unit_user"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     governance_unit_id = Column(
         Integer,
         ForeignKey("governance_units.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     position_title = Column(String(100), nullable=True)
     assigned_by_user_id = Column(
         Integer,
@@ -232,7 +233,7 @@ class GovernanceMember(Base):
 class GovernancePermission(Base):
     __tablename__ = "governance_permissions"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     permission_code = Column(
         SqlEnum(
             PermissionCode,
@@ -261,17 +262,16 @@ class GovernanceUnitPermission(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
     governance_unit_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("governance_units.id", ondelete="CASCADE"),
-        nullable=False,
+        primary_key=True,
         index=True,
     )
     permission_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("governance_permissions.id", ondelete="CASCADE"),
-        nullable=False,
+        primary_key=True,
         index=True,
     )
     granted_by_user_id = Column(
@@ -280,7 +280,7 @@ class GovernanceUnitPermission(Base):
         nullable=True,
         index=True,
     )
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    granted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     governance_unit = relationship("GovernanceUnit", back_populates="unit_permissions")
     permission = relationship("GovernancePermission", back_populates="unit_permissions")
@@ -297,17 +297,16 @@ class GovernanceMemberPermission(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
     governance_member_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("governance_members.id", ondelete="CASCADE"),
-        nullable=False,
+        primary_key=True,
         index=True,
     )
     permission_id = Column(
-        Integer,
+        BigInteger,
         ForeignKey("governance_permissions.id", ondelete="CASCADE"),
-        nullable=False,
+        primary_key=True,
         index=True,
     )
     granted_by_user_id = Column(
@@ -316,7 +315,7 @@ class GovernanceMemberPermission(Base):
         nullable=True,
         index=True,
     )
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    granted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     governance_member = relationship("GovernanceMember", back_populates="member_permissions")
     permission = relationship("GovernancePermission", back_populates="member_permissions")
@@ -326,14 +325,14 @@ class GovernanceMemberPermission(Base):
 class GovernanceAnnouncement(Base):
     __tablename__ = "governance_announcements"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     governance_unit_id = Column(
         Integer,
         ForeignKey("governance_units.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
+
     title = Column(String(255), nullable=False)
     body = Column(Text, nullable=False)
     status = Column(
@@ -363,7 +362,7 @@ class GovernanceAnnouncement(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     governance_unit = relationship("GovernanceUnit", back_populates="announcements")
-    school = relationship("School")
+
     created_by_user = relationship("User", foreign_keys=[created_by_user_id])
     updated_by_user = relationship("User", foreign_keys=[updated_by_user_id])
 
@@ -387,7 +386,7 @@ class GovernanceStudentNote(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, index=True)
     governance_unit_id = Column(
         Integer,
         ForeignKey("governance_units.id", ondelete="CASCADE"),
@@ -400,8 +399,8 @@ class GovernanceStudentNote(Base):
         nullable=False,
         index=True,
     )
-    school_id = Column(Integer, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
-    tags = Column(JSON, nullable=False, default=list)
+
+    # tags = Column(JSON, nullable=False, default=list) # Legacy, now in governance_student_note_tags table
     notes = Column(Text, nullable=False, default="")
     created_by_user_id = Column(
         Integer,
@@ -420,6 +419,6 @@ class GovernanceStudentNote(Base):
 
     governance_unit = relationship("GovernanceUnit", back_populates="student_notes")
     student_profile = relationship("StudentProfile")
-    school = relationship("School")
+
     created_by_user = relationship("User", foreign_keys=[created_by_user_id])
     updated_by_user = relationship("User", foreign_keys=[updated_by_user_id])
