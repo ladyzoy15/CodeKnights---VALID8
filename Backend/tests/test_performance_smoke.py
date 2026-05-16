@@ -12,7 +12,7 @@ def test_login_performance_target(client):
 def test_me_endpoint_performance(client, student_token):
     headers = {"Authorization": f"Bearer {student_token}"}
     start = time.perf_counter()
-    r = client.get("/api/v1/users/me", headers=headers)
+    r = client.get("/api/users/me/", headers=headers)
     duration = time.perf_counter() - start
     
     assert r.status_code == 200
@@ -20,7 +20,7 @@ def test_me_endpoint_performance(client, student_token):
 
 def test_events_list_performance(client, campus_admin_headers):
     start = time.perf_counter()
-    r = client.get("/api/v1/events/", headers=campus_admin_headers)
+    r = client.get("/api/events/", headers=campus_admin_headers)
     duration = time.perf_counter() - start
     
     assert r.status_code == 200

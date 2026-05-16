@@ -199,6 +199,13 @@ const inputEl = ref(null)
 watch(isFullOpen, (val) => {
   if (val) {
     refreshConversations()
+    // Load messages if we already have an active conversation
+    if (conversationId.value) {
+      selectConversation(conversationId.value).catch(() => {
+        // Fallback if the stored ID is stale/invalid
+        startNewConversation()
+      })
+    }
     setTimeout(() => inputEl.value?.focus(), 350)
   }
 })

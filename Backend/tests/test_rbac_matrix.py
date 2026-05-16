@@ -10,28 +10,28 @@ from app.utils.passwords import hash_password_bcrypt
 RBAC_MATRIX = [
     # Public routes
     ("/health", "GET", "unauthenticated", 200),
-    ("/api/v1/auth/login", "POST", "unauthenticated", 422), # 422 because missing payload, but route is accessible
+    ("/login", "POST", "unauthenticated", 422), # 422 because missing payload, but route is accessible
     
-    # Admin routes — actual path is /api/school/admin/list
-    ("/api/school/admin/list", "GET", "admin", 200),
-    ("/api/school/admin/list", "GET", "campus_admin", 403),
-    ("/api/school/admin/list", "GET", "student", 403),
-    ("/api/school/admin/list", "GET", "unauthenticated", 401),
+    # Admin routes
+    ("/api/schools/", "GET", "admin", 200),
+    ("/api/schools/", "GET", "campus_admin", 403),
+    ("/api/schools/", "GET", "student", 403),
+    ("/api/schools/", "GET", "unauthenticated", 401),
     
     # Campus Admin routes
-    ("/api/v1/users/", "GET", "admin", 200),
-    ("/api/v1/users/", "GET", "campus_admin", 200),
-    ("/api/v1/users/", "GET", "ssg", 403),
-    ("/api/v1/users/", "GET", "student", 403),
+    ("/api/users/", "GET", "admin", 200),
+    ("/api/users/", "GET", "campus_admin", 200),
+    ("/api/users/", "GET", "ssg", 403),
+    ("/api/users/", "GET", "student", 403),
     
     # Event creation
-    ("/api/v1/events/", "POST", "admin", 200), # Might be 422 due to missing payload, but 403 blocks first
-    ("/api/v1/events/", "POST", "campus_admin", 422), # Allowed, but bad payload
-    ("/api/v1/events/", "POST", "student", 403),
+    ("/api/events/", "POST", "admin", 200), 
+    ("/api/events/", "POST", "campus_admin", 422), # Allowed, but bad payload
+    ("/api/events/", "POST", "student", 403),
     
     # Student own profile
-    ("/api/v1/users/me", "GET", "student", 200),
-    ("/api/v1/users/me", "GET", "unauthenticated", 401),
+    ("/api/users/me/", "GET", "student", 200),
+    ("/api/users/me/", "GET", "unauthenticated", 401),
 ]
 
 @pytest.fixture(scope="session")
@@ -51,10 +51,7 @@ def ssg_token(client):
     finally:
         db.close()
         
-    r = client.post("/api/v1/auth/login", json={"email": "ssg@test.com", "password": "TestPass123!"})
-    if r.status_code == 404:
-         # fallback to /login if /api/v1/auth/login is not the path
-         r = client.post("/login", json={"email": "ssg@test.com", "password": "TestPass123!"})
+    r = client.post("/login", json={"email": "ssg@test.com", "password": "TestPass123!"})
     assert r.status_code == 200
     return r.json()["access_token"]
 

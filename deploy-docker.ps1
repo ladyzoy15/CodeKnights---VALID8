@@ -142,8 +142,8 @@ Write-Host "  Deployment Complete!" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Access your application at:" -ForegroundColor Green
-Write-Host "  Frontend:     http://localhost:5173" -ForegroundColor White
-Write-Host "  Backend API:  http://localhost:8001/docs" -ForegroundColor White
+Write-Host "  Frontend:     http://localhost:5175" -ForegroundColor White
+Write-Host "  Backend API:  http://localhost:8002/docs" -ForegroundColor White
 Write-Host "  Assistant:    http://localhost:8500/docs" -ForegroundColor White
 if ($choice -eq "1") {
     Write-Host "  pgAdmin:      http://localhost:5050" -ForegroundColor White

@@ -159,6 +159,9 @@ class Settings:
     email_transport: str
     email_required_on_startup: bool
     email_verify_connection_on_startup: bool
+    google_login_enabled: bool
+    google_web_client_id: str
+    google_android_client_id: str
     login_url: str
 
     school_logo_storage_dir: str
@@ -171,8 +174,9 @@ def get_settings() -> Settings:
     redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
     email_transport = (os.getenv("EMAIL_TRANSPORT") or "disabled").strip().lower()
 
+    database_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/fastapi_db")
     return Settings(
-        database_url=os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/fastapi_db"),
+        database_url=database_url,
         database_admin_url=(os.getenv("DATABASE_ADMIN_URL") or "").strip() or None,
         db_pool_size=max(1, int(os.getenv("DB_POOL_SIZE", "10"))),
         db_max_overflow=max(0, int(os.getenv("DB_MAX_OVERFLOW", "10"))),
@@ -288,6 +292,9 @@ def get_settings() -> Settings:
             os.getenv("EMAIL_VERIFY_CONNECTION_ON_STARTUP"),
             False,
         ),
+        google_login_enabled=_as_bool(os.getenv("GOOGLE_LOGIN_ENABLED"), False),
+        google_web_client_id=os.getenv("GOOGLE_WEB_CLIENT_ID", "").strip(),
+        google_android_client_id=os.getenv("GOOGLE_ANDROID_CLIENT_ID", "").strip(),
         login_url=os.getenv("LOGIN_URL", "http://localhost:5173"),
         school_logo_storage_dir=_normalize_storage_path(
             os.getenv("SCHOOL_LOGO_STORAGE_DIR") or "/tmp/valid8_school_logos",

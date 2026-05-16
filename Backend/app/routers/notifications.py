@@ -35,7 +35,7 @@ from app.services.notification_center_service import (
     send_notification_to_user,
 )
 
-router = APIRouter(prefix="/api/notifications", tags=["notifications"])
+router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 def _resolve_school_scope(current_user: User, requested_school_id: int | None = None) -> int:

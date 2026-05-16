@@ -102,8 +102,8 @@ echo ========================================
 echo   Access Your Application
 echo ========================================
 echo.
-echo Frontend:     http://localhost:5173
-echo Backend API:  http://localhost:8001/docs
+echo Frontend:     http://localhost:5175
+echo Backend API:  http://localhost:8002/docs
 echo Assistant:    http://localhost:8500/docs
 echo pgAdmin:      http://localhost:5050
 echo Log Viewer:   http://localhost:8080

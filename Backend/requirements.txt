@@ -12,6 +12,7 @@ ecdsa==0.19.2
 email_validator==2.3.0
 faiss-cpu==1.13.2
 fastapi==0.110.0
+google-auth
 greenlet==3.4.0
 h11==0.16.0
 httpx==0.27.2
@@ -45,3 +46,4 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.27.0
 # Silent-Face-Anti-Spoofing MiniFASNetV2 inference runs from the checked-in ONNX model path.
+requests

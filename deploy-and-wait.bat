@@ -18,7 +18,7 @@ echo   Docker is ready! Starting deployment...
 echo ========================================
 echo.
 
-cd C:\Users\USER\IdeaProjects\auraproduction\new
+cd /d "%~dp0"
 
 echo Building and starting all services...
 echo This will take 5-10 minutes on first run.
@@ -43,8 +43,8 @@ echo.
 echo View logs: docker compose logs -f
 echo.
 echo Services will be available at:
-echo   Frontend:     http://localhost:5173
-echo   Backend API:  http://localhost:8001/docs
+echo   Frontend:     http://localhost:5175
+echo   Backend API:  http://localhost:8002/docs
 echo   Assistant:    http://localhost:8500/docs
 echo   pgAdmin:      http://localhost:5050
 echo   Log Viewer:   http://localhost:8080

@@ -83,6 +83,15 @@ def _ensure_event_manager(db: Session, current_user: UserModel) -> None:
     raise HTTPException(status_code=403, detail="Not authorized to manage events")
 
 
+def get_current_event_manager(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+) -> UserModel:
+    """Dependency: require that the user has permission to manage events."""
+    _ensure_event_manager(db, current_user)
+    return current_user
+
+
 def _ensure_event_attendance_manager(db: Session, current_user: UserModel) -> None:
     if has_any_role(current_user, ["admin", "campus_admin"]):
         return

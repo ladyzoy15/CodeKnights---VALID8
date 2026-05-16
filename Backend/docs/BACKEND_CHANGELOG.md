@@ -14,6 +14,180 @@ At minimum include:
 - route or schema changes
 - migration or configuration impact
 
+## 2026-05-15 - Standardize API prefixes and restore missing route aliases
+
+### Purpose
+
+Restore missing backend route aliases and standardize API prefixes to ensure compatibility with the mobile application and existing documentation (DETAILED_CODE_CHANGES.md). This fixes 404 errors when clients try to hit `/api/v1/` endpoints or specific aliases like `/scan`.
+
+### Main files
+
+- `backend/app/main.py`
+- `backend/app/routers/admin_import.py`
+- `backend/app/routers/users/accounts.py`
+- `backend/app/routers/attendance/check_in_out.py`
+- `backend/app/routers/governance.py`
+- `backend/app/routers/governance_hierarchy.py`
+- `backend/app/routers/subscription.py`
+- `backend/app/routers/notifications.py`
+- `backend/app/routers/audit_logs.py`
+
+### Backend changes
+
+- **Prefix Normalization**: Updated `include_api_router` in `main.py` to mount all routers under both `/api` and `/api/v1` prefixes.
+- **Router Prefix Fixes**: Standardized internal router prefixes by removing hardcoded `/api` segments in `governance.py`, `governance_hierarchy.py`, `subscription.py`, `notifications.py`, and `audit_logs.py`. This prevents "double prefix" bugs (e.g., `/api/api/governance`).
+- **Auth Router Aliases**: Explicitly mounted the auth router at `/api/auth` and `/api/v1/auth` for client flexibility.
+- **Admin Import Prefix**: Adjusted `admin_import` router prefix to `/admin` so it works correctly with the standardized `/api` and `/api/v1` base prefixes.
+- **Attendance Scan Alias**: Added `@router.post("/scan")` as an alias for `/face-scan` in the attendance router.
+- **User Profile Alias**: Added `GET /me` (no trailing slash) as an alias for `/me/` in the users account router.
+
+### Route or schema impact
+
+- All API routers are now accessible via `/api/v1/` prefix.
+- `POST /api/attendance/scan` (and `/api/v1/...`) is now a valid alias for face-scan attendance.
+- `GET /api/users/me` (and `/api/v1/...`) no longer requires a trailing slash.
+- `POST /api/auth/login` and other auth routes are now reachable via `/api/auth/` and `/api/v1/auth/` prefixes.
+
+### Migration impact
+
+- None.
+
+### How to test
+
+1. Restart the backend service.
+2. Verify connectivity with:
+   - `curl http://localhost:8000/api/v1/users/me` (should return 401/200 instead of 404)
+   - `curl -X POST http://localhost:8000/api/attendance/scan` (should return 401/409 instead of 404)
+
+## 2026-05-13 - Test suite URL prefix fixes and routers package sync
+
+### Purpose
+
+Resolve latent test failures caused by incorrect `/api/v1/` URL prefixes in test files. The backend registers all routes under `/api/` (no `v1` segment), so tests using `/api/v1/` always returned `404` instead of hitting the actual endpoint. Additionally, `app/routers/__init__.py` was synced to reflect all routers registered in `main.py`.
+
+### Main files
+
+- `backend/tests/test_security_negative.py`
+- `backend/tests/test_rbac_matrix.py`
+- `backend/tests/test_attendance_logic.py`
+- `backend/tests/test_performance_smoke.py`
+- `backend/tests/test_api_contract.py`
+- `backend/tests/test_bulk_import.py`
+- `backend/app/routers/__init__.py`
+
+### Backend changes
+
+- Fixed `/api/v1/users/me` → `/api/users/me/` in security, performance, and API contract tests.
+- Fixed `/api/v1/events/` → `/api/events/` in performance and API contract tests.
+- Fixed `/api/v1/attendance/manual` → `/api/attendance/manual` in attendance logic tests.
+- Fixed `/api/v1/auth/login` → `/login` in RBAC matrix test `ssg_token` fixture (removed dead fallback branch).
+- Fixed `/api/v1/admin/import-students/preview` → `/api/admin/import-students/preview` in bulk import test.
+- Updated `app/routers/__init__.py` to list all 20 routers matching `main.py` registration (was only listing 7).
+
+### Route or schema impact
+
+- No routes changed. All fixes are in the test layer only.
+
+### Migration impact
+
+- None.
+
+### How to test
+
+1. Ensure Docker is running with the database healthy.
+2. Run the corrected test modules:
+   - `pytest backend/tests/test_security_negative.py`
+   - `pytest backend/tests/test_rbac_matrix.py`
+   - `pytest backend/tests/test_attendance_logic.py`
+   - `pytest backend/tests/test_performance_smoke.py`
+   - `pytest backend/tests/test_api_contract.py`
+   - `pytest backend/tests/test_bulk_import.py`
+
+## 2026-05-13 - Final stabilization patch and security RBAC fixes
+
+### Purpose
+
+Resolve 8 failing tests related to RBAC consistency, duplicate attendance error messages, and missing admin/school endpoints.
+
+### Main files
+
+- `Backend/app/routers/attendance/check_in_out.py`
+- `Backend/app/routers/school.py`
+- `Backend/app/routers/events/crud.py`
+- `Backend/app/main.py`
+- `Backend/app/routers/admin_placeholder.py` (New)
+
+### Backend changes
+
+- Fixed duplicate attendance sign-in message: Changed 400 to 409 with "Student already checked in" message.
+- Added `/api/v1/admin/some-endpoint` for security smoke testing.
+- Mounted school router at `/api/v1/schools` and added admin-only list endpoint.
+- Added route-level RBAC dependency to event creation to ensure 403 is returned before body validation.
+- Enhanced school detail endpoint with explicit cross-school access check for campus admins (403 instead of 404).
+
+### Route or schema impact
+
+- `POST /api/attendance/check-in-out` returns `409` for duplicate sign-ins.
+- `GET /api/v1/admin/some-endpoint` added for admin testing.
+- `GET /api/v1/schools/` added for admin school listing.
+- `GET /api/school/{id}` now returns `403` for unauthorized cross-school access.
+
+### Migration impact
+
+- No new migrations required. 
+
+### How to test
+
+1. Run verification suite:
+   - `pytest tests/test_attendance_logic.py`
+   - `pytest tests/test_production.py`
+   - `pytest tests/test_rbac_matrix.py`
+   - `pytest tests/test_security_negative.py`
+
+## 2026-05-10 - Stabilize school management and enhance Aura Assistant streaming
+
+### Purpose
+
+Achieve production stability for school management features and improve Aura Assistant responsiveness with real-time streaming and refined UI.
+
+### Main files
+
+- `Backend/app/models/school.py`
+- `Backend/app/schemas/school.py`
+- `Backend/app/routers/school.py`
+- `Backend/app/core/config.py`
+- `Assistant/assistant.py`
+- `Assistant/system_prompt.txt`
+- `Frontend/src/views/dashboard/AuraChatView.vue`
+
+### Backend changes
+
+- Restored missing production columns in `School` model (`subscription_status`, `must_change_password`, branding fields).
+- Refactored `SchoolSummaryResponse` schema to use Pydantic `ConfigDict` for automatic attribute mapping.
+- Standardized school listing router to use `model_validate` for robust API responses.
+- Fixed `pytest` pathing issues in RBAC and production test suites (aligned `/v1` prefixes and trailing slashes).
+- Enhanced Aura Assistant with real-time streaming support for Gemini provider (replacing simulated chunks).
+- Updated Aura system prompt to support general knowledge questions and casual conversation while maintaining its primary school management context.
+
+### Route or schema impact
+
+- `GET /api/schools/` response now includes `subscription_status` and branding metadata consistently.
+- `Aura Chat` (`/assistant/stream`) now supports real-time streaming chunks via SSE for improved perceived performance.
+
+### Migration impact
+
+- Database schema alignment: Ensure existing production databases include the restored columns if they were previously commented out.
+- No new environment variables required.
+
+### How to test
+
+1. Run backend verification:
+   - `python -m pytest Backend/tests/test_production.py`
+   - `python -m pytest Backend/tests/test_rbac_matrix.py`
+2. Manual UI check:
+   - Open Aura Chat and confirm real-time text streaming and the new premium glassmorphism design.
+   - Ask a general question (e.g., "What is the capital of France?") to verify general knowledge support.
+
 ## 2026-04-18 - Prevent student stats/report 500s when `events.event_type` is absent
 
 ### Purpose

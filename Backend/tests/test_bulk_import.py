@@ -19,7 +19,7 @@ def mock_csv_file():
 def test_bulk_import_validation(client, campus_admin_headers, mock_csv_file):
     with open(mock_csv_file, 'rb') as f:
         files = {"file": ("students.csv", f, "text/csv")}
-        r = client.post("/api/v1/admin/import-students/preview", headers=campus_admin_headers, files=files)
+        r = client.post("/api/admin/import-students/preview", headers=campus_admin_headers, files=files)
         
     assert r.status_code in [200, 400], "Should either return partial success or 400 failure on invalid data"
     if r.status_code == 200:

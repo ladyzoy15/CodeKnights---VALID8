@@ -40,7 +40,7 @@ def test_attendance_before_open_blocked(client, student_headers, test_event):
         "method": "manual"
     }
     # Simulate signing in to a future event
-    r = client.post("/api/v1/attendance/manual", headers=student_headers, json=payload)
+    r = client.post("/api/attendance/manual", headers=student_headers, json=payload)
     
     # Should be blocked because event is not open yet (or 403 because student is not an operator)
     assert r.status_code in [400, 403, 404, 422], "Should reject early sign-in"
@@ -61,9 +61,9 @@ def test_attendance_duplicate_sign_in_blocked(client, campus_admin_headers, db_s
     }
     
     # First sign in (via admin or scanner)
-    r1 = client.post("/api/v1/attendance/manual", headers=campus_admin_headers, json=payload)
+    r1 = client.post("/api/attendance/manual", headers=campus_admin_headers, json=payload)
     
     # Second sign in should fail (if first succeeded or failed gracefully)
-    r2 = client.post("/api/v1/attendance/manual", headers=campus_admin_headers, json=payload)
+    r2 = client.post("/api/attendance/manual", headers=campus_admin_headers, json=payload)
     # Backend treats second sign-in as a sign-out attempt (409) or rejects it (400/422)
     assert r2.status_code in [400, 409, 422], "Should reject duplicate sign in"

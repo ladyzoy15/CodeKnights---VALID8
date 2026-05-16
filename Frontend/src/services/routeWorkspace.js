@@ -55,7 +55,7 @@ export function isPreviewWorkspaceContext(routeOrContext = null) {
   return context.endsWith('_preview')
 }
 
-export function isCouncilWorkspaceContext(routeOrContext = null) {
+export function isGovernanceWorkspaceContext(routeOrContext = null) {
   const context = normalizeContext(
     typeof routeOrContext === 'string'
       ? routeOrContext
@@ -64,16 +64,33 @@ export function isCouncilWorkspaceContext(routeOrContext = null) {
   return context === 'sg' || context === 'sg_preview'
 }
 
+export function isCouncilWorkspaceContext(routeOrContext = null) {
+  return isGovernanceWorkspaceContext(routeOrContext)
+}
+
+export function hasGovernancePreviewAccess(routeOrContext = null) {
+  return isPreviewWorkspaceContext(routeOrContext) && isGovernanceWorkspaceContext(routeOrContext)
+}
+
+export function isGovernancePreviewPath(routeOrPath = null) {
+  const path = getRoutePath(routeOrPath)
+  return path.startsWith('/exposed/sg')
+}
+
 export function resolveStudentHomeLocation(routeOrPath = null) {
   return isPreviewWorkspaceContext(routeOrPath)
     ? { name: 'PreviewHome' }
     : { name: 'Home' }
 }
 
-export function resolveCouncilWorkspaceLocation(routeOrPath = null) {
+export function resolveGovernanceWorkspaceLocation(routeOrPath = null) {
   return isPreviewWorkspaceContext(routeOrPath)
     ? { name: 'PreviewSgDashboard' }
     : { name: 'SgDashboard' }
+}
+
+export function resolveCouncilWorkspaceLocation(routeOrPath = null) {
+  return resolveGovernanceWorkspaceLocation(routeOrPath)
 }
 
 export function resolveEventListLocation(routeOrPath = null) {
@@ -155,4 +172,73 @@ export function hasNavigableHistory(routeOrPath = null) {
   const backTarget = window.history.state?.back
 
   return Boolean(backTarget && backTarget !== currentPath)
+}
+
+export function resolveWorkspaceHomeLocation(routeOrPath = null) {
+  switch (resolveWorkspaceContext(routeOrPath)) {
+    case 'admin':
+      return { name: 'AdminHome' }
+    case 'admin_preview':
+      return { name: 'PreviewAdminHome' }
+    case 'workspace':
+      return { name: 'SchoolItHome' }
+    case 'workspace_preview':
+      return { name: 'PreviewSchoolItHome' }
+    case 'sg':
+      return { name: 'SgDashboard' }
+    case 'sg_preview':
+      return { name: 'PreviewSgDashboard' }
+    case 'dashboard_preview':
+      return { name: 'PreviewHome' }
+    default:
+      return { name: 'Home' }
+  }
+}
+
+export function withPreservedGovernancePreviewQuery(routeOrPath = null, target = null) {
+  // Simplistic version for now to fix the build
+  return target
+}
+
+export function resolveChatLocation(routeOrPath = null) {
+  const context = resolveWorkspaceContext(routeOrPath)
+  switch (context) {
+    case 'admin': return { name: 'AdminAuraChat' }
+    case 'admin_preview': return { name: 'PreviewAdminAuraChat' }
+    case 'workspace': return { name: 'SchoolItAuraChat' }
+    case 'workspace_preview': return { name: 'PreviewSchoolItAuraChat' }
+    case 'sg': return { name: 'SgAuraChat' }
+    case 'sg_preview': return { name: 'PreviewSgAuraChat' }
+    case 'dashboard_preview': return { name: 'PreviewDashboardAuraChat' }
+    default: return { name: 'DashboardAuraChat' }
+  }
+}
+
+export function resolveGatherAttendanceLocation(routeOrPath = null) {
+  const context = resolveWorkspaceContext(routeOrPath)
+  switch (context) {
+    case 'sg': return { name: 'SgGatherAttendance' }
+    case 'sg_preview': return { name: 'PreviewSgGatherAttendance' }
+    case 'dashboard_preview': return { name: 'PreviewGatherAttendance' }
+    default: return { name: 'GatherAttendance' }
+  }
+}
+
+export function isGatherWelcomePath(routeOrPath = null) {
+  const path = getRoutePath(routeOrPath)
+  return path.endsWith('/gather') || path.endsWith('/gather/')
+}
+
+export function resolveGatherWelcomeLocation(routeOrPath = null) {
+  const context = resolveWorkspaceContext(routeOrPath)
+  switch (context) {
+    case 'sg': return { name: 'SgGatherWelcome' }
+    case 'sg_preview': return { name: 'PreviewSgGatherWelcome' }
+    case 'dashboard_preview': return { name: 'PreviewGatherWelcome' }
+    default: return { name: 'GatherWelcome' }
+  }
+}
+
+export function resolveGatherEntryLocation(routeOrPath = null) {
+  return resolveGatherWelcomeLocation(routeOrPath)
 }

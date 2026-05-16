@@ -287,6 +287,26 @@ export async function loginForAccessToken(baseUrl, { username, password, remembe
     }, [404, 405]))
 }
 
+export async function loginWithGoogle(baseUrl, { idToken }) {
+    return normalizeTokenPayload(await request(baseUrl, '/auth/google', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id_token: idToken }),
+    }))
+}
+
+export async function requestPasswordReset(baseUrl, { email }) {
+    return normalizePasswordResetResponse(await request(baseUrl, '/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+    }))
+}
+
 export async function verifyPasswordForUser(baseUrl, {
     email,
     password,

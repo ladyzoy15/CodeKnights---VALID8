@@ -11,7 +11,7 @@ from app.models.face_recognition import UserFaceRecognitionProfile
 from app.models.program import Program
 from app.models.event import Event
 from app.models.event_type import EventType
-from app.models.school import School, SchoolAuditLog
+from app.models.school import School, SchoolAuditLog, SchoolSetting
 from app.models.import_job import BulkImportJob, BulkImportError, EmailDeliveryLog
 from app.models.password_reset_request import PasswordResetRequest
 from app.models.platform_features import (

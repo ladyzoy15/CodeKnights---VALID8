@@ -165,6 +165,22 @@ AI_MODEL = (
     or os.getenv("GEMINI_MODEL")
     or "gpt-4o-mini"
 )
+
+def _get_gemini_keys() -> List[str]:
+    """Retrieve all available Gemini API keys for rotation."""
+    keys = []
+    # Primary key from LLM_API_KEY, GEMINI_API_KEY or AI_API_KEY
+    primary = os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY")
+    if primary:
+        keys.append(primary)
+    # Additional keys from GEMINI_API_KEY_1, GEMINI_API_KEY_2, etc.
+    for i in range(1, 11):
+        extra = os.getenv(f"GEMINI_API_KEY_{i}")
+        if extra and extra not in keys:
+            keys.append(extra)
+    return keys
+
+GEMINI_API_KEYS = _get_gemini_keys()
 try:
     AI_MAX_TOKENS = max(
         1,
@@ -1141,14 +1157,44 @@ def _convert_tools_for_anthropic(tools: Optional[List[Dict[str, Any]]]) -> List[
 
 
 def _convert_tools_for_gemini(tools: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+    def _convert_schema(schema: Any) -> Any:
+        if not isinstance(schema, dict):
+            return schema
+        
+        new_schema = dict(schema)
+        
+        # 1. Handle nullable types (Gemini doesn't support type lists like ["string", "null"])
+        raw_type = new_schema.get("type")
+        if isinstance(raw_type, list):
+            # Pick the first non-null type
+            actual_type = next((t for t in raw_type if t != "null"), raw_type[0])
+            new_schema["type"] = actual_type
+        
+        # 2. Uppercase the type name for Gemini native API compatibility
+        if isinstance(new_schema.get("type"), str):
+            new_schema["type"] = new_schema["type"].upper()
+            
+        # 3. Recursively convert properties
+        if "properties" in new_schema and isinstance(new_schema["properties"], dict):
+            new_schema["properties"] = {
+                k: _convert_schema(v) for k, v in new_schema["properties"].items()
+            }
+            
+        # 4. Recursively convert items (for arrays)
+        if "items" in new_schema:
+            new_schema["items"] = _convert_schema(new_schema["items"])
+            
+        return new_schema
+
     declarations: List[Dict[str, Any]] = []
     for tool in tools or []:
         function_def = tool.get("function") or {}
+        params = function_def.get("parameters") or {"type": "object", "properties": {}}
         declarations.append(
             {
                 "name": function_def.get("name"),
                 "description": function_def.get("description") or "",
-                "parameters": function_def.get("parameters") or {"type": "object", "properties": {}},
+                "parameters": _convert_schema(params),
             }
         )
     return [{"functionDeclarations": declarations}] if declarations else []
@@ -1367,18 +1413,34 @@ async def _call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict
                     payload["tools"] = converted_tools
                 if system_text:
                     payload["systemInstruction"] = {"parts": [{"text": system_text}]}
-                url = _resolve_gemini_endpoint()
-                headers = {"content-type": "application/json"}
-                if "generativelanguage.googleapis.com" in url:
-                    separator = "&" if "?" in url else "?"
-                    url = f"{url}{separator}key={AI_API_KEY}"
-                else:
-                    headers["Authorization"] = f"Bearer {AI_API_KEY}"
-                resp = await client.post(url, headers=headers, json=payload)
-                if resp.status_code >= 400:
-                    return {"content": f"LLM error {resp.status_code}: {resp.text}"}
-                data = resp.json()
-                return _normalize_gemini_response(data)
+                
+                # Use rotation if multiple keys are available
+                keys_to_try = GEMINI_API_KEYS if GEMINI_API_KEYS else [AI_API_KEY]
+                last_error = "No Gemini keys configured."
+
+                for current_key in keys_to_try:
+                    url = _resolve_gemini_endpoint()
+                    headers = {"content-type": "application/json"}
+                    if "generativelanguage.googleapis.com" in url:
+                        separator = "&" if "?" in url else "?"
+                        target_url = f"{url}{separator}key={current_key}"
+                    else:
+                        headers["Authorization"] = f"Bearer {current_key}"
+                        target_url = url
+
+                    resp = await client.post(target_url, headers=headers, json=payload)
+                    if resp.status_code == 429:
+                        logger.warning("Gemini key 429 quota exceeded, trying next key...")
+                        last_error = f"LLM error 429: {resp.text}"
+                        continue
+                    
+                    if resp.status_code >= 400:
+                        return {"content": f"LLM error {resp.status_code}: {resp.text}"}
+                    
+                    data = resp.json()
+                    return _normalize_gemini_response(data)
+                
+                return {"content": last_error}
 
             headers = {"Content-Type": "application/json"}
             if AI_API_KEY:
@@ -1413,6 +1475,31 @@ async def _call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict
         return message
     except (KeyError, IndexError, TypeError) as exc:
         return {"content": f"LLM returned an unexpected response shape: {exc}"}
+
+
+async def _call_ai_stream(
+    messages: List[Dict[str, Any]],
+    tools: Optional[List[Dict[str, Any]]] = None,
+) -> AsyncGenerator[Dict[str, Any] | str, None]:
+    """Unified streaming interface for LLM providers.
+    
+    Yields:
+        - str: Intermediate text chunks
+        - dict: Final message object (with role, content, and optional tool_calls)
+    """
+    provider = _infer_ai_provider()
+    if _provider_requires_api_key(provider) and not AI_API_KEY:
+        yield {"role": "assistant", "content": _ai_not_configured_message()}
+        return
+
+    # Fallback for all providers (non-streaming for now, but yields chunks)
+    res = await _call_openai(messages, tools=tools)
+    content = _extract_text_content(res.get("content"))
+    if content:
+        chunk_size = 30
+        for i in range(0, len(content), chunk_size):
+            yield content[i : i + chunk_size]
+    yield res
 
 
 async def _call_openai_json(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -2563,10 +2650,25 @@ async def assistant_stream(
             # Handle multiple rounds of tool calls (increased to 10 for complex tasks)
             for _ in range(10):
                 try:
-                    # Implement a timeout for AI calls to prevent indefinite "thinking"
-                    response_msg = await asyncio.wait_for(_call_openai(messages, tools=TOOLS), timeout=90.0)
-                except asyncio.TimeoutError:
-                    await queue.put(_sse_event("error", {"message": "Aura thinking timeout (the task was too complex to finish in time)."}))
+                    # Use the new streaming caller
+                    response_msg = None
+                    async for chunk_or_msg in _call_ai_stream(messages, tools=TOOLS):
+                        if isinstance(chunk_or_msg, str):
+                            # It's a text chunk, stream it to the user immediately
+                            await queue.put(_sse_event("message", {
+                                "conversation_id": conversation_id, 
+                                "content": chunk_or_msg
+                            }))
+                        else:
+                            # It's the final message object
+                            response_msg = chunk_or_msg
+                    
+                    if response_msg is None:
+                        # Should not happen with current _call_ai_stream implementation
+                        break
+                except Exception as stream_exc:
+                    logger.error("Streaming error: %s", stream_exc)
+                    await queue.put(_sse_event("error", {"message": f"Aura connection error: {str(stream_exc)}"}))
                     return
 
                 messages.append(response_msg)
@@ -2618,19 +2720,38 @@ async def assistant_stream(
 
             # Final cleanup for messages and text generation
             if final_assistant_text is None and messages and messages[-1].get("role") == "tool":
-                response_msg = await _call_openai(messages, tools=None)
+                final_cleanup_text = ""
+                async for chunk_or_msg in _call_ai_stream(messages, tools=None):
+                    if isinstance(chunk_or_msg, str):
+                        final_cleanup_text += chunk_or_msg
+                        await queue.put(_sse_event("message", {
+                            "conversation_id": conversation_id,
+                            "content": chunk_or_msg
+                        }))
+                    else:
+                        response_msg = chunk_or_msg
+                
                 messages.append(response_msg)
-                content = _extract_text_content(response_msg.get("content"))
-                if content.strip():
-                    final_assistant_text = content
+                if final_cleanup_text.strip():
+                    final_assistant_text = final_cleanup_text
 
             if final_assistant_text:
                 assistant_text = final_assistant_text
             elif messages and messages[-1].get("role") == "tool":
                 messages.append({"role": "user", "content": "The tool steps are complete. Summarize the results for me now."})
-                response_msg = await _call_openai(messages, tools=None)
+                summary_text = ""
+                async for chunk_or_msg in _call_ai_stream(messages, tools=None):
+                    if isinstance(chunk_or_msg, str):
+                        summary_text += chunk_or_msg
+                        await queue.put(_sse_event("message", {
+                            "conversation_id": conversation_id,
+                            "content": chunk_or_msg
+                        }))
+                    else:
+                        response_msg = chunk_or_msg
+                
                 messages.pop()
-                assistant_text = _extract_text_content(response_msg.get("content"))
+                assistant_text = summary_text
                 if not assistant_text.strip():
                     assistant_text = "I completed the data query but couldn't generate a text summary."
             else:
@@ -2687,24 +2808,25 @@ async def assistant_stream(
                             except Exception as e:
                                 logger.warning("Failed to parse visual tool result (recovered): %s", e)
 
-                    follow_up = await _call_openai(messages, tools=None)
-                    messages.append(follow_up)
-                    follow_up_content = _extract_text_content(follow_up.get("content"))
-                    if isinstance(follow_up_content, str) and follow_up_content.strip():
+                    # Use streaming for follow-up
+                    follow_up_content = ""
+                    async for chunk_or_msg in _call_ai_stream(messages, tools=None):
+                        if isinstance(chunk_or_msg, str):
+                            follow_up_content += chunk_or_msg
+                            await queue.put(_sse_event("message", {
+                                "conversation_id": conversation_id,
+                                "content": chunk_or_msg
+                            }))
+                        else:
+                            follow_up = chunk_or_msg
+                    
+                    if follow_up_content.strip():
                         assistant_text = follow_up_content
 
             # PERSIST: Save to DB using the dedicated background session
             _append_message(db_bg, conversation_id, "assistant", assistant_text)
             await _update_conversation_title(db_bg, conversation_id)
             db_bg.commit()
-
-            # STREAM: Final response chunks
-            chunk_size = 160
-            for i in range(0, len(assistant_text), chunk_size):
-                await queue.put(_sse_event("message", {
-                    "conversation_id": conversation_id,
-                    "content": assistant_text[i : i + chunk_size],
-                }))
 
             await queue.put(_sse_event("done", {
                 "conversation_id": conversation_id,

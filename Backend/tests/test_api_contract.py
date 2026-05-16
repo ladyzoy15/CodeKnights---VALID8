@@ -11,7 +11,7 @@ def test_token_response_shape(client, admin_token):
     assert data["token_type"] == "bearer"
     
 def test_users_me_shape(client, admin_headers):
-    r = client.get("/api/v1/users/me", headers=admin_headers)
+    r = client.get("/api/users/me/", headers=admin_headers)
     assert r.status_code == 200
     data = r.json()
     assert "id" in data
@@ -21,7 +21,7 @@ def test_users_me_shape(client, admin_headers):
     assert isinstance(data["roles"], list)
 
 def test_events_list_schema(client, campus_admin_headers):
-    r = client.get("/api/v1/events/", headers=campus_admin_headers)
+    r = client.get("/api/events/", headers=campus_admin_headers)
     assert r.status_code == 200
     data = r.json()
     assert "items" in data or isinstance(data, list)

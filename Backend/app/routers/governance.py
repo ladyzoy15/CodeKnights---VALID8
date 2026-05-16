@@ -42,7 +42,7 @@ from app.schemas.governance import (
     RetentionRunResult,
 )
 
-router = APIRouter(prefix="/api/governance", tags=["governance"])
+router = APIRouter(prefix="/governance", tags=["governance"])
 
 
 def _resolve_school_id(current_user: User, requested_school_id: int | None = None) -> int:

@@ -105,7 +105,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { Maximize2, Send, ChevronDown, Copy, Plus, Check } from 'lucide-vue-next'
 import { activeAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'
@@ -116,8 +116,10 @@ const {
   inputText,
   isTyping,
   isMiniOpen,
+  conversationId,
   sendMessage,
   startNewConversation,
+  selectConversation,
   openPill,
   closeMini,
   expandToFull,
@@ -127,6 +129,15 @@ const {
 } = useChat()
 
 const pillRef = ref(null)
+
+// Load messages when mini chat expands
+watch(isMiniOpen, (val) => {
+  if (val && conversationId.value) {
+    selectConversation(conversationId.value).catch(() => {
+      startNewConversation()
+    })
+  }
+})
 
 function handleOutsideClick(event) {
   if (isMiniOpen.value && pillRef.value && !pillRef.value.contains(event.target)) {

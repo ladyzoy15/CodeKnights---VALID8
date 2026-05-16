@@ -4,18 +4,7 @@ from app.main import app
 from app.core.database import SessionLocal
 from sqlalchemy import text
 
-@pytest.fixture
-def client():
-    with TestClient(app) as c:
-        yield c
-
-@pytest.fixture
-def db():
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
+# Using fixtures from conftest.py
 
 def test_health_endpoint(client):
     r = client.get("/health")
@@ -29,7 +18,7 @@ def test_auth_login_endpoint(client, db):
     assert r.status_code in (401, 400, 403, 404) 
 
 def test_protected_route_without_token(client):
-    r = client.get("/api/v1/users/me")
+    r = client.get("/api/users/me/")
     assert r.status_code == 401
 
 def test_cors_allowed_origins(client):
@@ -37,7 +26,7 @@ def test_cors_allowed_origins(client):
     assert r.status_code < 500
 
 def test_rbac_permissions(client):
-    r = client.get("/api/v1/admin/some-endpoint", headers={"Authorization": "Bearer invalidtoken"})
+    r = client.get("/api/admin/some-endpoint", headers={"Authorization": "Bearer invalidtoken"})
     assert r.status_code == 401
 
 def test_database_rollback(db):

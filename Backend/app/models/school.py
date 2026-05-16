@@ -26,6 +26,10 @@ class School(Base):
     display_name = Column(String(255), nullable=False, index=True)
     
     @property
+    def school_id(self):
+        return self.id
+    
+    @property
     def name(self):
         return self.legal_name
     
@@ -51,10 +55,10 @@ class School(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     
     # Legacy fields that are now in separate tables
-    # logo_url = Column(String(1000), nullable=True) 
-    # primary_color = Column(String(7), nullable=False, default="#162F65")
-    # secondary_color = Column(String(7), nullable=True)
-    # subscription_status = Column(String(30), nullable=False, default="trial")
+    logo_url = Column(String(1000), nullable=True) 
+    primary_color = Column(String(7), nullable=False, default="#162F65")
+    secondary_color = Column(String(7), nullable=True)
+    subscription_status = Column(String(30), nullable=False, default="trial")
     
     @property
     def active_status(self):
@@ -75,13 +79,12 @@ class School(Base):
         onupdate=datetime.utcnow,
     )
 
-    # Legacy relationship, replaced by branding and event_policy
-    # settings = relationship(
-    #     "SchoolSetting",
-    #     back_populates="school",
-    #     uselist=False,
-    #     cascade="all, delete-orphan",
-    # )
+    settings = relationship(
+        "SchoolSetting",
+        back_populates="school",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     branding = relationship(
         "SchoolBranding",
         back_populates="school",
@@ -105,45 +108,45 @@ class School(Base):
     )
 
 
-# class SchoolSetting(Base):
-#     __tablename__ = "school_settings"
-#
-#     school_id = Column(
-#         BigInteger,
-#         ForeignKey("schools.id", ondelete="CASCADE"),
-#         primary_key=True,
-#     )
-#     primary_color = Column(String(7), nullable=False, default="#162F65")
-#     secondary_color = Column(String(7), nullable=False, default="#2C5F9E")
-#     accent_color = Column(String(7), nullable=False, default="#4A90E2")
-#     event_default_early_check_in_minutes = Column(
-#         Integer,
-#         nullable=False,
-#         default=DEFAULT_EVENT_EARLY_CHECK_IN_MINUTES,
-#     )
-#     event_default_late_threshold_minutes = Column(
-#         Integer,
-#         nullable=False,
-#         default=DEFAULT_EVENT_LATE_THRESHOLD_MINUTES,
-#     )
-#     event_default_sign_out_grace_minutes = Column(
-#         Integer,
-#         nullable=False,
-#         default=DEFAULT_EVENT_SIGN_OUT_GRACE_MINUTES,
-#     )
-#     updated_at = Column(
-#         DateTime,
-#         nullable=False,
-#         default=datetime.utcnow,
-#         onupdate=datetime.utcnow,
-#     )
-#     updated_by_user_id = Column(
-#         BigInteger,
-#         ForeignKey("users.id", ondelete="SET NULL"),
-#         nullable=True,
-#     )
-#
-#     school = relationship("School", back_populates="settings")
+class SchoolSetting(Base):
+    __tablename__ = "school_settings"
+
+    school_id = Column(
+        BigInteger,
+        ForeignKey("schools.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    primary_color = Column(String(7), nullable=False, default="#162F65")
+    secondary_color = Column(String(7), nullable=False, default="#2C5F9E")
+    accent_color = Column(String(7), nullable=False, default="#4A90E2")
+    event_default_early_check_in_minutes = Column(
+        Integer,
+        nullable=False,
+        default=DEFAULT_EVENT_EARLY_CHECK_IN_MINUTES,
+    )
+    event_default_late_threshold_minutes = Column(
+        Integer,
+        nullable=False,
+        default=DEFAULT_EVENT_LATE_THRESHOLD_MINUTES,
+    )
+    event_default_sign_out_grace_minutes = Column(
+        Integer,
+        nullable=False,
+        default=DEFAULT_EVENT_SIGN_OUT_GRACE_MINUTES,
+    )
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+    updated_by_user_id = Column(
+        BigInteger,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    school = relationship("School", back_populates="settings")
 
 
 class SchoolAuditLog(Base):

@@ -43,7 +43,7 @@ from app.schemas.governance_hierarchy import (
 )
 from app.services import governance_hierarchy_service
 
-router = APIRouter(prefix="/api/governance", tags=["governance-hierarchy"])
+router = APIRouter(prefix="/governance", tags=["governance-hierarchy"])
 
 
 def get_current_governance_route_user(

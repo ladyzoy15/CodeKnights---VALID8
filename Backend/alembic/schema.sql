@@ -113,6 +113,10 @@ CREATE TABLE IF NOT EXISTS schools (
   display_name TEXT NOT NULL,
   address TEXT NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  logo_url TEXT,
+  primary_color TEXT NOT NULL DEFAULT '#162F65',
+  secondary_color TEXT,
+  subscription_status TEXT NOT NULL DEFAULT 'trial',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -132,6 +136,18 @@ CREATE TABLE IF NOT EXISTS school_event_policies (
   default_early_check_in_minutes INTEGER NOT NULL CHECK (default_early_check_in_minutes >= 0),
   default_late_threshold_minutes INTEGER NOT NULL CHECK (default_late_threshold_minutes >= 0),
   default_sign_out_grace_minutes INTEGER NOT NULL CHECK (default_sign_out_grace_minutes >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_by_user_id BIGINT
+);
+
+CREATE TABLE IF NOT EXISTS school_settings (
+  school_id BIGINT PRIMARY KEY REFERENCES schools(id) ON DELETE CASCADE,
+  primary_color TEXT NOT NULL DEFAULT '#162F65',
+  secondary_color TEXT NOT NULL DEFAULT '#2C5F9E',
+  accent_color TEXT NOT NULL DEFAULT '#4A90E2',
+  event_default_early_check_in_minutes INTEGER NOT NULL DEFAULT 15,
+  event_default_late_threshold_minutes INTEGER NOT NULL DEFAULT 30,
+  event_default_sign_out_grace_minutes INTEGER NOT NULL DEFAULT 15,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_by_user_id BIGINT
 );
@@ -249,6 +265,16 @@ CREATE TABLE IF NOT EXISTS user_security_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS user_face_profiles (
+  user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  face_encoding BYTEA NOT NULL,
+  provider TEXT NOT NULL DEFAULT 'arcface',
+  reference_image_sha256 TEXT,
+  last_verified_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS user_sessions (
   id UUID PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -342,6 +368,15 @@ CREATE TABLE IF NOT EXISTS student_profiles (
   department_id BIGINT REFERENCES departments(id) ON DELETE RESTRICT,
   program_id BIGINT REFERENCES programs(id) ON DELETE RESTRICT,
   year_level INTEGER NOT NULL CHECK (year_level BETWEEN 1 AND 10),
+  face_encoding BYTEA,
+  embedding_provider TEXT,
+  embedding_dtype TEXT,
+  embedding_dimension INTEGER,
+  embedding_normalized BOOLEAN NOT NULL DEFAULT TRUE,
+  is_face_registered BOOLEAN NOT NULL DEFAULT FALSE,
+  face_image_url TEXT,
+  registration_complete BOOLEAN NOT NULL DEFAULT FALSE,
+  last_face_update TIMESTAMPTZ,
   section TEXT,
   rfid_tag TEXT UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

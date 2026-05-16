@@ -17,7 +17,7 @@ from app.models.user import User
 from app.reports.system import router as system_reports_router
 from app.schemas.audit import SchoolAuditLogSearchResponse
 
-router = APIRouter(prefix="/api/audit-logs", tags=["audit-logs"])
+router = APIRouter(prefix="/audit-logs", tags=["audit-logs"])
 
 
 @router.get("", response_model=SchoolAuditLogSearchResponse)

@@ -31,7 +31,7 @@ from app.schemas.subscription import (
 )
 from app.services.notification_center_service import send_notification_to_user
 
-router = APIRouter(prefix="/api/subscription", tags=["subscription"])
+router = APIRouter(prefix="/subscription", tags=["subscription"])
 
 
 def _resolve_school_id(current_user: User, requested_school_id: int | None = None) -> int:

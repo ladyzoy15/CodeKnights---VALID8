@@ -237,7 +237,8 @@ onUnmounted(() => {
   padding: 22px 18px 26px;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Prevent page scroll */
+  overflow: hidden;
+  background: radial-gradient(circle at 0% 0%, #162f65 0%, #0a0a0a 100%);
 }
 
 .aura-chat-shell {
@@ -245,18 +246,23 @@ onUnmounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--color-primary);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
-  box-shadow: 0 28px 68px rgba(12, 18, 33, 0.18);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.3);
 }
 
 .chat-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 16px 12px;
-  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 .chat-header-left {
@@ -331,12 +337,13 @@ onUnmounted(() => {
 .chat-sidebar {
   width: 260px;
   flex: 0 0 auto;
-  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-height: 0;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .chat-sidebar-header {
@@ -352,7 +359,7 @@ onUnmounted(() => {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .chat-sidebar-meta {
@@ -384,37 +391,37 @@ onUnmounted(() => {
 .chat-sidebar-item {
   width: 100%;
   text-align: left;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 14px;
-  padding: 10px;
+  padding: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   cursor: pointer;
-  transition: background 0.18s ease, transform 0.15s ease, border-color 0.18s ease;
+  transition: all 0.2s ease;
 }
 
 .chat-sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.9);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(4px);
 }
 
 .chat-sidebar-item--active {
-  border-color: rgba(0, 0, 0, 0.28);
-  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .chat-sidebar-item-title {
   font-family: 'Manrope', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.8);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
   line-height: 1.3;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
 }
 
@@ -474,15 +481,25 @@ onUnmounted(() => {
 
 .bubble--ai {
   align-self: flex-start;
-  background: var(--color-surface);
-  color: var(--color-text-always-dark);
+  background: rgba(255, 255, 255, 0.95);
+  color: #0a0a0a;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .bubble--user {
   align-self: flex-end;
-  background: rgba(0, 0, 0, 0.14);
-  color: var(--color-banner-text);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.chat-footer {
+  padding: 20px 24px 26px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .bubble--typing {
@@ -497,8 +514,8 @@ onUnmounted(() => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
-  animation: bounce 1s infinite ease-in-out;
+  background: rgba(255, 255, 255, 0.6);
+  animation: bounce 1.4s infinite ease-in-out;
 }
 
 .chat-input-wrap {
@@ -509,13 +526,13 @@ onUnmounted(() => {
 .chat-input-row {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.08);
-  border: 1.5px solid rgba(0, 0, 0, 0.2);
-  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
   padding: 0 8px 0 18px;
-  height: 48px;
-  gap: 6px;
-  transition: border-color 0.18s ease, background 0.18s ease;
+  height: 54px;
+  gap: 8px;
+  transition: all 0.25s ease;
 }
 
 .chat-input-row:focus-within {

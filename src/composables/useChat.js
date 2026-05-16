@@ -28,6 +28,23 @@ const isMiniOpen = ref(false)
 const isFullOpen = ref(false)
 const conversationId = ref(loadStoredConversationId())
 const conversations = ref([]) // [{ conversation_id, title, last_message, updated_at }]
+
+// Pre-load messages if we have a stored conversation ID
+if (conversationId.value) {
+  // Try loading after a short delay
+  setTimeout(() => {
+    if (conversationId.value) {
+      selectConversation(conversationId.value).catch(() => {
+        // Retry once more after 2 seconds if first attempt failed
+        setTimeout(() => {
+          if (conversationId.value && messages.value.length <= 1) {
+             selectConversation(conversationId.value).catch(() => {})
+          }
+        }, 2000)
+      })
+    }
+  }, 800) 
+}
 const isLoadingConversations = ref(false)
 const conversationsError = ref(null)
 const copyStatus = ref('idle') // idle | copied | failed
@@ -63,9 +80,21 @@ function getAssistantErrorMessage(error) {
   return 'Something went wrong while contacting Aura Assistant. Please try again.'
 }
 
+function getAuthToken() {
+  return String(localStorage.getItem('aura_token') || '').trim()
+}
+
+function getStoredUserId() {
+  return getStoredAuthMeta()?.userId || 'anonymous'
+}
+
+function getConvoStorageKey() {
+  return `aura_assistant_conversation_id_${getStoredUserId()}`
+}
+
 function loadStoredConversationId() {
   try {
-    const raw = localStorage.getItem('aura_assistant_conversation_id')
+    const raw = localStorage.getItem(getConvoStorageKey())
     const trimmed = String(raw || '').trim()
     return trimmed || null
   } catch {
@@ -78,10 +107,11 @@ function storeConversationId(value) {
   conversationId.value = normalized || null
 
   try {
+    const key = getConvoStorageKey()
     if (conversationId.value) {
-      localStorage.setItem('aura_assistant_conversation_id', conversationId.value)
+      localStorage.setItem(key, conversationId.value)
     } else {
-      localStorage.removeItem('aura_assistant_conversation_id')
+      localStorage.removeItem(key)
     }
   } catch {
     // Ignore storage errors and keep the in-memory value.
@@ -95,10 +125,6 @@ function scrollToBottom() {
       scrollEl.value.scrollTop = scrollEl.value.scrollHeight
     }
   })
-}
-
-function getAuthToken() {
-  return String(localStorage.getItem('aura_token') || '').trim()
 }
 
 function normalizeConversationTitle(convo) {
@@ -123,6 +149,25 @@ function resetChatState() {
   isMiniOpen.value = false
   isFullOpen.value = false
   conversationsError.value = null
+}
+
+// Listen for auth changes to swap conversation context
+if (typeof window !== 'undefined') {
+  window.addEventListener('aura-auth-meta-changed', () => {
+    // When user changes, reload their specific stored conversation ID
+    const newId = loadStoredConversationId()
+    if (newId !== conversationId.value) {
+      conversationId.value = newId
+      if (newId) {
+        selectConversation(newId).catch(() => {
+           // If it fails (e.g. 404), it will auto-reset in selectConversation
+        })
+      } else {
+        resetToGreeting()
+      }
+    }
+    refreshConversations()
+  })
 }
 
 function formatConversationText() {

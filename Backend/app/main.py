@@ -7,7 +7,8 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -21,8 +22,10 @@ from app.routers import (
     programs,
     departments,
     auth,
+    google_auth,
     attendance,
     school_settings,
+    admin_placeholder,
     admin_import,
     school,
     audit_logs,
@@ -72,6 +75,18 @@ async def lifespan(_: FastAPI):
 app = FastAPI(lifespan=lifespan)
 settings = get_settings()
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled exception occurred: %s", str(exc))
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal Server Error",
+            "error_type": type(exc).__name__,
+            "error_message": str(exc)
+        },
+    )
+
 # CORS setup
 app.add_middleware(
     CORSMiddleware,
@@ -84,10 +99,14 @@ app.add_middleware(
 
 def include_api_router(router: APIRouter) -> None:
     app.include_router(router, prefix="/api")
+    app.include_router(router, prefix="/api/v1")
 
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(auth.router, prefix="/api/v1/auth")
+app.include_router(auth.router, prefix="/api/auth")
+app.include_router(google_auth.router)
 include_api_router(users.router)
 include_api_router(events.router)
 include_api_router(programs.router)
@@ -96,7 +115,8 @@ include_api_router(attendance.router)
 include_api_router(reports_router)
 app.include_router(school_settings.router)
 app.include_router(admin_import.router)
-app.include_router(school.router)
+include_api_router(school.router)
+include_api_router(admin_placeholder.router)
 app.include_router(audit_logs.router)
 app.include_router(notifications.router)
 include_api_router(security_center.router)

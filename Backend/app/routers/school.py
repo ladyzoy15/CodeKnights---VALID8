@@ -46,7 +46,7 @@ from app.services.password_change_policy import (
 from app.services.logo_storage_service import delete_managed_school_logo, store_school_logo
 from app.utils.passwords import generate_secure_password
 
-router = APIRouter(prefix="/api/school", tags=["school"])
+router = APIRouter(prefix="/schools", tags=["schools"])
 
 
 def _normalize_optional(value: Optional[str]) -> Optional[str]:
@@ -98,6 +98,45 @@ def _school_to_response(school: School) -> SchoolBrandingResponse:
         created_at=school.created_at,
         updated_at=school.updated_at,
     )
+
+
+@router.get("/", response_model=list[SchoolSummaryResponse])
+def admin_list_schools(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin),
+):
+    """(Admin Only) List all schools in the system."""
+    schools = db.query(School).order_by(School.display_name.asc()).all()
+    return [
+        SchoolSummaryResponse.model_validate(s)
+        for s in schools
+    ]
+
+
+@router.get("/{school_id}", response_model=SchoolBrandingResponse)
+def get_school_by_id(
+    school_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_application_user),
+):
+    """Fetch one school by ID with explicit cross-school access control."""
+    # RBAC: campus_admin can only see their own school.
+    # students and faculty can see their own school.
+    # system_admin can see any school.
+    if not has_any_role(current_user, ["system_admin"]):
+        if getattr(current_user, "school_id", None) != school_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this school's branding information.",
+            )
+
+    school = db.query(School).filter(School.id == school_id).first()
+    if not school:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="School not found.",
+        )
+    return _school_to_response(school)
 
 
 def _sync_school_settings(db: Session, school: School, updated_by_user_id: int) -> None:

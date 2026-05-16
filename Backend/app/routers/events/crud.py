@@ -10,10 +10,10 @@ def create_event(
     event: EventCreate,
     governance_context: GovernanceUnitType | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(get_current_event_manager),
 ):
     try:
-        _ensure_event_manager(db, current_user)
+        # _ensure_event_manager is already called by the dependency
         school_id = _require_school_scope(current_user)
         payload_fields_set = _get_payload_fields_set(event)
 

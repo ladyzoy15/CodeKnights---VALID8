@@ -21,23 +21,25 @@ def _env_int(name: str, default: int) -> int:
         return default
     return value if value > 0 else default
 
-AI_PROVIDER = (os.getenv("AI_PROVIDER") or "").strip() or APP_SETTINGS.ai_provider
+AI_PROVIDER = (os.getenv("AI_PROVIDER") or os.getenv("LLM_PROVIDER") or "").strip() or APP_SETTINGS.ai_provider
 AI_API_KEY = (
     os.getenv("AI_API_KEY")
+    or os.getenv("LLM_API_KEY")
     or os.getenv("OPENAI_API_KEY")
     or os.getenv("ANTHROPIC_API_KEY")
     or os.getenv("GEMINI_API_KEY")
 )
 AI_API_BASE = (
     os.getenv("AI_API_BASE")
+    or os.getenv("LLM_API_BASE")
     or os.getenv("OPENAI_API_BASE")
     or os.getenv("ANTHROPIC_API_BASE")
     or os.getenv("GEMINI_API_BASE")
     or ""
 )
-AI_MODEL = (os.getenv("AI_MODEL") or "").strip() or APP_SETTINGS.ai_model
-AI_MAX_TOKENS = _env_int("AI_MAX_TOKENS", APP_SETTINGS.ai_max_tokens)
-AI_API_VERSION = (os.getenv("AI_API_VERSION") or "").strip() or APP_SETTINGS.ai_api_version
+AI_MODEL = (os.getenv("AI_MODEL") or os.getenv("LLM_MODEL") or "").strip() or APP_SETTINGS.ai_model
+AI_MAX_TOKENS = _env_int("AI_MAX_TOKENS", _env_int("LLM_MAX_TOKENS", APP_SETTINGS.ai_max_tokens))
+AI_API_VERSION = (os.getenv("AI_API_VERSION") or os.getenv("LLM_API_VERSION") or "").strip() or APP_SETTINGS.ai_api_version
 
 def _infer_ai_provider() -> str:
     explicit = AI_PROVIDER.strip().lower()
@@ -50,6 +52,10 @@ def _infer_ai_provider() -> str:
 
     base_url = AI_API_BASE.lower()
     model_name = AI_MODEL.lower()
+    
+    if base_url.endswith("/openai") or "/openai/" in base_url:
+        return "openai"
+        
     if "anthropic" in base_url or model_name.startswith("claude"):
         return "anthropic"
     if "generativelanguage.googleapis.com" in base_url or model_name.startswith("gemini"):

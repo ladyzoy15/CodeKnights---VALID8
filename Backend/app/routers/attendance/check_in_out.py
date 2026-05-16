@@ -31,6 +31,17 @@ def get_my_attendance(
     return query.order_by(AttendanceModel.time_in.desc()).offset(skip).limit(limit).all()
 
 
+@router.post("/scan")
+def record_attendance_scan(
+    event_id: int,
+    student_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Alias for face-scan attendance endpoint."""
+    return record_face_scan_attendance(event_id, student_id, current_user, db)
+
+
 @router.post("/face-scan")
 def record_face_scan_attendance(
     event_id: int,
@@ -92,7 +103,10 @@ def record_face_scan_attendance(
         .first()
     )
     if existing and existing.time_out is not None:
-        raise HTTPException(400, f"Attendance already exists for student {student_id}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Attendance already recorded for student {student_id} for this event."
+        )
 
     scanned_at = datetime.utcnow()
     status_value = attendance_decision["attendance_status"] or "absent"
@@ -187,7 +201,10 @@ def record_manual_attendance(
         .first()
     )
     if existing and existing.time_out is not None:
-        raise HTTPException(400, f"Attendance already exists for student {data.student_id}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Attendance already recorded for student {data.student_id} for this event."
+        )
 
     recorded_at = datetime.utcnow()
     status_value = attendance_decision["attendance_status"] or "absent"

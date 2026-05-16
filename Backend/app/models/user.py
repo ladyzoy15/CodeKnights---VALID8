@@ -40,7 +40,7 @@ class User(Base):
     roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
     student_profile = relationship("StudentProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     school = relationship("School", back_populates="users")
-    # face_profile = relationship("UserFaceProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    face_profile = relationship("UserFaceProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
     def set_password(self, password: str):
         if len(password) < 8:
@@ -83,20 +83,19 @@ class StudentProfile(Base):
     department_id = Column(BigInteger, ForeignKey("departments.id", ondelete="RESTRICT"), index=True)
     program_id = Column(BigInteger, ForeignKey("programs.id", ondelete="RESTRICT"), index=True)
     year_level = Column(Integer, nullable=False, default=1)
-    # Legacy face encoding columns (now in student_face_embeddings)
-    # face_encoding = Column(LargeBinary)
-    # embedding_provider = Column(String(32), nullable=True)
-    # embedding_dtype = Column(String(16), nullable=True)
-    # embedding_dimension = Column(Integer, nullable=True)
-    # embedding_normalized = Column(Boolean, nullable=False, default=True)
+    face_encoding = Column(LargeBinary)
+    embedding_provider = Column(String(32), nullable=True)
+    embedding_dtype = Column(String(16), nullable=True)
+    embedding_dimension = Column(Integer, nullable=True)
+    embedding_normalized = Column(Boolean, nullable=False, default=True)
 
-    # is_face_registered = Column(Boolean, default=False, index=True)
-    # face_image_url = Column(String(500), nullable=True)
-    # registration_complete = Column(Boolean, default=False, index=True)
+    is_face_registered = Column(Boolean, default=False, index=True)
+    face_image_url = Column(String(500), nullable=True)
+    registration_complete = Column(Boolean, default=False, index=True)
 
     section = Column(String(50), nullable=True, index=True)
     rfid_tag = Column(String(100), unique=True, nullable=True)
-    # last_face_update = Column(DateTime, nullable=True)
+    last_face_update = Column(DateTime, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="student_profile")

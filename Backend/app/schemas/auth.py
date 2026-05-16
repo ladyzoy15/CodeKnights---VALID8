@@ -47,6 +47,10 @@ class LoginRequest(BaseModel):
     remember_me: bool = False
 
 
+class GoogleLoginRequest(BaseModel):
+    id_token: str
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str

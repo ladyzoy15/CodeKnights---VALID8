@@ -3,7 +3,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-os.environ.setdefault("DATABASE_URL", "postgresql://postgres:cmpjdatabase@127.0.0.1:5432/fastapi_db")
+os.environ.setdefault("DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:5435/fastapi_db")
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("RATE_LIMIT_FAIL_OPEN", "true")
@@ -35,6 +35,11 @@ def db_session():
     _seed(db)
     yield db
     db.close()
+
+
+@pytest.fixture
+def db(db_session):
+    yield db_session
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -100,16 +105,16 @@ def _seed(db: Session):
         db.flush()
 
     # Link dept and prog so import validation passes
-    from app.models.associations import program_departments
+    from app.models.associations import program_department_association
     from sqlalchemy import select
     existing_link = db.execute(
-        select(program_departments).where(
-            program_departments.c.program_id == prog.id,
-            program_departments.c.department_id == dept.id,
+        select(program_department_association).where(
+            program_department_association.c.program_id == prog.id,
+            program_department_association.c.department_id == dept.id,
         )
     ).first()
     if not existing_link:
-        db.execute(program_departments.insert().values(program_id=prog.id, department_id=dept.id))
+        db.execute(program_department_association.insert().values(program_id=prog.id, department_id=dept.id))
         db.flush()
 
     # Users

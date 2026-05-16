@@ -1,4 +1,4 @@
-﻿# Backend Runtime Behavior
+# Backend Runtime Behavior
 
 <!--nav-->
 [Previous](REPORT_CATALOG.md) | [Next](SECURITY_HARDENING.md) | [Home](/README.md)
@@ -148,6 +148,19 @@ Relevant files:
 - `backend/app/routers/face_recognition.py`
 - `backend/app/routers/public_attendance.py`
 
+## Duplicate Attendance Prevention
+
+When a student attempts to sign in multiple times for the same event, the API returns a conflict error.
+
+Runtime behavior:
+
+- Repeated `POST /api/attendance/check-in-out` attempts for an already checked-in student return `409 Conflict`.
+- The error detail message is standardized to "Student already checked in for this event".
+
+Relevant files:
+
+- `backend/app/routers/attendance/check_in_out.py`
+
 ## System Timestamp Storage
 
 Common backend audit and system timestamps are now stored as timezone-aware UTC values in PostgreSQL.
@@ -254,6 +267,32 @@ Relevant files:
 - `Backend/alembic/versions/e6f7a8b9c0d1_add_event_create_idempotency_fields.py`
 - `backend/app/models/event.py`
 - `backend/app/routers/events/crud.py`
+
+## Event Creation RBAC Order
+
+Event creation now enforces RBAC permissions before validating the request body.
+
+Runtime behavior:
+
+- If an unauthorized user (e.g., a student) attempts to `POST /api/events/`, the API returns `403 Forbidden` immediately.
+- This happens even if the request body is malformed or invalid, preventing information leakage about schema expectations to unauthorized users.
+
+Relevant files:
+
+- `backend/app/routers/events/crud.py`
+
+## Cross-School Access Control
+
+Campus admins are restricted from accessing schools they are not assigned to.
+
+Runtime behavior:
+
+- `GET /api/school/{school_id}` returns `403 Forbidden` if a campus admin attempts to access a school ID that does not match their own `school_id`.
+- If the school does not exist, the API returns `404 Not Found` (after the permission check if applicable).
+
+Relevant files:
+
+- `backend/app/routers/school.py`
 
 ## Event Type Lookup
 

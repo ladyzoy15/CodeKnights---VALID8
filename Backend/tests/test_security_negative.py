@@ -7,7 +7,7 @@ def test_wrong_password_rejected(client):
 
 def test_expired_or_tampered_token_rejected(client, admin_token):
     headers = {"Authorization": f"Bearer {admin_token}123"} # Tampered
-    r = client.get("/api/v1/users/me", headers=headers)
+    r = client.get("/api/users/me/", headers=headers)
     assert r.status_code == 401
 
 def test_sql_injection_attempt_rejected(client):
@@ -17,7 +17,7 @@ def test_sql_injection_attempt_rejected(client):
 
 def test_xss_payload_rejection(client, campus_admin_headers):
     payload = {"name": "<script>alert(1)</script>", "description": "Test", "start_date": "2024-01-01", "end_date": "2024-01-02", "school_id": 1}
-    r = client.post("/api/v1/events/", headers=campus_admin_headers, json=payload)
+    r = client.post("/api/events/", headers=campus_admin_headers, json=payload)
     assert r.status_code in [400, 422, 200]
     
     if r.status_code == 200:
