@@ -47,15 +47,15 @@ async function waitForBootOverlayToClear(page, timeout = 15_000) {
  */
 async function readAuthStorageSnapshot(page) {
   return page.evaluate(() => {
-    const localStorageToken = localStorage.getItem("aura_token");
+    const localStorageToken = localStorage.getItem("nexus_token");
     const sessionStorageToken =
       typeof sessionStorage !== "undefined"
-        ? sessionStorage.getItem("aura_token")
+        ? sessionStorage.getItem("nexus_token")
         : null;
     const authCookie = document.cookie
       .split(";")
       .map((entry) => entry.trim())
-      .find((entry) => /^aura_token=/.test(entry));
+      .find((entry) => /^nexus_token=/.test(entry));
 
     return {
       pathname: window.location.pathname,

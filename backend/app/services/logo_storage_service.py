@@ -1,14 +1,10 @@
-"""Use: Contains the main backend rules for school logo file storage.
-Where to use: Use this from routers, workers, or other services when school logo file storage logic is needed.
-Role: Service layer. It keeps business logic out of the route files.
-"""
-
 from __future__ import annotations
 
 import io
 import re
 import uuid
 from pathlib import Path
+from typing import Tuple
 from urllib.parse import urlparse
 
 from fastapi import HTTPException, UploadFile, status
@@ -16,14 +12,60 @@ from PIL import Image, UnidentifiedImageError
 
 from app.core.config import get_settings
 
-ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg"}
-ALLOWED_MIME_TYPES = {
-    "image/png",
-    "image/jpeg",
-    "image/pjpeg",
-    "image/svg+xml",
-    "application/octet-stream",
-}
+_NEUTRAL_THRESHOLD = 30
+_EXTREME_LUM_MIN = 60
+_EXTREME_LUM_MAX = 720
+
+
+def extract_dominant_colors_from_bytes(image_bytes: bytes, is_svg: bool = False) -> Tuple[str | None, str | None]:
+    if is_svg:
+        return None, None
+
+    try:
+        with Image.open(io.BytesIO(image_bytes)).convert("RGB") as img:
+            img = img.resize((100, 100))
+            pal = img.quantize(colors=6).convert("RGB")
+    except Exception:
+        return None, None
+
+    colors = pal.getcolors(maxcolors=1000)
+    if not colors:
+        return None, None
+
+    colors.sort(key=lambda x: x[0], reverse=True)
+
+    def _is_neutral(r: int, g: int, b: int) -> bool:
+        return max(abs(r - g), abs(g - b), abs(b - r)) < _NEUTRAL_THRESHOLD
+
+    def _is_extreme(r: int, g: int, b: int) -> bool:
+        return (r + g + b) < _EXTREME_LUM_MIN or (r + g + b) > _EXTREME_LUM_MAX
+
+    dominant: list[str] = []
+    for _count, pixel in colors:
+        r, g, b = pixel
+        if _is_neutral(r, g, b) or _is_extreme(r, g, b):
+            continue
+        hex_colour = f"#{r:02x}{g:02x}{b:02x}"
+        if hex_colour not in dominant:
+            dominant.append(hex_colour)
+        if len(dominant) >= 2:
+            break
+
+    if not dominant:
+        for _count, pixel in colors[:3]:
+            r, g, b = pixel
+            hex_colour = f"#{r:02x}{g:02x}{b:02x}"
+            if hex_colour not in dominant:
+                dominant.append(hex_colour)
+            if len(dominant) >= 2:
+                break
+
+    primary = dominant[0] if len(dominant) > 0 else None
+    secondary = dominant[1] if len(dominant) > 1 else None
+    return primary, secondary
+
+
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
 
 
 def _validate_svg_content(content: bytes) -> None:
@@ -32,7 +74,7 @@ def _validate_svg_content(content: bytes) -> None:
     except UnicodeDecodeError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid SVG encoding. UTF-8 is required.",
+            detail="Invalid SVG encoding.",
         ) from exc
 
     lowered = text.lower()
@@ -49,28 +91,15 @@ def _validate_svg_content(content: bytes) -> None:
         )
 
 
-def _validate_raster_content(content: bytes, extension: str) -> None:
+def _validate_raster_content(content: bytes) -> None:
     try:
         with Image.open(io.BytesIO(content)) as image:
             image.verify()
-            image_format = (image.format or "").upper()
     except (UnidentifiedImageError, OSError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid image file content.",
+            detail="Invalid image file.",
         ) from exc
-
-    if extension == ".png" and image_format != "PNG":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="PNG file content is invalid.",
-        )
-
-    if extension in {".jpg", ".jpeg"} and image_format != "JPEG":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="JPEG file content is invalid.",
-        )
 
 
 def _safe_extension(filename: str) -> str:
@@ -79,27 +108,29 @@ def _safe_extension(filename: str) -> str:
     if extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported logo file type. Allowed: PNG, JPG, JPEG, SVG.",
+            detail="Unsupported logo file type. Allowed: PNG, JPG, JPEG, WebP, SVG.",
         )
     return extension
 
 
 async def store_school_logo(upload: UploadFile) -> str:
+    content = await upload.read()
+    filename = (upload.filename or "").strip()
+    return store_school_logo_bytes(content, filename)
+
+
+def store_school_logo_bytes(
+    content: bytes,
+    filename: str,
+    content_type: str | None = None,
+) -> str:
     settings = get_settings()
 
-    filename = (upload.filename or "").strip()
     if not filename:
         raise HTTPException(status_code=400, detail="Logo file name is required.")
 
     extension = _safe_extension(filename)
-    content_type = (upload.content_type or "").lower()
-    if content_type and content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported logo MIME type.",
-        )
 
-    content = await upload.read()
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded logo file is empty.")
 
@@ -113,7 +144,7 @@ async def store_school_logo(upload: UploadFile) -> str:
     if extension == ".svg":
         _validate_svg_content(content)
     else:
-        _validate_raster_content(content, extension)
+        _validate_raster_content(content)
 
     storage_dir = Path(settings.school_logo_storage_dir)
     storage_dir.mkdir(parents=True, exist_ok=True)
@@ -137,7 +168,7 @@ def delete_managed_school_logo(logo_url: str | None) -> None:
 
     parsed = urlparse(logo_url)
     candidate = Path(parsed.path).name
-    if not re.fullmatch(r"[a-f0-9]{32}\.(png|jpg|jpeg|svg)", candidate):
+    if not re.fullmatch(r"[a-f0-9]{32}\.(png|jpg|jpeg|webp|svg)", candidate):
         return
 
     storage_dir = Path(settings.school_logo_storage_dir).resolve()

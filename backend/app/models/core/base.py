@@ -13,6 +13,6 @@ class AppBase(DeclarativeBase):
 
 # Aliases for backward compatibility
 Base = AppBase
-AURA_NORM_SCHEMA = DB_SCHEMA
+NEXUS_NORM_SCHEMA = DB_SCHEMA
 
-__all__ = ["DB_SCHEMA", "AppBase", "Base", "AURA_NORM_SCHEMA"]
+__all__ = ["DB_SCHEMA", "AppBase", "Base", "NEXUS_NORM_SCHEMA"]

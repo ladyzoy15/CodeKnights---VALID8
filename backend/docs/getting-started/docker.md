@@ -47,7 +47,7 @@ That's it. Migrations, bootstrap, and all services start automatically in the co
 
 ```
 -------------------------------------------------------
-   AURA SYSTEM IS READY!
+   NEXUS SYSTEM IS READY!
 -------------------------------------------------------
 Frontend:        http://localhost:5173
 Backend API:     http://localhost:8001/docs

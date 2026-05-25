@@ -1,4 +1,4 @@
-﻿# Aura Navigation Map (Non-Developer)
+﻿# NEXUS Navigation Map (Non-Developer)
 
 <!--nav-->
 [Previous](../../README.md) | [Next](overview.md) | [Home](/README.md)
@@ -27,7 +27,7 @@ Common sections:
 - Attendance for an event: `/dashboard/schedule/:id/attendance`
 - Analytics: `/dashboard/analytics`
 - Sanctions (student view): `/dashboard/sanctions`
-- Aura chat: `/dashboard/chat`
+- NEXUS chat: `/dashboard/chat`
 - Gather mode:
   - Welcome: `/dashboard/gather`
   - Attendance capture: `/dashboard/gather/attendance`
@@ -50,7 +50,7 @@ This is typically where school-side operations happen:
   - Reports: `/workspace/schedule/reports`
   - Event details: `/workspace/schedule/:id`
 - Settings: `/workspace/settings`
-- Aura chat: `/workspace/chat`
+- NEXUS chat: `/workspace/chat`
 
 ## Admin Workspace (`/admin`)
 
@@ -62,7 +62,7 @@ Admin sections are permissioned, but typically include:
 - Oversight: `/admin/oversight`
 - Reports: `/admin/reports`
 - Profile: `/admin/profile`
-- Aura chat: `/admin/chat`
+- NEXUS chat: `/admin/chat`
 
 ## Governance Workspace (`/governance`)
 
@@ -79,7 +79,7 @@ Governance routes support governance/unit management and event operations:
   - Dashboard: `/governance/events/sanctions`
   - Students: `/governance/events/:eventId/sanctions/students`
   - Student detail: `/governance/events/:eventId/sanctions/students/:userId`
-- Aura chat: `/governance/chat`
+- NEXUS chat: `/governance/chat`
 - Gather mode:
   - Welcome: `/governance/gather`
   - Attendance capture: `/governance/gather/attendance`

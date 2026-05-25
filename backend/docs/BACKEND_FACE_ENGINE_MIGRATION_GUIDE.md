@@ -336,8 +336,8 @@ Environment note:
 Smoke-check production backend image requirements:
 
 ```powershell
-docker build -t aura-backend:latest -f Backend/Dockerfile.prod Backend
-docker run --rm aura-backend:latest python -c "import cv2, insightface; print('ok')"
+docker build -t nexus-backend:latest -f Backend/Dockerfile.prod Backend
+docker run --rm nexus-backend:latest python -c "import cv2, insightface; print('ok')"
 ```
 
 Run compile checks:

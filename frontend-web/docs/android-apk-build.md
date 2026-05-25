@@ -75,7 +75,7 @@ Runtime behavior:
 - Network state does not use an Android runtime permission prompt; it is checked via [`useNetworkStatus.js`](../src/composables/useNetworkStatus.js) and shown in the offline banner in [`App.vue`](../src/App.vue)
 - Storage permissions are intentionally not declared. APK exports write to the app cache through Capacitor Filesystem and then use Android Share/FileProvider, so broad `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, or `READ_MEDIA_*` access is not required.
 - Background location is intentionally not declared. Attendance geofencing runs only while the user is actively checking in/out.
-- Exact alarm permissions are intentionally not declared. Aura uses immediate local notifications for attendance and foreground/return-to-app event alerts instead of exact scheduled alarms.
+- Exact alarm permissions are intentionally not declared. NEXUS uses immediate local notifications for attendance and foreground/return-to-app event alerts instead of exact scheduled alarms.
 
 ## Native event notifications
 

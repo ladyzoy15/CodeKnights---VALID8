@@ -18,7 +18,7 @@ SSG (Supreme Student Government)          â€” 1 per school
         â””â”€â”€ ORG (Student Organization)    â€” 0â€“2 per SG
 ```
 
-This mirrors the real-world governance structure that Aura is designed to manage.
+This mirrors the real-world governance structure that NEXUS is designed to manage.
 
 ---
 

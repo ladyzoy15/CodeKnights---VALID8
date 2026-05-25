@@ -8,13 +8,13 @@ const CHANNELS = {
   [ATTENDANCE_CHANNEL_ID]: {
     id: ATTENDANCE_CHANNEL_ID,
     name: 'Attendance Updates',
-    description: 'Attendance confirmations from Aura.',
+    description: 'Attendance confirmations from NEXUS.',
     lightColor: '#0A84FF',
   },
   [EVENT_CHANNEL_ID]: {
     id: EVENT_CHANNEL_ID,
     name: 'Event Updates',
-    description: 'New and ongoing event alerts from Aura.',
+    description: 'New and ongoing event alerts from NEXUS.',
     lightColor: '#76FF03',
   },
 }

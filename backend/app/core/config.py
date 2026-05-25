@@ -389,7 +389,7 @@ def get_settings() -> Settings:
         ),
         email_timeout_seconds=APP_SETTINGS.email_timeout_seconds,
         email_sender_email=os.getenv("EMAIL_SENDER_EMAIL", "").strip(),
-        email_sender_name=os.getenv("EMAIL_SENDER_NAME", "Aura Notifications").strip(),
+        email_sender_name=os.getenv("EMAIL_SENDER_NAME", "NEXUS Notifications").strip(),
         email_reply_to=os.getenv("EMAIL_REPLY_TO", "").strip(),
         smtp_host=smtp_host,
         smtp_port=smtp_port,

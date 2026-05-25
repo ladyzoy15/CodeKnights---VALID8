@@ -20,8 +20,8 @@ where `N_s` is `SEED_N_SCHOOLS`. If you request more than 21 schools, the seeder
 
 Each school gets:
 - A `school_name` (the full name from the pool)
-- A `school_code` derived as the first 3 characters uppercased + `"U"` (e.g., `"Aura University"` â†’ `"AURU"`)
-- A `school_domain` derived by stripping non-alpha characters and appending `.edu.ph` (e.g., `"Aura University"` â†’ `"aurauniversity.edu.ph"`)
+- A `school_code` derived as the first 3 characters uppercased + `"U"` (e.g., `"NEXUS University"` â†’ `"AURU"`)
+- A `school_domain` derived by stripping non-alpha characters and appending `.edu.ph` (e.g., `"NEXUS University"` â†’ `"aurauniversity.edu.ph"`)
 - Default branding colors: primary `#162F65`, secondary `#2C5F9E`, accent `#4A90E2`
 
 ---

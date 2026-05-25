@@ -1,5 +1,5 @@
 export function resolveGoogleWebClientId() {
-    const runtime = typeof window !== 'undefined' ? window.__AURA_RUNTIME_CONFIG__ : null
+    const runtime = typeof window !== 'undefined' ? window.__NEXUS_RUNTIME_CONFIG__ : null
     const fromRuntime = runtime?.googleWebClientId
     if (fromRuntime && !fromRuntime.startsWith('${')) {
         return String(fromRuntime).trim()

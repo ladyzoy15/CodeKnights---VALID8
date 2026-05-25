@@ -184,7 +184,7 @@ async function loadData(url) {
   isLoading.value = true
   loadError.value = ''
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const access = await getGovernanceAccess(url, token)
     const governanceUnit = resolvePreferredGovernanceUnit(access, {
       requiredPermissionCode: 'manage_announcements',
@@ -238,7 +238,7 @@ async function handleSave() {
   if (isSaving.value || !draft.value.title.trim() || !draft.value.body.trim()) return
   isSaving.value = true
   formError.value = ''
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   const payload = { title: draft.value.title.trim(), body: draft.value.body.trim(), status: draft.value.status }
   try {
     if (editingId.value) {
@@ -261,7 +261,7 @@ async function handleDelete(ann) {
   }
 
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     await deleteGovernanceAnnouncement(apiBaseUrl.value, token, ann.id)
     await reload()
   } catch (e) { loadError.value = e?.message || 'Unable to delete.' }

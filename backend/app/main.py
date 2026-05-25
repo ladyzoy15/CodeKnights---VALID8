@@ -38,6 +38,7 @@ from app.routers import (
     public_attendance,
     health,
     sanctions,
+    excuse_letters,
 )
 
 logger = logging.getLogger(__name__)
@@ -163,6 +164,10 @@ app.include_router(health.router)
 app.include_router(health.router, prefix="/api/v1")
 
 include_api_router(sanctions.router)
+
+app.include_router(excuse_letters.router)
+app.include_router(excuse_letters.router, prefix="/api/v1")
+app.include_router(excuse_letters.router, prefix="/api")
 
 logo_storage_dir = Path(settings.school_logo_storage_dir)
 logo_storage_dir.mkdir(parents=True, exist_ok=True)

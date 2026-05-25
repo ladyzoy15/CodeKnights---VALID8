@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Aura Assistant v2 (MCP-Native)", lifespan=lifespan)
+app = FastAPI(title="NEXUS Assistant v2 (MCP-Native)", lifespan=lifespan)
 
 cors_allowed = get_cors_allowed_origins()
 app.add_middleware(
@@ -105,7 +105,7 @@ def _load_system_prompt() -> str:
     if os.path.exists(prompt_path):
         with open(prompt_path, "r", encoding="utf-8") as f:
             return f.read().strip()
-    return "You are Aura, a professional assistant for the VALID8 system."
+    return "You are NEXUS, a professional assistant for the VALID8 system."
 
 def _render_system_prompt(template: str, **kwargs) -> str:
     for key, value in kwargs.items():
@@ -515,7 +515,7 @@ async def assistant_stream(
                     if "visualize" in fname:
                         try:
                             res = json.loads(result_json)
-                            if res.get("__aura_visual__"):
+                            if res.get("__nexus_visual__"):
                                 final_visual = res
                                 await queue.put(_sse_event("visualization", {"conversation_id": conversation_id, "visual": res}))
                         except: pass

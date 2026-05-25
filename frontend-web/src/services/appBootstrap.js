@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-const CHUNK_RELOAD_TARGET_KEY = 'aura_chunk_reload_target'
+const CHUNK_RELOAD_TARGET_KEY = 'nexus_chunk_reload_target'
 let handlersInstalled = false
 
 export const appFatalErrorMessage = ref('')
@@ -11,11 +11,11 @@ function normalizeErrorMessage(error, context = '') {
     error?.reason?.message ||
     error?.reason ||
     (typeof error === 'string' ? error : '') ||
-    'Aura hit an unexpected startup error.'
+    'NEXUS hit an unexpected startup error.'
 
   const cleanedMessage = String(baseMessage || '').trim()
   if (!cleanedMessage) {
-    return context ? `Aura hit an unexpected startup error while ${context}.` : 'Aura hit an unexpected startup error.'
+    return context ? `NEXUS hit an unexpected startup error while ${context}.` : 'NEXUS hit an unexpected startup error.'
   }
 
   return context ? `${cleanedMessage} (${context})` : cleanedMessage
@@ -92,12 +92,12 @@ export function installAppErrorHandling(app, router) {
   }
 
   app.config.errorHandler = (error, instance, info) => {
-    console.error('Aura Vue error:', error, info, instance)
+    console.error('NEXUS Vue error:', error, info, instance)
     handleError(error, info, router?.currentRoute?.value?.fullPath || '')
   }
 
   router.onError((error, to) => {
-    console.error('Aura router error:', error)
+    console.error('NEXUS router error:', error)
     handleError(error, 'loading the next screen', to?.fullPath || '')
   })
 
@@ -108,12 +108,12 @@ export function installAppErrorHandling(app, router) {
 
   if (typeof window !== 'undefined') {
     window.addEventListener('error', (event) => {
-      console.error('Aura window error:', event.error || event.message)
+      console.error('NEXUS window error:', event.error || event.message)
       handleError(event.error || event.message, 'starting the app', window.location.pathname)
     })
 
     window.addEventListener('unhandledrejection', (event) => {
-      console.error('Aura unhandled rejection:', event.reason)
+      console.error('NEXUS unhandled rejection:', event.reason)
       handleError(event.reason, 'starting the app', router?.currentRoute?.value?.fullPath || window.location.pathname)
     })
   }

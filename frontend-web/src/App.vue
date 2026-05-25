@@ -24,7 +24,7 @@
 
     <section v-if="fatalErrorMessage" class="app-fatal-screen">
       <div class="app-fatal-card">
-        <h1 class="app-fatal-title">Aura needs a refresh</h1>
+        <h1 class="app-fatal-title">NEXUS needs a refresh</h1>
         <p class="app-fatal-message">{{ fatalErrorMessage }}</p>
         <div class="app-fatal-actions">
           <button type="button" class="app-fatal-btn app-fatal-btn--primary" @click="reloadApp">

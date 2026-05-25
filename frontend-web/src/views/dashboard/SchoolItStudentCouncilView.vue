@@ -632,7 +632,7 @@ async function loadCouncilState(resolvedApiBaseUrl) {
       return
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const setup = await getCampusSsgSetup(resolvedApiBaseUrl, token)
     if (requestId !== councilLoadRequestId) return
     setCampusSsgSetupSnapshot(setup)
@@ -681,7 +681,7 @@ async function fetchCandidateResults(query) {
   if (!apiBaseUrl.value) return
 
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const results = await searchGovernanceStudentCandidates(apiBaseUrl.value, token, {
       q: query || null,
       governance_unit_id: Number(currentCouncil.value?.id) || null,
@@ -810,7 +810,7 @@ async function handleCouncilSheetSubmit() {
         ...normalizeCouncilDraft(councilSheetDraft.value),
       }
     } else {
-      const token = localStorage.getItem('aura_token') || ''
+      const token = localStorage.getItem('nexus_token') || ''
       const response = await updateGovernanceUnit(
         apiBaseUrl.value,
         token,
@@ -850,7 +850,7 @@ async function handleCouncilSheetDelete() {
 
   try {
     if (!props.preview) {
-      const token = localStorage.getItem('aura_token') || ''
+      const token = localStorage.getItem('nexus_token') || ''
       const governanceUnitId = Number(currentCouncil.value?.id || sharedCampusSsgSetup.value?.unit?.id)
 
       if (!Number.isFinite(governanceUnitId)) {
@@ -944,7 +944,7 @@ function savePreviewMember(activeSelectedStudent) {
 }
 
 async function saveRemoteMember(activeSelectedStudent) {
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   const governanceUnitId = Number(currentCouncil.value?.id)
   if (!Number.isFinite(governanceUnitId)) {
     throw new BackendApiError('Student Council ID is missing, so the officer could not be saved.', {
@@ -1117,7 +1117,7 @@ async function performMemberDeletion(member, { closeOfficer = false } = {}) {
 
   try {
     if (!props.preview) {
-      const token = localStorage.getItem('aura_token') || ''
+      const token = localStorage.getItem('nexus_token') || ''
       await deleteGovernanceMember(apiBaseUrl.value, token, Number(member.id))
       const refreshedSetup = await waitForMemberDeletion(Number(member.userId), token)
       setCampusSsgSetupSnapshot(refreshedSetup)
@@ -1339,7 +1339,7 @@ async function saveCouncilRecord(draft) {
     }
   }
 
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   const response = await createGovernanceUnit(apiBaseUrl.value, token, buildGovernanceUnitPayload(normalizedDraft))
   return mapGovernanceUnitToCouncilRecord(response)
 }
@@ -1349,7 +1349,7 @@ async function saveInitialCouncilRecord(draft) {
     return await saveCouncilRecord(draft)
   }
 
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   const response = await updateGovernanceUnit(
     apiBaseUrl.value,
     token,

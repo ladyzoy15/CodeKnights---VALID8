@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Aura",
-  "short_name": "Aura",
-  "description": "Aura - Smart attendance and student governance platform",
+  "name": "NEXUS",
+  "short_name": "NEXUS",
+  "description": "NEXUS - Smart attendance and student governance platform",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

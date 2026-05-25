@@ -85,7 +85,7 @@ class SchoolUpdateForm(BaseModel):
 
 class AdminSchoolItCreateForm(BaseModel):
     school_name: str = Field(min_length=2, max_length=255)
-    primary_color: str = Field(pattern=HEX_COLOR_PATTERN)
+    primary_color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
     secondary_color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
     school_code: Optional[str] = Field(default=None, min_length=2, max_length=50)
 

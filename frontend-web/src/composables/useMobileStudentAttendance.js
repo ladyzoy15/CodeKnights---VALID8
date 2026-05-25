@@ -861,7 +861,7 @@ export function useMobileStudentAttendance(previewSource = false) {
       return null
     }
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     if (!token) {
       eventTimeStatus.value = null
       return null
@@ -1022,7 +1022,7 @@ export function useMobileStudentAttendance(previewSource = false) {
       return locationCheck.value
     }
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     if (!token) {
       throw new Error('Your session has expired. Please sign in again.')
     }
@@ -1141,7 +1141,7 @@ export function useMobileStudentAttendance(previewSource = false) {
       }
     }
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     if (!token) {
       throw new Error('Your session has expired. Please sign in again.')
     }

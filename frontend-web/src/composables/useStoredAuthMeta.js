@@ -9,7 +9,7 @@ export function useStoredAuthMeta() {
     }
 
     const handleStorage = (event) => {
-        if (!event || event.key === 'aura_auth_meta') {
+        if (!event || event.key === 'nexus_auth_meta') {
             syncAuthMeta()
         }
     }

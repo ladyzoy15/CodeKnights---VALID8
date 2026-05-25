@@ -3,108 +3,52 @@
     class="app-boot-loader"
     role="status"
     aria-live="polite"
-    aria-label="Loading Aura"
+    aria-label="Loading NEXUS"
   >
     <div class="app-boot-loader__viewport">
-      <DotLottieVue
-        ref="playerRef"
-        class="app-boot-loader__animation"
-        animation-id="Main Scene"
-        autoplay
-        loop
-        :src="splashAnimationUrl"
-      />
+      <div class="app-boot-loader__content">
+        <!-- Logo Wrapper with Glow -->
+        <div class="app-boot-loader__logo-wrapper">
+          <div class="app-boot-loader__glow"></div>
+          <img
+            src="/logos/nexus_logo_white.png"
+            alt="NEXUS Logo"
+            class="app-boot-loader__logo"
+          />
+          <!-- Premium Rotating Gradient Ring -->
+          <div class="app-boot-loader__ring"></div>
+        </div>
+
+        <!-- Sleek Loading Text -->
+        <div class="app-boot-loader__text-container">
+          <h1 class="app-boot-loader__brand">NEXUS</h1>
+          <p class="app-boot-loader__status">Initializing secure portal...</p>
+        </div>
+      </div>
     </div>
 
-    <span class="app-boot-loader__sr-only">Loading Aura</span>
+    <span class="app-boot-loader__sr-only">Loading NEXUS</span>
   </div>
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { DotLottieVue } from '@lottiefiles/dotlottie-vue'
-import splashAnimationUrl from '@/assets/animations/splash.lottie?url'
+import { onMounted, onBeforeUnmount } from 'vue'
 import { markBootSplashPlaybackReady } from '@/services/bootSplash.js'
 
-const playerRef = ref(null)
-const PLAYBACK_READY_FALLBACK_MS = 2500
-
-let dotLottieInstance = null
-let attachAttempts = 0
-let attachTimer = null
-let playbackReadyNotified = false
 let playbackReadyTimer = null
-
-function notifyPlaybackReady() {
-  if (playbackReadyNotified) {
-    return
-  }
-
-  playbackReadyNotified = true
-  if (playbackReadyTimer) {
-    window.clearTimeout(playbackReadyTimer)
-    playbackReadyTimer = null
-  }
-  markBootSplashPlaybackReady()
-}
-
-function handlePlayerReady() {
-  if (!dotLottieInstance) {
-    return
-  }
-
-  dotLottieInstance.setLoop(true)
-  dotLottieInstance.play()
-  notifyPlaybackReady()
-}
-
-function attachPlayerListeners() {
-  dotLottieInstance = playerRef.value?.getDotLottieInstance?.() ?? null
-
-  if (!dotLottieInstance) {
-    attachAttempts += 1
-    if (attachAttempts <= 20) {
-      attachTimer = window.setTimeout(attachPlayerListeners, 50)
-    }
-    return
-  }
-
-  dotLottieInstance.addEventListener('ready', handlePlayerReady)
-  dotLottieInstance.addEventListener('load', handlePlayerReady)
-  dotLottieInstance.addEventListener('play', notifyPlaybackReady)
-
-  if (dotLottieInstance.isLoaded) {
-    handlePlayerReady()
-  }
-}
+const PLAYBACK_READY_DELAY_MS = 300 // Small buffer to let the animation start smoothly before marking ready
 
 onMounted(() => {
   playbackReadyTimer = window.setTimeout(() => {
-    notifyPlaybackReady()
-  }, PLAYBACK_READY_FALLBACK_MS)
-
-  nextTick(() => {
-    attachPlayerListeners()
-  })
+    markBootSplashPlaybackReady()
+  }, PLAYBACK_READY_DELAY_MS)
 })
 
 onBeforeUnmount(() => {
-  if (attachTimer) {
-    window.clearTimeout(attachTimer)
-    attachTimer = null
-  }
   if (playbackReadyTimer) {
     window.clearTimeout(playbackReadyTimer)
     playbackReadyTimer = null
   }
-
-  if (!dotLottieInstance) {
-    return
-  }
-
-  dotLottieInstance.removeEventListener('ready', handlePlayerReady)
-  dotLottieInstance.removeEventListener('load', handlePlayerReady)
-  dotLottieInstance.removeEventListener('play', notifyPlaybackReady)
 })
 </script>
 
@@ -115,6 +59,8 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   background: #050505;
+  font-family: 'Manrope', sans-serif;
+  overflow: hidden;
 }
 
 .app-boot-loader__viewport {
@@ -125,10 +71,79 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
-.app-boot-loader__animation {
-  width: 100%;
-  height: 100%;
-  min-height: 100dvh;
+.app-boot-loader__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.app-boot-loader__logo-wrapper {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+}
+
+.app-boot-loader__logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  z-index: 2;
+  animation: logo-breathe 3s ease-in-out infinite;
+}
+
+.app-boot-loader__glow {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+  filter: blur(10px);
+  z-index: 1;
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.app-boot-loader__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 2.5px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.3) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+  animation: ring-spin 2s linear infinite;
+}
+
+.app-boot-loader__text-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.app-boot-loader__brand {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  color: #ffffff;
+  text-transform: uppercase;
+  text-indent: 0.25em; /* Perfectly centers tracking */
+  animation: text-fade 2.5s ease-in-out infinite alternate;
+}
+
+.app-boot-loader__status {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.02em;
 }
 
 .app-boot-loader__sr-only {
@@ -141,5 +156,45 @@ onBeforeUnmount(() => {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Animations */
+@keyframes logo-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+
+@keyframes ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes text-fade {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+  }
 }
 </style>

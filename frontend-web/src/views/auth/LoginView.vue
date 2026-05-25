@@ -1,52 +1,75 @@
 <template>
-  <div class="login-page min-h-dvh flex flex-col font-[Manrope] overflow-auto" style="background: var(--color-bg);">
+  <div class="login-page min-h-dvh flex flex-col font-[Manrope] mesh-gradient overflow-hidden relative">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+    </div>
+
     <!-- Main centered content -->
-    <div class="flex-1 flex flex-col items-center justify-center px-8 relative z-10">
-      <div class="w-full max-w-[340px] flex flex-col gap-6 login-form-area">
+    <div class="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
+      <div 
+        class="w-full max-w-[400px] glass-card rounded-[32px] p-8 md:p-10 flex flex-col gap-8 transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        :class="isMounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95'"
+      >
+        <!-- Logo & Brand -->
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-24 h-24 mb-4 flex items-center justify-center">
+            <img src="/logos/nexus_logo.png" alt="NEXUS Logo" class="w-full h-full object-contain relative z-10" />
+          </div>
+          <h1 class="text-3xl font-extrabold text-white tracking-tight mb-2 text-center">Welcome to NEXUS</h1>
+          <p class="text-white/40 text-[15px] font-medium">Institutional Operating System</p>
+        </div>
 
         <!-- Heading -->
-        <h1 
-          class="text-[22px] font-semibold leading-[1.4] tracking-[-0.3px] transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] relative"
-          style="color: var(--color-text-primary);"
-          :class="isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
-        >
-          Welcome to the portal. Log in to access your dashboard.
-        </h1>
+        <div class="text-center">
+          <h1 class="text-[20px] font-semibold leading-tight text-white/90">
+            Log In
+          </h1>
+          <p class="text-[14px] text-white/50 mt-2">
+            Enter your credentials to access the portal
+          </p>
+        </div>
 
         <!-- Form -->
         <form 
-          class="flex flex-col gap-3 transition-all duration-700 delay-100 ease-[cubic-bezier(0.22,1,0.36,1)] relative" 
-          :class="isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
+          class="flex flex-col gap-4" 
           @submit.prevent="handleLogin"
         >
           <!-- Email -->
-          <BaseInput
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="Gmail"
-            autocomplete="email"
-            tone="neutral"
-            :disabled="isLoading || googleLoading"
-          />
+          <div class="group relative">
+            <BaseInput
+              id="email"
+              v-model="email"
+              type="email"
+              placeholder="Email Address"
+              autocomplete="email"
+              tone="neutral"
+              class="premium-input"
+              :disabled="isLoading || googleLoading"
+            />
+          </div>
 
           <!-- Password -->
-          <BaseInput
-            id="password"
-            v-model="password"
-            type="password"
-            placeholder="Password"
-            autocomplete="current-password"
-            tone="neutral"
-            :disabled="isLoading || googleLoading"
-          />
+          <div class="group relative">
+            <BaseInput
+              id="password"
+              v-model="password"
+              type="password"
+              placeholder="Password"
+              autocomplete="current-password"
+              tone="neutral"
+              class="premium-input"
+              :disabled="isLoading || googleLoading"
+            />
+          </div>
 
           <!-- Forgot Password Link -->
           <div class="flex justify-end -mt-1">
             <a
               href="#"
-              class="text-[12px] font-medium transition-colors"
-              style="color: var(--color-text-secondary);"
+              class="text-[12px] font-medium text-white/40 hover:text-[var(--color-primary)] transition-colors"
               @click.prevent="goToForgotPassword"
             >
               Forgot password?
@@ -55,7 +78,7 @@
 
           <!-- Error message -->
           <Transition name="fade">
-            <p v-if="visibleMessage" class="text-red-500 text-xs text-center mt-1">
+            <p v-if="visibleMessage" class="text-red-400 text-xs text-center font-medium">
               {{ visibleMessage }}
             </p>
           </Transition>
@@ -64,78 +87,77 @@
           <BaseButton
             type="submit"
             variant="primary"
-            size="md"
-            class="mt-1 group"
+            size="lg"
+            class="mt-2 premium-login-btn"
             :loading="isLoading"
             :disabled="googleLoading"
           >
             Log In
           </BaseButton>
 
-          <!-- Google Sign-In below Log In -->
-          <div class="flex items-center gap-3 my-1" aria-hidden="true">
-            <div class="flex-1 h-px" style="background: var(--color-border, #2a2a2a);"></div>
-            <span class="text-[11px] uppercase tracking-wide" style="color: var(--color-text-secondary);">or</span>
-            <div class="flex-1 h-px" style="background: var(--color-border, #2a2a2a);"></div>
+          <!-- Google Sign-In -->
+          <div class="flex items-center gap-4 my-2" aria-hidden="true">
+            <div class="flex-1 h-px bg-white/10"></div>
+            <span class="text-[11px] uppercase tracking-[0.15em] text-white/30 font-bold">OR</span>
+            <div class="flex-1 h-px bg-white/10"></div>
           </div>
 
-          <GoogleSignInButton @credential="handleGoogleCredential" />
+          <div class="google-btn-wrapper">
+            <GoogleSignInButton @credential="handleGoogleCredential" />
+          </div>
         </form>
 
-        <!-- Powered by Aura -->
-        <div 
-          class="flex flex-col items-center justify-center gap-3 mt-1 transition-all duration-700 delay-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          :class="isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
-        >
+        <!-- PWA Install -->
+        <Transition name="fade">
           <div
             v-if="showPwaInstallCta"
-            class="w-full rounded-[24px] border px-4 py-4 text-center"
-            style="border-color: var(--color-border, rgba(255,255,255,0.12)); background: color-mix(in srgb, var(--color-surface) 92%, transparent);"
+            class="pwa-card rounded-2xl p-4 border border-white/5 bg-white/[0.02] flex flex-col gap-3"
           >
-            <p class="text-[12px] font-medium" style="color: var(--color-text-primary);">
-              {{ pwaInstallButtonLabel }}
-            </p>
-            <p class="mt-1 text-[11px] leading-5" style="color: var(--color-text-secondary);">
-              {{ pwaInstallHelpText }}
-            </p>
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-[var(--color-primary)]/20 flex items-center justify-center text-[var(--color-primary)]">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 15V19C21 19.5304 20.7893 20.4142 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M7 10L12 15L17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <p class="text-[12px] font-bold text-white/90">{{ pwaInstallButtonLabel }}</p>
+                <p class="text-[10px] text-white/40 leading-tight mt-0.5">{{ pwaInstallHelpText }}</p>
+              </div>
+            </div>
             <BaseButton
               v-if="canPromptPwaInstall"
               type="button"
               variant="secondary"
-              size="md"
-              class="mt-3 w-full"
-              :disabled="isLoading || googleLoading"
+              size="sm"
+              class="w-full glass-secondary-btn"
               @click="handlePwaInstall"
             >
-              Install Aura
+              Install NEXUS App
             </BaseButton>
-            <p v-else-if="pwaInstallError" class="mt-2 text-[11px] text-red-500">
-              {{ pwaInstallError }}
-            </p>
           </div>
+        </Transition>
+      </div>
 
-          <div class="flex items-center justify-center gap-2">
-            <img
-              :src="surfaceAuraLogo"
-              alt="Aura"
-              class="h-8 w-auto object-contain"
-            />
-            <span class="text-[13px] font-medium tracking-tight" style="color: var(--color-text-primary);">
-              Powered by Aura Ai
-            </span>
-          </div>
-          
-          <a
-            href="https://aura-landing-page-iota.vercel.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-[12px] font-medium transition-colors"
-            style="color: var(--color-text-secondary);"
-          >
-            Learn more about Aura Project
-          </a>
+      <!-- Footer Info -->
+      <div 
+        class="mt-8 flex flex-col items-center gap-4 transition-all duration-1000 delay-300"
+        :class="isMounted ? 'opacity-100' : 'opacity-0'"
+      >
+        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/[0.05]">
+          <span class="text-[11px] font-bold tracking-[0.05em] text-white/30 uppercase">Powered by</span>
+          <span class="text-[11px] font-bold text-[var(--color-primary)] uppercase">NEXUS v1.0</span>
         </div>
-
+        
+        <a
+          href="https://nexus-landing-page-iota.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-[12px] font-semibold text-white/40 hover:text-white transition-colors"
+        >
+          Explore NEXUS Platform
+        </a>
       </div>
     </div>
 
@@ -239,7 +261,7 @@ async function handleGoogleCredential(credential) {
 
 function handleAgree() {
   showTermsModal.value = false
-  localStorage.setItem('aura_terms_agreed', 'true')
+  localStorage.setItem('nexus_terms_agreed', 'true')
   if (nextRoute.value) {
     router.push(nextRoute.value)
   }
@@ -257,6 +279,96 @@ function goToForgotPassword() {
 </script>
 
 <style scoped>
+/* Logo style updated to preserve texture */
+
+.login-page {
+  --color-primary: #AAFF00;
+  --color-primary-glow: rgba(170, 255, 0, 0.4);
+}
+
+/* Background Blobs */
+.blob {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--color-primary-glow) 0%, transparent 70%);
+  filter: blur(80px);
+  opacity: 0.15;
+  z-index: 1;
+}
+
+.blob-1 { top: -10%; left: -10%; animation: float 20s infinite alternate; }
+.blob-2 { bottom: -10%; right: -10%; animation: float 25s infinite alternate-reverse; }
+.blob-3 { top: 40%; left: 30%; width: 300px; height: 300px; opacity: 0.1; animation: float 15s infinite ease-in-out; }
+
+@keyframes float {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(100px, 50px) rotate(30deg); }
+}
+
+/* Premium Component Overrides */
+.premium-input :deep(.base-input) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+}
+
+.premium-input :deep(.base-input:focus) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 20px var(--color-primary-glow) !important;
+}
+
+.premium-input :deep(.base-input::placeholder) {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.premium-login-btn {
+  background: var(--color-primary) !important;
+  color: #050505 !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px -10px var(--color-primary-glow) !important;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.premium-login-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 15px 40px -10px var(--color-primary-glow) !important;
+  filter: brightness(1.1) !important;
+}
+
+.premium-login-btn:active {
+  transform: scale(0.98) !important;
+}
+
+.google-btn-wrapper :deep(button) {
+  height: 56px !important;
+  border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  transition: all 0.2s ease !important;
+}
+
+.google-btn-wrapper :deep(button:hover) {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.glass-secondary-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  border-radius: 12px !important;
+}
+
+.glass-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -266,13 +378,14 @@ function goToForgotPassword() {
   opacity: 0;
 }
 
-/* Ensure form area scrolls above keyboard on mobile */
-.login-form-area {
-  padding-bottom: env(safe-area-inset-bottom, 16px);
-}
-
-/* When keyboard is open (viewport shrinks), allow scrolling */
-.login-page {
-  -webkit-overflow-scrolling: touch;
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .glass-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    padding: 0;
+  }
 }
 </style>

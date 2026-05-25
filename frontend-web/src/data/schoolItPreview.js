@@ -1,4 +1,4 @@
-const defaultSchoolLogo = '/logos/aura.png'
+const defaultSchoolLogo = '/logos/nexus.png'
 import {
   normalizeDepartment,
   normalizeEvent,
@@ -60,7 +60,7 @@ function buildPreviewUsers() {
   return [
     {
       id: 999101,
-      email: 'student.one@aura.local',
+      email: 'student.one@nexus.local',
       first_name: 'Aly',
       last_name: 'Domingo',
       school_id: PREVIEW_SCHOOL_ID,
@@ -81,7 +81,7 @@ function buildPreviewUsers() {
     },
     {
       id: 999102,
-      email: 'student.two@aura.local',
+      email: 'student.two@nexus.local',
       first_name: 'Mika',
       last_name: 'Velasco',
       school_id: PREVIEW_SCHOOL_ID,
@@ -102,7 +102,7 @@ function buildPreviewUsers() {
     },
     {
       id: 999103,
-      email: 'student.three@aura.local',
+      email: 'student.three@nexus.local',
       first_name: 'Jade',
       last_name: 'Morales',
       school_id: PREVIEW_SCHOOL_ID,
@@ -123,7 +123,7 @@ function buildPreviewUsers() {
     },
     {
       id: 999104,
-      email: 'student.four@aura.local',
+      email: 'student.four@nexus.local',
       first_name: 'Kyle',
       last_name: 'Santos',
       school_id: PREVIEW_SCHOOL_ID,
@@ -144,7 +144,7 @@ function buildPreviewUsers() {
     },
     {
       id: 999105,
-      email: 'student.five@aura.local',
+      email: 'student.five@nexus.local',
       first_name: 'Paolo',
       last_name: 'Ramos',
       school_id: PREVIEW_SCHOOL_ID,
@@ -207,7 +207,7 @@ function createRawPreviewPayload() {
   return {
     user: {
       id: 999001,
-      email: 'schoolit.preview@aura.local',
+      email: 'schoolit.preview@nexus.local',
       first_name: 'School IT',
       middle_name: null,
       last_name: 'Preview',

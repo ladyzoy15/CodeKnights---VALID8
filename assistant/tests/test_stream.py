@@ -113,12 +113,12 @@ def test_stream_daily_quota_exceeded(client, auth_headers):
     today = datetime.datetime.now(datetime.timezone.utc).date()
     # admin limit is 500 — insert a row already at the limit
     existing = db.query(DailyUsage).filter_by(
-        user_id="test@aura.local", user_role="admin", usage_date=today
+        user_id="test@nexus.local", user_role="admin", usage_date=today
     ).first()
     if existing:
         existing.message_count = 500
     else:
-        db.add(DailyUsage(user_id="test@aura.local", user_role="admin", usage_date=today, message_count=500))
+        db.add(DailyUsage(user_id="test@nexus.local", user_role="admin", usage_date=today, message_count=500))
     db.commit()
     db.close()
 

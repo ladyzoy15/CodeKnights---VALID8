@@ -1,4 +1,4 @@
-﻿# ðŸ” Aura Security Hardening Guide
+﻿# ðŸ” NEXUS Security Hardening Guide
 
 <!--nav-->
 [Previous](runtime-behavior.md) | [Next](TESTING.md) | [Home](/README.md)
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document outlines the security measures implemented in Aura and provides guidance for secure deployment and operation.
+This document outlines the security measures implemented in NEXUS and provides guidance for secure deployment and operation.
 
 ## Security Architecture
 
@@ -109,7 +109,7 @@ TRUSTED_HOSTS=*
 openssl rand -base64 32
 
 # Use in DATABASE_URL
-DATABASE_URL=postgresql://aura_user:STRONG_PASSWORD@db:5432/aura_production
+DATABASE_URL=postgresql://nexus_user:STRONG_PASSWORD@db:5432/nexus_production
 ```
 
 #### Data Isolation

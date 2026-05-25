@@ -39,7 +39,7 @@ onErrorCaptured((error, instance, info) => {
 
   const componentName = instance?.type?.__name || instance?.type?.name || 'unknown component'
   const message = normalizeErrorMessage(error)
-  console.error('Aura route render error', {
+  console.error('NEXUS route render error', {
     component: componentName,
     message,
     info: String(info || ''),

@@ -5,7 +5,7 @@
 # =============================================================================
 
 # Platform admin account to create/preserve
-SEED_ADMIN_EMAIL: str = "admin@aura.com"
+SEED_ADMIN_EMAIL: str = "admin@nexus.com"
 SEED_ADMIN_PASSWORD: str = "AdminPass123!"
 
 # Set to True to actually run the seeder (safety gate)

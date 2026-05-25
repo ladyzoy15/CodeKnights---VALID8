@@ -46,6 +46,7 @@ const SgMembersView = dashboardView('SgMembersView')
 const SgCreateUnitView = dashboardView('SgCreateUnitView')
 const GatherWelcomeView = dashboardView('GatherWelcomeView')
 const GatherAttendanceView = dashboardView('GatherAttendanceView')
+const ExcuseLettersDashboard = dashboardView('ExcuseLettersDashboard')
 
 const schoolItRoutePreloads = [
     'dashboard/SchoolItHomeView',
@@ -603,6 +604,11 @@ const routes = [
                 redirect: { name: 'SgEvents' },
             },
             {
+                path: 'excuse-letters',
+                name: 'SgExcuseLetters',
+                component: ExcuseLettersDashboard,
+            },
+            {
                 path: 'create-unit',
                 name: 'SgCreateUnit',
                 component: SgCreateUnitView,
@@ -675,6 +681,12 @@ const routes = [
             {
                 path: 'attendance',
                 redirect: { name: 'PreviewSgEvents' },
+            },
+            {
+                path: 'excuse-letters',
+                name: 'PreviewSgExcuseLetters',
+                component: ExcuseLettersDashboard,
+                props: { preview: true },
             },
             {
                 path: 'create-unit',

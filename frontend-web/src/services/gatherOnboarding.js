@@ -1,4 +1,4 @@
-const GATHER_ONBOARDING_SEEN_KEY = 'aura_gather_onboarding_seen_v1'
+const GATHER_ONBOARDING_SEEN_KEY = 'nexus_gather_onboarding_seen_v1'
 
 function getStorage() {
   if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {

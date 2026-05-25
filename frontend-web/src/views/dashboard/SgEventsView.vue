@@ -427,11 +427,11 @@ const governanceUnitId = ref(null)
 const governanceContext = ref('')
 const governanceUnitDetailCache = new Map()
 
-const GOVERNANCE_EVENT_UNIT_ID_STORAGE_KEY = 'aura_cached_governance_unit_id'
-const GOVERNANCE_EVENT_CONTEXT_STORAGE_KEY = 'aura_cached_governance_context'
-const GOVERNANCE_EVENT_USER_ID_STORAGE_KEY = 'aura_cached_governance_user_id'
-const GOVERNANCE_EVENT_SESSION_ID_STORAGE_KEY = 'aura_cached_governance_session_id'
-const LEGACY_SSG_UNIT_ID_STORAGE_KEY = 'aura_cached_ssg_unit_id'
+const GOVERNANCE_EVENT_UNIT_ID_STORAGE_KEY = 'nexus_cached_governance_unit_id'
+const GOVERNANCE_EVENT_CONTEXT_STORAGE_KEY = 'nexus_cached_governance_context'
+const GOVERNANCE_EVENT_USER_ID_STORAGE_KEY = 'nexus_cached_governance_user_id'
+const GOVERNANCE_EVENT_SESSION_ID_STORAGE_KEY = 'nexus_cached_governance_session_id'
+const LEGACY_SSG_UNIT_ID_STORAGE_KEY = 'nexus_cached_ssg_unit_id'
 
 const isLoading = ref(true)
 const loadError = ref('')

@@ -84,10 +84,10 @@ class BackendAppSettings:
     default_school_secondary_color: str = "#2C5F9E"
     default_subscription_status: str = "trial"
     default_subscription_plan: str = "free"
-    default_admin_email: str = "admin@aura.com"
+    default_admin_email: str = "admin@nexus.com"
     default_admin_password: str = ""
 
-    demo_seed_email_domain: str = "demo.aura.dev"
+    demo_seed_email_domain: str = "demo.nexus.dev"
     demo_seed_schools: int = 5
     demo_seed_users: int = 100
     demo_massive_students: int = 5000

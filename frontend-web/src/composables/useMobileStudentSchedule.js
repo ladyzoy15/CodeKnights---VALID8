@@ -443,7 +443,7 @@ export function useMobileStudentSchedule(previewSource = false) {
       return
     }
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     if (!token) {
       eventTimeStatuses.value = {}
       return

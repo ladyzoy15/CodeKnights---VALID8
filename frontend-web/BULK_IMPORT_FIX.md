@@ -52,7 +52,7 @@ After rebuilding the APK with these changes:
 ## Rebuild Instructions
 
 ```bash
-cd "d:\Aura - Frontend\aura-frontend\frontend"
+cd "d:\NEXUS - Frontend\nexus-frontend\frontend"
 npm run build
 npx cap sync android
 npx cap open android

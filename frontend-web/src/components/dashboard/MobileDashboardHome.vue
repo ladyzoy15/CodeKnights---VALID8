@@ -80,12 +80,12 @@
             v-show="!searchActive"
             class="mobile-dashboard__ai-pill"
             type="button"
-            aria-label="Talk to Aura AI"
+            aria-label="Talk to NEXUS AI"
             :aria-expanded="isAiOpen ? 'true' : 'false'"
             @click="toggleAi"
           >
-            <img :src="secondaryAuraLogo" alt="Aura" class="mobile-dashboard__ai-logo">
-            <span class="mobile-dashboard__ai-copy">Talk to<br>Aura Ai</span>
+            <img :src="secondaryAuraLogo" alt="NEXUS" class="mobile-dashboard__ai-logo">
+            <span class="mobile-dashboard__ai-copy">Talk to<br>NEXUS Ai</span>
           </button>
         </div>
 
@@ -106,7 +106,7 @@
                 ref="mobileInputEl"
                 v-model="inputText"
                 type="text"
-                placeholder="Ask Aura..."
+                placeholder="Ask NEXUS..."
                 class="mobile-dashboard__ai-field"
                 :disabled="isTyping"
                 @keyup.enter="sendMessage"
@@ -159,7 +159,7 @@
 
           <section class="mobile-dashboard__overview mobile-dashboard__panel-card mobile-dashboard__panel-card--overview">
             <div class="mobile-dashboard__overview-head">
-              <img :src="surfaceAuraLogo" alt="Aura" class="mobile-dashboard__overview-logo">
+              <img :src="surfaceAuraLogo" alt="NEXUS" class="mobile-dashboard__overview-logo">
               <h2 class="mobile-dashboard__overview-title">{{ aiOverview.title }}</h2>
             </div>
             <p class="mobile-dashboard__overview-copy">{{ aiOverview.message }}</p>

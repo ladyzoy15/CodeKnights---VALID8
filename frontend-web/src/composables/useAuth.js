@@ -44,7 +44,7 @@ function resolveFallbackRoute(authMeta = null) {
     }
 
     try {
-        const storedRoles = JSON.parse(localStorage.getItem('aura_user_roles') || '[]')
+        const storedRoles = JSON.parse(localStorage.getItem('nexus_user_roles') || '[]')
         return resolveRouteFromRoles(storedRoles)
     } catch {
         return resolveRouteFromRoles([])
@@ -82,8 +82,8 @@ export function useAuth() {
                 throw new Error('The API did not return an access token.')
             }
 
-            localStorage.setItem('aura_token', accessToken)
-            localStorage.setItem('aura_user_roles', JSON.stringify(tokenPayload?.roles ?? []))
+            localStorage.setItem('nexus_token', accessToken)
+            localStorage.setItem('nexus_user_roles', JSON.stringify(tokenPayload?.roles ?? []))
             const authMeta = storeAuthMeta(tokenPayload)
             markCurrentRuntimeSession()
             const persistedToken = sanitizeToken(readStoredSessionToken())

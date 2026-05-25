@@ -186,7 +186,7 @@ npm run dev
 
 | Role | Email | Password |
 |---|---|---|
-| Platform Admin | `admin@aura.com` | `AdminPass123!` |
+| Platform Admin | `admin@nexus.com` | `AdminPass123!` |
 
 ---
 

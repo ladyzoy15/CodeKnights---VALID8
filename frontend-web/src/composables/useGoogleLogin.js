@@ -38,8 +38,8 @@ export function useGoogleLogin() {
             const accessToken = tokenPayload?.access_token
             if (!accessToken) throw new Error('The API did not return an access token.')
 
-            localStorage.setItem('aura_token', accessToken)
-            localStorage.setItem('aura_user_roles', JSON.stringify(tokenPayload?.roles ?? []))
+            localStorage.setItem('nexus_token', accessToken)
+            localStorage.setItem('nexus_user_roles', JSON.stringify(tokenPayload?.roles ?? []))
             const authMeta = storeAuthMeta(tokenPayload)
             markCurrentRuntimeSession()
 

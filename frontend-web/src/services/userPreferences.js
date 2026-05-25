@@ -1,4 +1,4 @@
-const FONT_SIZE_STORAGE_KEY = 'aura_font_size'
+const FONT_SIZE_STORAGE_KEY = 'nexus_font_size'
 
 export const FONT_SIZE_MIN = 80
 export const FONT_SIZE_MAX = 130
@@ -43,8 +43,8 @@ export function applyFontSizePreference(value) {
   const baseSize = 16 * (normalizedValue / 100)
 
   root.style.zoom = ''
-  root.style.setProperty('--aura-font-base', `${baseSize}px`)
-  root.style.setProperty('--aura-text-size-adjust', `${normalizedValue}%`)
+  root.style.setProperty('--nexus-font-base', `${baseSize}px`)
+  root.style.setProperty('--nexus-text-size-adjust', `${normalizedValue}%`)
 
   return normalizedValue
 }

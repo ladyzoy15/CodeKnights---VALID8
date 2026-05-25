@@ -60,3 +60,6 @@ GITHUB/
 
 # SSH keys
 *.pem
+
+# Credentials / secrets
+*_credentials.csv

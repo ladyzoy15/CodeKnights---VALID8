@@ -1,5 +1,5 @@
 # =============================================================================
-# Aura — Single Compose File
+# NEXUS — Single Compose File
 # Usage:
 #   Development:  docker compose --profile dev up --build
 #   Production:   docker compose --profile prod up --build
@@ -22,12 +22,12 @@ services:
   postgres:
     build:
       context: ./database
-    image: aura-postgres:latest
+    image: nexus-postgres:latest
     restart: unless-stopped
     env_file:
       - ./database/.env
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -48,11 +48,11 @@ services:
 
   migrate:
     build:
-      context: ./Backend
-    image: aura-backend:${APP_ENV:-dev}
+      context: ./backend
+    image: nexus-backend:${APP_ENV:-dev}
     command: alembic upgrade heads
     env_file:
-      - ./Backend/.env
+      - ./backend/.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,11 +61,11 @@ services:
 
   bootstrap:
     build:
-      context: ./Backend
-    image: aura-backend:${APP_ENV:-dev}
+      context: ./backend
+    image: nexus-backend:${APP_ENV:-dev}
     command: python bootstrap.py
     env_file:
-      - ./Backend/.env
+      - ./backend/.env
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -76,7 +76,7 @@ services:
     build:
       context: .
       dockerfile: ./seeder/Dockerfile
-    image: aura-seeder:${APP_ENV:-dev}
+    image: nexus-seeder:${APP_ENV:-dev}
     env_file:
       - ./seeder/.env
     depends_on:
@@ -91,12 +91,12 @@ services:
 
   backend:
     build:
-      context: ./Backend
-    image: aura-backend:${APP_ENV:-dev}
+      context: ./backend
+    image: nexus-backend:${APP_ENV:-dev}
     ports:
       - "8001:8000"
     env_file:
-      - ./Backend/.env
+      - ./backend/.env
     volumes: *backend-volumes
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
@@ -116,11 +116,11 @@ services:
 
   worker:
     build:
-      context: ./Backend
-    image: aura-backend:${APP_ENV:-dev}
+      context: ./backend
+    image: nexus-backend:${APP_ENV:-dev}
     command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=4
     env_file:
-      - ./Backend/.env
+      - ./backend/.env
     volumes: *backend-volumes
     restart: unless-stopped
     depends_on:
@@ -134,11 +134,11 @@ services:
 
   beat:
     build:
-      context: ./Backend
-    image: aura-backend:${APP_ENV:-dev}
+      context: ./backend
+    image: nexus-backend:${APP_ENV:-dev}
     command: celery -A app.workers.celery_app.celery_app beat --loglevel=info
     env_file:
-      - ./Backend/.env
+      - ./backend/.env
     restart: unless-stopped
     depends_on:
       postgres:
@@ -151,7 +151,7 @@ services:
 
   assistant:
     build: ./assistant
-    image: aura-assistant:${APP_ENV:-dev}
+    image: nexus-assistant:${APP_ENV:-dev}
     ports:
       - "8500:8500"
     env_file:
@@ -165,7 +165,7 @@ services:
   frontend:
     build:
       context: ./frontend-web
-    image: aura-frontend:${APP_ENV:-dev}
+    image: nexus-frontend:${APP_ENV:-dev}
     ports:
       - "5173:80"
     env_file:
@@ -196,10 +196,10 @@ services:
 
   log-viewer:
     build: ./docker-log-viewer
-    image: aura-log-viewer:latest
+    image: nexus-log-viewer:latest
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8081:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     profiles: ["dev"]

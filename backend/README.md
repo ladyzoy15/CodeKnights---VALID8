@@ -6,7 +6,7 @@
 ---
 <!--/nav-->
 
-FastAPI backend for Aura. Handles authentication, attendance, events, governance, sanctions, reports, bulk import, and face recognition.
+FastAPI backend for NEXUS. Handles authentication, attendance, events, governance, sanctions, reports, bulk import, and face recognition.
 
 ## Stack
 

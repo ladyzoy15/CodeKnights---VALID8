@@ -18,7 +18,7 @@ import { resolveBackendMediaUrl } from '@/services/backendMedia.js'
 import { getStoredAuthMeta, patchStoredAuthMeta } from '@/services/localAuth.js'
 import { clearStoredSessionArtifacts, hasStoredSessionToken, readStoredSessionToken } from '@/services/sessionPersistence.js'
 
-const DASHBOARD_CACHE_KEY = 'aura_dashboard_cache_v1'
+const DASHBOARD_CACHE_KEY = 'nexus_dashboard_cache_v1'
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000
 const configuredCacheTtl = Number(import.meta.env.VITE_DASHBOARD_CACHE_TTL_MS)
 const DASHBOARD_CACHE_TTL_MS = Number.isFinite(configuredCacheTtl) && configuredCacheTtl > 0
@@ -349,9 +349,9 @@ function buildFallbackSchoolSettings(authMeta = getStoredAuthMeta()) {
 function setToken(token) {
     state.token = String(token || '')
     if (state.token) {
-        localStorage.setItem('aura_token', state.token)
+        localStorage.setItem('nexus_token', state.token)
     } else {
-        localStorage.removeItem('aura_token')
+        localStorage.removeItem('nexus_token')
     }
 }
 
@@ -433,7 +433,7 @@ async function fetchDashboardData() {
         applyActiveTheme()
         persistDashboardSnapshot()
         if (usingFallbackUser) {
-            state.error = 'Some backend profile endpoints are failing, so Aura is using a limited session fallback.'
+            state.error = 'Some backend profile endpoints are failing, so NEXUS is using a limited session fallback.'
         }
 
         return state
@@ -455,7 +455,7 @@ async function fetchDashboardData() {
             syncUserFaceState()
             applyActiveTheme()
             persistDashboardSnapshot()
-            state.error = 'Some backend endpoints are failing, so Aura is using a limited fallback session.'
+            state.error = 'Some backend endpoints are failing, so NEXUS is using a limited fallback session.'
             return state
         }
 

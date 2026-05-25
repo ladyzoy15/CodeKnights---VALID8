@@ -688,7 +688,7 @@ async function loadUnit(url) {
 
   isLoading.value = true
   loadError.value = ''
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
 
   try {
     if (!token) {
@@ -843,7 +843,7 @@ async function searchCandidates(query) {
   if (!apiBaseUrl.value || !governanceUnitId.value) return
 
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const results = await searchGovernanceStudentCandidates(apiBaseUrl.value, token, {
       q: query || null,
       governance_unit_id: governanceUnitId.value,
@@ -891,7 +891,7 @@ async function handleSubmit() {
   }
 
   isSaving.value = true
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   if (!governanceUnitId.value) {
     loadError.value = 'Select a valid governance unit before saving members.'
     isSaving.value = false
@@ -933,7 +933,7 @@ async function handleDelete() {
   isDeleting.value = true
 
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     await deleteGovernanceMember(apiBaseUrl.value, token, editingMemberId.value)
     closeSheet()
     await reload()
@@ -955,7 +955,7 @@ async function handleDeleteDetail() {
   isDeleting.value = true
 
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     await deleteGovernanceMember(apiBaseUrl.value, token, detailMember.value.id)
     closeDetail()
     await reload()

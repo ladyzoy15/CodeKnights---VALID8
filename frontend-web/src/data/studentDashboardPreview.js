@@ -18,7 +18,7 @@ function buildRelativeIso({ days = 0, hours = 0, minutes = 0 }) {
 export const studentDashboardPreviewData = {
   user: normalizeUserWithRelations({
     id: 199901,
-    email: 'student.preview@aura.local',
+    email: 'student.preview@nexus.local',
     first_name: 'User',
     last_name: 'Preview',
     school_id: PREVIEW_SCHOOL_ID,
@@ -41,7 +41,7 @@ export const studentDashboardPreviewData = {
     school_id: PREVIEW_SCHOOL_ID,
     school_name: 'University Name',
     school_code: 'UNI',
-    logo_url: '/logos/aura.png',
+    logo_url: '/logos/nexus.png',
     primary_color: '#AAFF00',
     secondary_color: '#64748B',
     accent_color: '#0A0A0A',

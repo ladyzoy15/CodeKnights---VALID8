@@ -299,7 +299,7 @@ onBeforeUnmount(() => {
 async function ensurePendingPrivilegedFace() {
   refreshAuthMeta()
 
-  if (!localStorage.getItem('aura_token')) {
+  if (!localStorage.getItem('nexus_token')) {
     router.replace({ name: 'Login' })
     return
   }
@@ -317,7 +317,7 @@ async function loadFaceStatus() {
   statusMessage.value = 'Checking face verification status...'
 
   try {
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     const nextStatus = await getFaceStatus(apiBaseUrl.value, token)
     faceStatus.value = nextStatus
 
@@ -591,7 +591,7 @@ async function captureAndSubmit() {
 
     stopCamera()
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
 
     if (mode.value === 'register') {
       try {
@@ -635,7 +635,7 @@ async function captureAndSubmit() {
       throw new Error('Face verified, but the backend did not return a full-access token.')
     }
 
-    localStorage.setItem('aura_token', verification.access_token)
+    localStorage.setItem('nexus_token', verification.access_token)
     markCurrentRuntimeSession()
 
     patchStoredAuthMeta({

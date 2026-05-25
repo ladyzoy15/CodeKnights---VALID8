@@ -46,7 +46,12 @@ from app.services.password_change_policy import (
     should_prompt_password_change_for_new_account,
     should_prompt_password_change_for_temporary_reset,
 )
-from app.services.logo_storage_service import delete_managed_school_logo, store_school_logo
+from app.services.logo_storage_service import (
+    delete_managed_school_logo,
+    extract_dominant_colors_from_bytes,
+    store_school_logo,
+    store_school_logo_bytes,
+)
 from app.utils.passwords import generate_secure_password
 
 router = APIRouter(prefix="/api/school", tags=["school"])
@@ -274,7 +279,7 @@ async def create_school(
 @router.post("/admin/create-school-it", response_model=AdminSchoolItCreateResponse)
 async def admin_create_school_with_school_it(
     school_name: str = Form(...),
-    primary_color: str = Form(...),
+    primary_color: Optional[str] = Form(default=None),
     secondary_color: Optional[str] = Form(default=None),
     school_code: Optional[str] = Form(default=None),
     school_it_email: str = Form(...),
@@ -286,11 +291,29 @@ async def admin_create_school_with_school_it(
     current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
+    logo_bytes: bytes | None = None
+    logo_filename: str | None = None
+
+    if logo is not None:
+        logo_bytes = await logo.read()
+        logo_filename = (logo.filename or "").strip()
+
+    extracted_primary: str | None = None
+    extracted_secondary: str | None = None
+    if logo_bytes:
+        is_svg = logo_filename and logo_filename.lower().endswith(".svg")
+        extracted_primary, extracted_secondary = extract_dominant_colors_from_bytes(
+            logo_bytes, is_svg=is_svg
+        )
+
+    used_primary = primary_color or extracted_primary
+    used_secondary = secondary_color or extracted_secondary
+
     try:
         payload = AdminSchoolItCreateForm(
             school_name=school_name,
-            primary_color=primary_color,
-            secondary_color=_normalize_optional(secondary_color),
+            primary_color=used_primary,
+            secondary_color=used_secondary,
             school_code=_normalize_optional(school_code),
             school_it_email=school_it_email.strip().lower(),
             school_it_first_name=school_it_first_name,
@@ -322,8 +345,8 @@ async def admin_create_school_with_school_it(
         issued_password = generated_temporary_password
 
     logo_url = None
-    if logo is not None:
-        logo_url = await store_school_logo(logo)
+    if logo_bytes:
+        logo_url = store_school_logo_bytes(logo_bytes, logo_filename)
 
     school = School(
         name=payload.school_name,
@@ -332,7 +355,7 @@ async def admin_create_school_with_school_it(
         address=f"{payload.school_name} Address",
         logo_url=logo_url,
         primary_color=payload.primary_color,
-        secondary_color=payload.secondary_color,
+        secondary_color=payload.secondary_color or payload.primary_color,
         subscription_status="trial",
         active_status=True,
         subscription_plan="free",

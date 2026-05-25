@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo   Aura Docker Deployment
+echo   NEXUS Docker Deployment
 echo ========================================
 echo.
 

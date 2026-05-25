@@ -610,7 +610,7 @@ async function fetchEvents(page = 1) {
   }
 
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const response = await getEventsPage(apiBaseUrl.value || resolveApiBaseUrl(), token, {
       page,
       limit: pageLimit.value
@@ -725,7 +725,7 @@ async function getEventReportBundle(event) {
 }
 
 async function fetchLiveEventBundle(eventId) {
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   const resolvedBaseUrl = apiBaseUrl.value || resolveApiBaseUrl()
 
   const [report, records] = await Promise.all([

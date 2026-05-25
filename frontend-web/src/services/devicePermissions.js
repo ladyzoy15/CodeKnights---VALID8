@@ -394,7 +394,7 @@ function buildLowAccuracyLocationMessage(accuracy, { precisePermissionMissing = 
         : 'too low'
 
     if (precisePermissionMissing && isNativeApp()) {
-        return `GPS accuracy is ${formattedAccuracy}. Enable Precise location for Aura in Android Settings, then try again.`
+        return `GPS accuracy is ${formattedAccuracy}. Enable Precise location for NEXUS in Android Settings, then try again.`
     }
 
     return `GPS accuracy is ${formattedAccuracy}. Enable precise location and wait for a stronger GPS signal before trying again.`
@@ -586,7 +586,7 @@ async function resolveNativePreciseCurrentPosition(options = {}) {
 
             void finishError(
                 precisePermissionMissing
-                    ? 'Precise location is disabled for Aura. Enable it in Android Settings and try again.'
+                    ? 'Precise location is disabled for NEXUS. Enable it in Android Settings and try again.'
                     : 'Location lookup timed out. Try again in an open area with better GPS signal.'
             )
         }, totalTimeout)

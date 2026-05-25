@@ -41,7 +41,7 @@ function resolveNumericIdentityValue(value) {
     return Number.isFinite(normalized) ? normalized : null
 }
 
-function resolveTokenSuffix(token = localStorage.getItem('aura_token') || '') {
+function resolveTokenSuffix(token = localStorage.getItem('nexus_token') || '') {
     const normalizedToken = String(token || '').trim()
     return normalizedToken ? normalizedToken.slice(-24) : null
 }
@@ -152,7 +152,7 @@ async function fetchSchoolItWorkspaceData() {
     const authMeta = getStoredAuthMeta()
     const schoolId = resolveNumericIdentityValue(authMeta?.schoolId)
     const userId = resolveNumericIdentityValue(authMeta?.userId)
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const sessionId = authMeta?.sessionId || null
 
     state.apiBaseUrl = resolveApiBaseUrl()

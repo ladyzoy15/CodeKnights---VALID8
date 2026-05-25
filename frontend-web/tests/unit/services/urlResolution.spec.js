@@ -18,7 +18,7 @@ import {
 
 describe("frontend URL resolution", () => {
   beforeEach(() => {
-    delete window.__AURA_RUNTIME_CONFIG__;
+    delete window.__NEXUS_RUNTIME_CONFIG__;
   });
 
   it("falls back to the proxied backend path for web builds", () => {
@@ -26,7 +26,7 @@ describe("frontend URL resolution", () => {
   });
 
   it("normalizes runtime backend origins that still include /api", () => {
-    window.__AURA_RUNTIME_CONFIG__ = {
+    window.__NEXUS_RUNTIME_CONFIG__ = {
       backendBaseUrl: "https://api.example.com/api/",
     };
 
@@ -34,7 +34,7 @@ describe("frontend URL resolution", () => {
   });
 
   it("converts relative API paths into absolute browser URLs", () => {
-    window.__AURA_RUNTIME_CONFIG__ = {
+    window.__NEXUS_RUNTIME_CONFIG__ = {
       apiBaseUrl: "/custom-api/",
     };
 
@@ -43,7 +43,7 @@ describe("frontend URL resolution", () => {
   });
 
   it("keeps import timeouts at or above the import fallback minimum", () => {
-    window.__AURA_RUNTIME_CONFIG__ = {
+    window.__NEXUS_RUNTIME_CONFIG__ = {
       importApiTimeoutMs: 5000,
     };
 
@@ -55,7 +55,7 @@ describe("frontend URL resolution", () => {
   });
 
   it("converts relative assistant paths into absolute browser URLs", () => {
-    window.__AURA_RUNTIME_CONFIG__ = {
+    window.__NEXUS_RUNTIME_CONFIG__ = {
       assistantBaseUrl: "/assistant-api/",
     };
 

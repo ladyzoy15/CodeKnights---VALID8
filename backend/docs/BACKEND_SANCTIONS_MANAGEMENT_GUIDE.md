@@ -8,7 +8,7 @@
 
 ## Purpose
 
-This guide documents the sanctions data-model baseline introduced for sanctions management in Aura.
+This guide documents the sanctions data-model baseline introduced for sanctions management in NEXUS.
 
 ## Schema Overview
 

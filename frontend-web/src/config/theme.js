@@ -1,7 +1,7 @@
 import { ref } from 'vue'
 import { Capacitor } from '@capacitor/core'
-const defaultSchoolLogo = '/logos/aura.png'
-const DARK_MODE_STORAGE_KEY = 'aura_dark_mode'
+const defaultSchoolLogo = '/logos/nexus.png'
+const DARK_MODE_STORAGE_KEY = 'nexus_dark_mode'
 
 function readStoredDarkModePreference() {
     if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
@@ -31,9 +31,9 @@ function persistDarkModePreference(value) {
  * Global Dark Mode State
  */
 export const isDarkMode = ref(readStoredDarkModePreference())
-export const activeAuraLogo = ref('/logos/aura_logo_black.png')
-export const surfaceAuraLogo = ref('/logos/aura_logo_black.png')
-export const secondaryAuraLogo = ref('/logos/aura_logo_black.png')
+export const activeAuraLogo = ref('/logos/nexus_logo_black.png')
+export const surfaceAuraLogo = ref('/logos/nexus_logo_black.png')
+export const secondaryAuraLogo = ref('/logos/nexus_logo_black.png')
 let currentActiveTheme = null
 let nativeStatusBarSyncPromise = null
 
@@ -82,7 +82,7 @@ export const defaultTheme = {
     schoolSlogan: 'Slogan Goes Here',
     schoolLogo: defaultSchoolLogo,
 
-    // Fixed Aura system colors
+    // Fixed NEXUS system colors
     background: '#EBEBEB',
     surfaceColor: '#FFFFFF',
     navColor: '#0A0A0A',
@@ -238,8 +238,8 @@ function getContrastYIQ(hexcolor) {
 export function resolveAuraLogoForBackground(backgroundColor) {
     const contrastText = getContrastYIQ(backgroundColor)
     return contrastText === '#FFFFFF'
-        ? '/logos/aura_logo_white.png'
-        : '/logos/aura_logo_black.png'
+        ? '/logos/nexus_logo_white.png'
+        : '/logos/nexus_logo_black.png'
 }
 
 export function toggleDarkMode() {
@@ -386,7 +386,7 @@ export function applyTheme(theme) {
     root.style.setProperty('--color-ssg-accent', '#6366F1')
     root.style.setProperty('--color-sg-accent', '#8B5CF6')
 
-    // Automatically serve the correct Aura logo color based on banner contrast
+    // Automatically serve the correct NEXUS logo color based on banner contrast
     activeAuraLogo.value = resolveAuraLogoForBackground(theme.primaryColor)
     surfaceAuraLogo.value = resolveAuraLogoForBackground(surfaceColor)
     secondaryAuraLogo.value = resolveAuraLogoForBackground(secondaryColor)

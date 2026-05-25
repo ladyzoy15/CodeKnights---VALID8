@@ -6,7 +6,7 @@
 ---
 <!--/nav-->
 
-This guide covers deploying Aura on an AWS EC2 Ubuntu instance using the included `deploy.sh` script and `docker-compose.prod.yml`.
+This guide covers deploying NEXUS on an AWS EC2 Ubuntu instance using the included `deploy.sh` script and `docker-compose.prod.yml`.
 
 ---
 
@@ -73,7 +73,7 @@ chmod +x deploy.sh
 ## What the Script Does
 
 1. Installs `git`, `docker`, and the Docker Compose plugin if not already present
-2. Clones the repo to `/opt/aura` (or pulls latest if already cloned)
+2. Clones the repo to `/opt/nexus` (or pulls latest if already cloned)
 3. Creates `.env` from `.env.production.example` if it doesn't exist, then prompts for required values
 4. Opens ports 80, 8000, and 8500 in `ufw` if the firewall is active
 5. Runs `docker compose -f docker-compose.prod.yml up --build -d`
@@ -108,12 +108,12 @@ Override these before running the script:
 |---|---|---|
 | `REPO_URL` | `https://github.com/LNCR-tech/RIZAL_v1.git` | Repo to clone |
 | `REPO_BRANCH` | `Pre-Production-v1` | Branch to deploy |
-| `DEPLOY_DIR` | `/opt/aura` | Directory to clone into |
+| `DEPLOY_DIR` | `/opt/nexus` | Directory to clone into |
 
 Example:
 
 ```bash
-DEPLOY_DIR=/home/ubuntu/aura REPO_BRANCH=main ./deploy.sh
+DEPLOY_DIR=/home/ubuntu/nexus REPO_BRANCH=main ./deploy.sh
 ```
 
 ---
@@ -132,30 +132,30 @@ Once the stack is up:
 
 ## Useful Commands
 
-All commands assume the stack is at `/opt/aura`.
+All commands assume the stack is at `/opt/nexus`.
 
 Follow logs:
 
 ```bash
-docker compose -f /opt/aura/docker-compose.prod.yml logs -f
+docker compose -f /opt/nexus/docker-compose.prod.yml logs -f
 ```
 
 Check running containers:
 
 ```bash
-docker compose -f /opt/aura/docker-compose.prod.yml ps
+docker compose -f /opt/nexus/docker-compose.prod.yml ps
 ```
 
 Pull latest and redeploy:
 
 ```bash
-cd /opt/aura && git pull && docker compose -f docker-compose.prod.yml up --build -d
+cd /opt/nexus && git pull && docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 Stop everything:
 
 ```bash
-cd /opt/aura && docker compose -f docker-compose.prod.yml down
+cd /opt/nexus && docker compose -f docker-compose.prod.yml down
 ```
 
 ---

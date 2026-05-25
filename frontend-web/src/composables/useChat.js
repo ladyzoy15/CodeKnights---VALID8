@@ -29,7 +29,7 @@ function parseThoughtsFromContent(content) {
 }
 
 const messages   = ref([
-  { id: 1, sender: 'ai', text: 'Hi! I am Aura AI. How can I help you today?' }
+  { id: 1, sender: 'ai', text: 'Hi! I am NEXUS AI. How can I help you today?' }
 ])
 const inputText  = ref('')
 const isTyping   = ref(false)
@@ -51,7 +51,7 @@ function getAssistantErrorMessage(error) {
   const message = String(error?.message || '').trim()
 
   if (status === 401) {
-    return 'Your session expired. Log in again so Aura can use your account scope.'
+    return 'Your session expired. Log in again so NEXUS can use your account scope.'
   }
 
   if (status === 403 && message) {
@@ -62,12 +62,12 @@ function getAssistantErrorMessage(error) {
     return message
   }
 
-  return 'Something went wrong while contacting Aura Assistant. Please try again.'
+  return 'Something went wrong while contacting NEXUS Assistant. Please try again.'
 }
 
 function loadStoredConversationId() {
   try {
-    const raw = localStorage.getItem('aura_assistant_conversation_id')
+    const raw = localStorage.getItem('nexus_assistant_conversation_id')
     const trimmed = String(raw || '').trim()
     return trimmed || null
   } catch {
@@ -81,9 +81,9 @@ function storeConversationId(value) {
 
   try {
     if (conversationId.value) {
-      localStorage.setItem('aura_assistant_conversation_id', conversationId.value)
+      localStorage.setItem('nexus_assistant_conversation_id', conversationId.value)
     } else {
-      localStorage.removeItem('aura_assistant_conversation_id')
+      localStorage.removeItem('nexus_assistant_conversation_id')
     }
   } catch {
     // Ignore storage errors and keep the in-memory value.
@@ -100,7 +100,7 @@ function scrollToBottom() {
 }
 
 function getAuthToken() {
-  return String(localStorage.getItem('aura_token') || '').trim()
+  return String(localStorage.getItem('nexus_token') || '').trim()
 }
 
 const _THOUGHT_TAG_RE = /<thought>.*?<\/thought>/gis
@@ -118,7 +118,7 @@ function normalizeConversationTitle(convo) {
 
 function resetToGreeting() {
   messages.value = [
-    { id: 1, sender: 'ai', text: 'Hi! I am Aura AI. How can I help you today?' },
+    { id: 1, sender: 'ai', text: 'Hi! I am NEXUS AI. How can I help you today?' },
   ]
 }
 
@@ -136,7 +136,7 @@ function resetChatState() {
 function formatConversationText() {
   return (messages.value || [])
     .map((msg) => {
-      const sender = msg?.sender === 'user' ? 'You' : 'Aura'
+      const sender = msg?.sender === 'user' ? 'You' : 'NEXUS'
       const text = String(msg?.text ?? '').trim()
       if (!text) return null
       return `${sender}: ${text}`
@@ -292,7 +292,7 @@ async function selectConversation(targetConversationId) {
 
     messages.value = mapped.length
       ? mapped
-      : [{ id: 1, sender: 'ai', text: 'Hi! I am Aura AI. How can I help you today?' }]
+      : [{ id: 1, sender: 'ai', text: 'Hi! I am NEXUS AI. How can I help you today?' }]
 
     storeConversationId(convo?.conversation_id || normalized)
     scrollToBottom()
@@ -379,7 +379,7 @@ async function sendMessage() {
     }
   } catch (error) {
     if (typeof console !== 'undefined') {
-      console.warn('Aura assistant request failed:', error)
+      console.warn('NEXUS assistant request failed:', error)
     }
 
     messages.value.push({

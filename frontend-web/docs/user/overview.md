@@ -1,4 +1,4 @@
-﻿# Aura Overview (Non-Developer)
+﻿# NEXUS Overview (Non-Developer)
 
 <!--nav-->
 [Previous](navigation.md) | [Next](../../README.md) | [Home](/README.md)
@@ -6,7 +6,7 @@
 ---
 <!--/nav-->
 
-Aura is a student attendance system. It includes:
+NEXUS is a student attendance system. It includes:
 
 - A web app (what most users interact with)
 - An API backend (what the web app talks to)
@@ -25,7 +25,7 @@ Exact visibility depends on your role and what your school enabled.
 
 ## â€œWhere Do I Go?â€
 
-After logging in, Aura routes you to the right workspace based on your role:
+After logging in, NEXUS routes you to the right workspace based on your role:
 
 - Student dashboard: `/dashboard`
 - School IT workspace: `/workspace`

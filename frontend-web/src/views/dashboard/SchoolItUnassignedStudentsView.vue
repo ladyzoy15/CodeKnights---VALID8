@@ -287,7 +287,7 @@ async function deleteStudent(student) {
   
   try {
     if (!props.preview) {
-      await deleteUser(apiBaseUrl.value, localStorage.getItem('aura_token') || '', student.id)
+      await deleteUser(apiBaseUrl.value, localStorage.getItem('nexus_token') || '', student.id)
       const nextUsers = activeUsers.value.filter(u => Number(u.id) !== Number(student.id))
       setUsersSnapshot(nextUsers)
       refreshSchoolItWorkspaceData().catch(() => {})
@@ -322,7 +322,7 @@ async function saveStudentAssignment() {
   
   try {
     if (!props.preview) {
-      const token = localStorage.getItem('aura_token') || ''
+      const token = localStorage.getItem('nexus_token') || ''
       const profileId = selectedStudent.value.student_profile?.id
       if (!profileId) throw new Error('Student profile ID missing.')
       

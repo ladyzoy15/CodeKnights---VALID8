@@ -383,8 +383,8 @@ const previewCouncilState = computed(() => (
 ))
 const previewDepartmentStorageKey = computed(() => (
   Number.isFinite(schoolId.value)
-    ? `aura_exposed_departments_${schoolId.value}`
-    : 'aura_exposed_departments'
+    ? `nexus_exposed_departments_${schoolId.value}`
+    : 'nexus_exposed_departments'
 ))
 const previewDepartments = computed(() => (
   previewDepartmentOverrides.value.length
@@ -651,7 +651,7 @@ async function submitCollege() {
   collegePanelError.value = false
 
   try {
-    const authToken = localStorage.getItem('aura_token') || ''
+    const authToken = localStorage.getItem('nexus_token') || ''
     const createdDepartment = mutationMode === 'update'
       ? (
         props.preview
@@ -717,7 +717,7 @@ async function deleteCollege(department) {
       previewDepartmentOverrides.value = sortDepartmentsByName(nextDepartments)
       persistPreviewDepartments(previewDepartmentOverrides.value)
     } else {
-      await deleteDepartment(apiBaseUrl.value, localStorage.getItem('aura_token') || '', department.id)
+      await deleteDepartment(apiBaseUrl.value, localStorage.getItem('nexus_token') || '', department.id)
       setDepartmentsSnapshot(sortDepartmentsByName(nextDepartments))
       refreshSchoolItWorkspaceData().catch(() => {})
     }

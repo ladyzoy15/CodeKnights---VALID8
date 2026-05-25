@@ -92,7 +92,7 @@ def main():
         logger.error("")
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(description="Aura Database Seeder")
+    parser = argparse.ArgumentParser(description="NEXUS Database Seeder")
     parser.add_argument("--ci-mode", action="store_true", help="Seed specific users for CI/E2E testing")
     subparsers = parser.add_subparsers(dest="command", help="Seeder commands")
 

@@ -1,8 +1,8 @@
-# Aura Docker Deployment Script for Windows
+# NEXUS Docker Deployment Script for Windows
 # Run this from the project root: .\deploy-docker.ps1
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Aura Docker Deployment Script" -ForegroundColor Cyan
+Write-Host "  NEXUS Docker Deployment Script" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 

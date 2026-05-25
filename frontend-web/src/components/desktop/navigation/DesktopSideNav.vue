@@ -45,12 +45,12 @@
             @click="expandToFull"
           >
             <div class="absolute inset-0 flex flex-col items-center justify-center gap-1">
-              <img :src="activeAuraLogo" alt="Aura" class="w-6 h-6 object-contain opacity-90" />
+              <img :src="activeAuraLogo" alt="NEXUS" class="w-6 h-6 object-contain opacity-90" />
               <span
                 class="text-[8px] font-extrabold text-center leading-snug"
                 style="color: var(--color-banner-text);"
               >
-                Talk to<br>Aura Ai
+                Talk to<br>NEXUS Ai
               </span>
             </div>
           </div>

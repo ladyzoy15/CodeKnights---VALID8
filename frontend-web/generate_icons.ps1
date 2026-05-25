@@ -1,9 +1,9 @@
 Add-Type -AssemblyName System.Drawing
 
 $preferredSource = Join-Path $PSScriptRoot "public\logos\apk_icon.png"
-$fallbackSource = Join-Path $PSScriptRoot "public\logos\aura.png"
+$fallbackSource = Join-Path $PSScriptRoot "public\logos\nexus.png"
 $source = if (Test-Path $preferredSource) { $preferredSource } else { $fallbackSource }
-$resBase = Join-Path $PSScriptRoot "aura-apk\android\app\src\main\res"
+$resBase = Join-Path $PSScriptRoot "nexus-apk\android\app\src\main\res"
 $img = [System.Drawing.Image]::FromFile($source)
 $legacyIconInsetRatio = 0.15
 $adaptiveForegroundInsetRatio = 0.28
@@ -87,4 +87,4 @@ Resize-Image $img 512 512 (Join-Path $PSScriptRoot "public\pwa-maskable-512.png"
 Write-Host "OK: web PWA icons regenerated"
 
 $img.Dispose()
-Write-Host "All Aura icons generated!"
+Write-Host "All NEXUS icons generated!"

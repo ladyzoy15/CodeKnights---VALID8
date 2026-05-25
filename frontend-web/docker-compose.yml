@@ -1,7 +1,7 @@
 services:
-  aura-web:
-    container_name: ${AURA_CONTAINER_NAME:-aura-web}
-    image: aura-web:local
+  nexus-web:
+    container_name: ${NEXUS_CONTAINER_NAME:-nexus-web}
+    image: nexus-web:local
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,10 +10,10 @@ services:
         VITE_API_TIMEOUT_MS: ${VITE_API_TIMEOUT_MS:-15000}
     environment:
       BACKEND_ORIGIN: ${BACKEND_ORIGIN:?Set BACKEND_ORIGIN in .env.docker with the backend root URL, not the /api path.}
-      AURA_API_BASE_URL: ${AURA_API_BASE_URL:-/__backend__}
-      AURA_API_TIMEOUT_MS: ${AURA_API_TIMEOUT_MS:-15000}
+      NEXUS_API_BASE_URL: ${NEXUS_API_BASE_URL:-/__backend__}
+      NEXUS_API_TIMEOUT_MS: ${NEXUS_API_TIMEOUT_MS:-15000}
     ports:
-      - "${AURA_PORT:-8080}:80"
+      - "${NEXUS_PORT:-8080}:80"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]

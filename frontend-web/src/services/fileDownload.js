@@ -2,7 +2,7 @@ import { Capacitor } from '@capacitor/core'
 import { Directory, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 
-const CACHE_DOWNLOAD_DIR = 'aura-downloads'
+const CACHE_DOWNLOAD_DIR = 'nexus-downloads'
 
 function sanitizeDownloadFilename(filename = 'download') {
   return String(filename || 'download')

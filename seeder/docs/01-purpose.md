@@ -10,15 +10,15 @@
 
 ## 1.1 What the Seeder Is
 
-The Aura demo seeder is a standalone data generation tool that populates a fresh Aura database with a complete, realistic, production-scale dataset. It is not a fixture loader or a factory helper â€” it is a full simulation of a multi-school academic environment, including students, governance officers, events, attendance records, sanctions, and compliance history.
+The NEXUS demo seeder is a standalone data generation tool that populates a fresh NEXUS database with a complete, realistic, production-scale dataset. It is not a fixture loader or a factory helper â€” it is a full simulation of a multi-school academic environment, including students, governance officers, events, attendance records, sanctions, and compliance history.
 
-The output is indistinguishable in structure from real production data. Every table that the Aura backend reads from is populated with coherent, cross-referenced records.
+The output is indistinguishable in structure from real production data. Every table that the NEXUS backend reads from is populated with coherent, cross-referenced records.
 
 ---
 
 ## 1.2 Why It Exists
 
-Aura is a complex system. Its AI assistant, reports module, governance dashboards, and sanctions workflows all depend on having a rich, realistic dataset to operate against. An empty database produces empty dashboards, meaningless AI responses, and untestable report queries.
+NEXUS is a complex system. Its AI assistant, reports module, governance dashboards, and sanctions workflows all depend on having a rich, realistic dataset to operate against. An empty database produces empty dashboards, meaningless AI responses, and untestable report queries.
 
 The seeder solves this by generating:
 

@@ -167,13 +167,14 @@
               <div class="admin-view__swatches">
                 <label class="admin-view__field admin-view__field--color">
                   <span>Primary</span>
-                  <input v-model="createForm.primary_color" required type="color">
+                  <input v-model="createForm.primary_color" type="color">
                 </label>
                 <label class="admin-view__field admin-view__field--color">
                   <span>Secondary</span>
-                  <input v-model="createForm.secondary_color" required type="color">
+                  <input v-model="createForm.secondary_color" type="color">
                 </label>
               </div>
+              <p class="admin-view__hint">Leave colors blank to auto-extract from logo.</p>
 
               <label class="admin-view__field">
                 <span>Admin Email</span>
@@ -197,7 +198,7 @@
               </label>
               <label class="admin-view__field">
                 <span>Logo</span>
-                <input type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" @change="handleCreateLogoChange">
+                <input type="file" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" @change="handleCreateLogoChange">
               </label>
 
               <button class="admin-view__primary-action" type="submit" :disabled="adminState.creatingSchool">
@@ -960,8 +961,8 @@ function createDefaultSchoolForm() {
   return {
     school_name: '',
     school_code: '',
-    primary_color: '#0891B2',
-    secondary_color: '#22C55E',
+    primary_color: '',
+    secondary_color: '',
     school_it_email: '',
     school_it_first_name: '',
     school_it_middle_name: '',
@@ -1508,6 +1509,12 @@ const subscriptionOptions = ['active', 'trial', 'suspended']
 
 .admin-view__field--color input {
   min-height: 54px;
+}
+
+.admin-view__hint {
+  font-size: 12px;
+  color: var(--color-text-tertiary, #888);
+  margin: -8px 0 8px;
 }
 
 .admin-view__switch,

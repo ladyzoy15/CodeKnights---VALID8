@@ -4,8 +4,8 @@ import { AUTH_META_CHANGED_EVENT, getStoredAuthMeta } from '@/services/localAuth
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { schoolItPreviewData } from '@/data/schoolItPreview.js'
 
-const DEFAULT_TITLE = 'Aura'
-const DEFAULT_ICON_PATH = '/logos/aura.png'
+const DEFAULT_TITLE = 'NEXUS'
+const DEFAULT_ICON_PATH = '/logos/nexus.png'
 const DEFAULT_ICON_URL = DEFAULT_ICON_PATH
 let brandingRequestId = 0
 
@@ -146,7 +146,7 @@ export function startDocumentBrandingSync(router) {
     if (typeof window !== 'undefined') {
         window.addEventListener(AUTH_META_CHANGED_EVENT, applyCurrentBranding)
         window.addEventListener('storage', (event) => {
-            if (event.key === 'aura_auth_meta') {
+            if (event.key === 'nexus_auth_meta') {
                 applyCurrentBranding()
             }
         })

@@ -180,12 +180,12 @@ export function createEmptyCouncilMemberDraft() {
 export function createStudentCouncilStorageKey(schoolId, preview = false) {
   const normalizedSchoolId = Number(schoolId)
   if (!Number.isFinite(normalizedSchoolId)) {
-    return preview ? 'aura_student_council_preview' : 'aura_student_council'
+    return preview ? 'nexus_student_council_preview' : 'nexus_student_council'
   }
 
   return preview
-    ? `aura_student_council_preview_${normalizedSchoolId}`
-    : `aura_student_council_${normalizedSchoolId}`
+    ? `nexus_student_council_preview_${normalizedSchoolId}`
+    : `nexus_student_council_${normalizedSchoolId}`
 }
 
 export function loadStudentCouncilState(storageKey) {

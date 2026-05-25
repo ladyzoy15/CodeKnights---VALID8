@@ -2,6 +2,7 @@ import {
   Building2,
   CalendarDays,
   LayoutGrid,
+  MailCheck,
   Megaphone,
   ShieldCheck,
   UsersRound,
@@ -76,6 +77,24 @@ const SECTION_DEFINITIONS = {
       'Keep structural governance tools separate from student-facing screens.',
     ],
   },
+  excuse_letters: {
+    key: 'excuse_letters',
+    navLabel: 'Excuse Letters',
+    route: '/governance/excuse-letters',
+    previewRoute: '/exposed/governance/excuse-letters',
+    navIcon: MailCheck,
+    panelIcon: MailCheck,
+    title: 'Excuse Letters',
+    description: 'Review, approve, or reject excuse letters submitted by students for events within your governance scope.',
+    placeholderTitle: 'Excuse letters',
+    placeholderDescription: 'Manage student excuse letter submissions.',
+    featureList: [
+      'View pending excuse letters from students.',
+      'Approve or reject with remarks.',
+      'Track reviewed and pending submissions.',
+    ],
+    permissionCode: 'review_excuse_letter',
+  },
 }
 
 export const governanceSectionOrder = [
@@ -83,6 +102,7 @@ export const governanceSectionOrder = [
   'events',
   'students',
   'governance',
+  'excuse_letters',
 ]
 
 export function getGovernanceSectionDefinition(sectionKey = 'overview') {
@@ -98,5 +118,6 @@ export function getGovernanceNavigationItems(preview = false) {
     name: section.navLabel,
     route: preview ? section.previewRoute : section.route,
     icon: section.navIcon,
+    permissionCode: section.permissionCode,
   }))
 }

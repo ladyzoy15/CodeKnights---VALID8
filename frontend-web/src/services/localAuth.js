@@ -1,7 +1,7 @@
 import { resolveBackendMediaUrl } from '@/services/backendMedia.js'
 
-const AUTH_META_KEY = 'aura_auth_meta'
-export const AUTH_META_CHANGED_EVENT = 'aura-auth-meta-changed'
+const AUTH_META_KEY = 'nexus_auth_meta'
+export const AUTH_META_CHANGED_EVENT = 'nexus-auth-meta-changed'
 
 /**
  * Sanitize a token string: trim whitespace, reject obvious non-JWT values.

@@ -53,7 +53,7 @@
       <div v-if="!isScanning" class="quick-kiosk__sheet-stage">
         <section class="quick-kiosk__sheet" :class="`quick-kiosk__sheet--${kioskStage}`">
           <div class="quick-kiosk__sheet-brand">
-            <span class="quick-kiosk__brand-mark">Aura</span>
+            <span class="quick-kiosk__brand-mark">NEXUS</span>
             <span class="quick-kiosk__brand-copy">Quick Attendance Kiosk</span>
           </div>
 

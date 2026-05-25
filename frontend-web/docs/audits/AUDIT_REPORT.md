@@ -1,4 +1,4 @@
-﻿# Aura Project Audit Report
+﻿# NEXUS Project Audit Report
 
 <!--nav-->
 [Previous](../../README.md) | [Next](project_audit.md) | [Home](/README.md)
@@ -7,7 +7,7 @@
 <!--/nav-->
 
 Audit date: 2026-04-17
-Repository: `Aura_Merged_Project`
+Repository: `NEXUS_Merged_Project`
 Audit mode: static repository review plus targeted local verification
 
 ## Scope
@@ -23,7 +23,7 @@ This audit was performed against the current repository state without changing e
 
 ## Executive Summary
 
-Aura is a large multi-service student operations platform that combines attendance tracking, governance management, sanctions workflows, school administration, branding, reporting, bulk student import, and an AI assistant. From a feature perspective, the project is substantial and already beyond prototype scope. The backend is the strongest layer: it has clear domain separation, strong test coverage, and a meaningful migration history. The frontend is also broad and functional, but it carries more integration complexity than it should. The assistant service is powerful, but it is currently the highest-risk operational component because it mixes LLM orchestration, direct data access, backend actions, and conversation storage in a single process.
+NEXUS is a large multi-service student operations platform that combines attendance tracking, governance management, sanctions workflows, school administration, branding, reporting, bulk student import, and an AI assistant. From a feature perspective, the project is substantial and already beyond prototype scope. The backend is the strongest layer: it has clear domain separation, strong test coverage, and a meaningful migration history. The frontend is also broad and functional, but it carries more integration complexity than it should. The assistant service is powerful, but it is currently the highest-risk operational component because it mixes LLM orchestration, direct data access, backend actions, and conversation storage in a single process.
 
 Overall assessment:
 
@@ -38,7 +38,7 @@ There were no obvious signs of a broken repository. Local verification passed fo
 
 ## Project Overview
 
-Aura is designed as a school-focused operations platform with several distinct user groups:
+NEXUS is designed as a school-focused operations platform with several distinct user groups:
 
 - students
 - governance members such as SSG / SG / org roles
@@ -407,6 +407,6 @@ These are maintenance warnings, not immediate functional failures.
 
 ## Final Assessment
 
-Aura is a serious application with real engineering work behind it. The codebase is not in rescue territory. The current gap is that the repository's operational and security posture has not fully caught up to the product's breadth, especially around production defaults, API contract consistency, and assistant-service hardening. If those areas are addressed, the project can move from "feature-rich and functional" to "defensible and maintainable in production."
+NEXUS is a serious application with real engineering work behind it. The codebase is not in rescue territory. The current gap is that the repository's operational and security posture has not fully caught up to the product's breadth, especially around production defaults, API contract consistency, and assistant-service hardening. If those areas are addressed, the project can move from "feature-rich and functional" to "defensible and maintainable in production."
 
 

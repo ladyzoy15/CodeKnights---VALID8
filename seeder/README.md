@@ -6,7 +6,7 @@
 ---
 <!--/nav-->
 
-The seeder generates deterministic demo data for Aura (schools, users, governance, events, attendance, and sanctions).
+The seeder generates deterministic demo data for NEXUS (schools, users, governance, events, attendance, and sanctions).
 
 ## Docs
 

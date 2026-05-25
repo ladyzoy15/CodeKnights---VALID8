@@ -309,7 +309,7 @@ async function fetchEvents() {
     return
   }
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     eventsList.value = await getEvents(resolveApiBaseUrl(), token)
   } catch (err) {
     console.error(err)
@@ -330,7 +330,7 @@ function toggleEventSettings() {
 async function saveSettings() {
   if (props.preview) return
   try {
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const payload = {
       event_default_early_check_in_minutes: Number(eventSettingsForm.value.earlyCheckIn) || 0,
       event_default_late_threshold_minutes: Number(eventSettingsForm.value.lateThreshold) || 0,
@@ -444,7 +444,7 @@ async function deleteEvent(event) {
 
   try {
     if (!props.preview) {
-      const token = localStorage.getItem('aura_token') || ''
+      const token = localStorage.getItem('nexus_token') || ''
       await deleteBackendEvent(resolveApiBaseUrl(), token, event.id)
     }
 
@@ -492,7 +492,7 @@ async function saveEventEdits(payload) {
         ...payload,
       })
     } else {
-      const token = localStorage.getItem('aura_token') || ''
+      const token = localStorage.getItem('nexus_token') || ''
       const updatedEvent = await updateBackendEvent(
         resolveApiBaseUrl(),
         token,

@@ -38,6 +38,9 @@ import {
     normalizeRetentionRunResult,
     normalizeUserCreateResponse,
     normalizeUserWithRelations,
+    normalizeExcuseLetter,
+    normalizeExcuseLetterStatus,
+    normalizeExcuseLetterDashboard,
 } from '@/services/backendNormalizers.js'
 import {
     normalizeImportJobCreateResponse,
@@ -1538,3 +1541,88 @@ function appendFormValue(formData, key, value) {
     if (value == null || value === '') return
     formData.append(key, String(value))
 }
+
+export async function submitExcuseLetter(baseUrl, token, eventId, payload) {
+    return normalizeExcuseLetter(await request(baseUrl, `/api/excuse-letters/events/${eventId}/submit`, {
+        method: 'POST',
+        token,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    }))
+}
+
+export async function getMyExcuseLetterStatusForEvent(baseUrl, token, eventId) {
+    return normalizeExcuseLetterStatus(await request(baseUrl, `/api/excuse-letters/events/${eventId}/status`, {
+        method: 'GET',
+        token,
+    }))
+}
+
+export async function getMyExcuseLetters(baseUrl, token) {
+    const payload = await request(baseUrl, '/api/excuse-letters/students/me', {
+        method: 'GET',
+        token,
+    })
+    return Array.isArray(payload) ? payload.map(normalizeExcuseLetter) : []
+}
+
+export async function listExcuseLettersForEvent(baseUrl, token, eventId, params = {}) {
+    const payload = await request(baseUrl, `/api/excuse-letters/events/${eventId}/submissions`, {
+        method: 'GET',
+        token,
+        params,
+    })
+    return Array.isArray(payload) ? payload.map(normalizeExcuseLetter) : []
+}
+
+export async function listAllExcuseLetters(baseUrl, token, params = {}) {
+    const payload = await request(baseUrl, '/api/excuse-letters/submissions', {
+        method: 'GET',
+        token,
+        params,
+    })
+    return Array.isArray(payload) ? payload.map(normalizeExcuseLetter) : []
+}
+
+export async function approveExcuseLetter(baseUrl, token, letterId, payload) {
+    return normalizeExcuseLetter(await request(baseUrl, `/api/excuse-letters/${letterId}/approve`, {
+        method: 'POST',
+        token,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    }))
+}
+
+export async function rejectExcuseLetter(baseUrl, token, letterId, payload) {
+    return normalizeExcuseLetter(await request(baseUrl, `/api/excuse-letters/${letterId}/reject`, {
+        method: 'POST',
+        token,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    }))
+}
+
+export async function getExcuseLetterDashboard(baseUrl, token) {
+    return normalizeExcuseLetterDashboard(await request(baseUrl, '/api/excuse-letters/dashboard', {
+        method: 'GET',
+        token,
+    }))
+}
+
+export async function uploadExcuseLetterAttachment(baseUrl, token, file) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return await request(baseUrl, '/api/excuse-letters/upload-attachment', {
+        method: 'POST',
+        token,
+        body: formData,
+    })
+}
+

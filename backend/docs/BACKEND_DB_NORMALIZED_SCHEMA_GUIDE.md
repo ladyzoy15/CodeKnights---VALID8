@@ -1,4 +1,4 @@
-﻿# Backend Normalized Schema (aura_norm) Guide
+﻿# Backend Normalized Schema (nexus_norm) Guide
 
 <!--nav-->
 [Previous](BACKEND_CHANGELOG.md) | [Next](BACKEND_EMAIL_LOCAL_TESTING_GUIDE.md) | [Home](/README.md)
@@ -9,17 +9,17 @@
 
 This repo contains a **proposed normalized schema** in `db_normalized/new_db_schema.sql`.
 
-To avoid breaking the current website behavior (and to avoid frontend changes), the backend introduces this schema **side-by-side** under a separate PostgreSQL schema named `aura_norm`.
+To avoid breaking the current website behavior (and to avoid frontend changes), the backend introduces this schema **side-by-side** under a separate PostgreSQL schema named `nexus_norm`.
 
 ## What This Change Does (and Does Not Do)
 
 **Does:**
-- Adds an Alembic revision that can create the `aura_norm` schema + tables from `db_normalized/new_db_schema.sql`.
-- Adds a small set of SQLAlchemy model stubs under `backend/app/models/aura_norm/` for future incremental adoption.
+- Adds an Alembic revision that can create the `nexus_norm` schema + tables from `db_normalized/new_db_schema.sql`.
+- Adds a small set of SQLAlchemy model stubs under `backend/app/models/nexus_norm/` for future incremental adoption.
 
 **Does not (yet):**
-- Migrate any production data from `public.*` into `aura_norm.*`.
-- Switch the running API to read/write `aura_norm.*`.
+- Migrate any production data from `public.*` into `nexus_norm.*`.
+- Switch the running API to read/write `nexus_norm.*`.
 - Change any frontend-facing REST routes, request bodies, or response shapes.
 
 ## How To Apply The Migration
@@ -30,13 +30,13 @@ From `backend/`:
 2. Run:
    - `alembic upgrade head`
 
-The revision `backend/alembic/versions/f19c2a7b3d10_create_aura_norm_schema.py` reads and executes `db_normalized/new_db_schema.sql` statement-by-statement.
+The revision `backend/alembic/versions/f19c2a7b3d10_create_nexus_norm_schema.py` reads and executes `db_normalized/new_db_schema.sql` statement-by-statement.
 
 ## How To Verify
 
 In psql:
-- `\\dn` should show `aura_norm`
-- `\\dt aura_norm.*` should show the normalized tables (e.g. `schools`, `users`, `events`, â€¦)
+- `\\dn` should show `nexus_norm`
+- `\\dt nexus_norm.*` should show the normalized tables (e.g. `schools`, `users`, `events`, â€¦)
 
 ## Notes / Caveats
 
@@ -46,8 +46,8 @@ In psql:
 ## Optional Settings (No Behavior Change By Default)
 
 The backend settings now include:
-- `AURA_NORM_ENABLED` (default: false)
-- `AURA_NORM_SCHEMA` (default: `aura_norm`)
+- `NEXUS_NORM_ENABLED` (default: false)
+- `NEXUS_NORM_SCHEMA` (default: `nexus_norm`)
 
 These are placeholders for a future backend cutover; current endpoints still use `public.*`.
 

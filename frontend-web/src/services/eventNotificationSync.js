@@ -9,7 +9,7 @@ import {
 import { getStoredAuthMeta } from '@/services/localAuth.js'
 import { notifyEventAvailable } from '@/services/localNotifications.js'
 
-const STORAGE_KEY = 'aura_native_event_notifications_v1'
+const STORAGE_KEY = 'nexus_native_event_notifications_v1'
 const DEFAULT_POLL_INTERVAL_MS = 60_000
 const MIN_POLL_INTERVAL_MS = 30_000
 const NOTIFICATION_COOLDOWN_MS = 12 * 60 * 60 * 1000

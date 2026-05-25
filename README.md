@@ -1,6 +1,6 @@
-# Aura — Student Attendance System
+# NEXUS — Student Attendance System
 
-Aura is a school-grade student attendance management system with face recognition, QR/RFID scanning, geolocation check-in, governance hierarchy, sanctions, AI assistant, and reporting.
+NEXUS is a school-grade student attendance management system with face recognition, QR/RFID scanning, geolocation check-in, governance hierarchy, sanctions, AI assistant, and reporting.
 
 ## Services
 

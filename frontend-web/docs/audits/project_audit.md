@@ -1,4 +1,4 @@
-﻿# Project Audit: Student Attendance System (Aura Project)
+﻿# Project Audit: Student Attendance System (NEXUS Project)
 
 <!--nav-->
 [Previous](AUDIT_REPORT.md) | [Next](../../README.md) | [Home](/README.md)
@@ -6,12 +6,12 @@
 ---
 <!--/nav-->
 
-This document provides a comprehensive audit of the **Aura Student Attendance System**, detailing its architecture, technology stack, and core modules.
+This document provides a comprehensive audit of the **NEXUS Student Attendance System**, detailing its architecture, technology stack, and core modules.
 
 ---
 
 ## 1. Project Overview
-The Aura Project is an enterprise-grade Student Attendance and Governance Management System. It leverages biometric face recognition, geolocation, and a robust RBAC (Role-Based Access Control) system to manage student attendance, organizational governance (SSG/SG), and administrative tasks.
+The NEXUS Project is an enterprise-grade Student Attendance and Governance Management System. It leverages biometric face recognition, geolocation, and a robust RBAC (Role-Based Access Control) system to manage student attendance, organizational governance (SSG/SG), and administrative tasks.
 
 - **Primary Goal:** To provide secure, automated, and verifiable attendance tracking and governance management for educational institutions.
 - **Key Users:** Platform Admins, School Administrators (Campus Admins), Students, and Governance Members (SSG/SG).

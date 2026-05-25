@@ -463,13 +463,13 @@ watch(fontSize, val => {
 //   await api.patch('/api/users/preferences', { notifications_enabled: value })
 //
 const notificationsEnabled = ref(
-  JSON.parse(localStorage.getItem('aura_notif_enabled') ?? 'true')
+  JSON.parse(localStorage.getItem('nexus_notif_enabled') ?? 'true')
 )
 
 async function savePreferences(payload) {
   // ── LOCAL (current) ───────────────────────────────────────────────
   if ('notifications_enabled' in payload) {
-    localStorage.setItem('aura_notif_enabled', payload.notifications_enabled)
+    localStorage.setItem('nexus_notif_enabled', payload.notifications_enabled)
   }
 
   // ── BACKEND (swap in when ready) ─────────────────────────────────

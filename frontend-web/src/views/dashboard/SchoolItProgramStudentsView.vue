@@ -1164,7 +1164,7 @@ async function handleEditStudent() {
   if (editStudentSubmitDisabled.value || !editingStudent.value) return
 
   const activeStudent = editingStudent.value
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   const draft = {
     firstName: String(editStudentDraft.value.firstName || '').trim(),
     middleName: String(editStudentDraft.value.middleName || '').trim(),
@@ -1245,7 +1245,7 @@ async function handleAddStudent() {
   isSavingStudent.value = true
   sheetMessage.value = 'Creating account...'
 
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   const draft = {
     firstName: studentDraft.value.firstName.trim(),
     middleName: studentDraft.value.middleName.trim(),
@@ -1317,7 +1317,7 @@ async function handleAddStudent() {
       }
     } else if (draft.studentId) {
       studentIdSaveError = new BackendApiError(
-        'The student account was created, but Aura could not confirm the student profile needed to save the student ID.',
+        'The student account was created, but NEXUS could not confirm the student profile needed to save the student ID.',
         { status: 0 },
       )
     }
@@ -1438,7 +1438,7 @@ async function deleteStudent(student) {
     if (!props.preview) {
       await deleteUser(
         apiBaseUrl.value,
-        localStorage.getItem('aura_token') || '',
+        localStorage.getItem('nexus_token') || '',
         student.userId,
       )
       refreshSchoolItWorkspaceData().catch(() => {})

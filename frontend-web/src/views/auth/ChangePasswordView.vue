@@ -159,7 +159,7 @@ async function handleSignOut() {
 onMounted(async () => {
   applyPasswordTheme()
 
-  const token = localStorage.getItem('aura_token')
+  const token = localStorage.getItem('nexus_token')
   if (!token) {
     router.replace({ name: 'Login' })
     return
@@ -194,7 +194,7 @@ async function handleSubmit() {
     return
   }
 
-  const token = localStorage.getItem('aura_token')
+  const token = localStorage.getItem('nexus_token')
   if (!token) {
     clearDashboardSession()
     router.replace({ name: 'Login' })

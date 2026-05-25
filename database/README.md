@@ -6,7 +6,7 @@
 ---
 <!--/nav-->
 
-Postgres service for Aura. Contains the init scripts, normalized schema design docs, and its own Dockerfile and docker-compose for standalone use.
+Postgres service for NEXUS. Contains the init scripts, normalized schema design docs, and its own Dockerfile and docker-compose for standalone use.
 
 ## Contents
 
@@ -32,7 +32,7 @@ docker compose up --build
 
 ## Full Stack Usage
 
-For the full Aura stack, use the root `docker-compose.yml` instead:
+For the full NEXUS stack, use the root `docker-compose.yml` instead:
 
 ```bash
 # from repo root

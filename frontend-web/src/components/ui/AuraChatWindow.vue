@@ -5,7 +5,7 @@
     <Transition name="chat-backdrop">
       <div
         v-if="isFullOpen"
-        class="aura-chat-backdrop"
+        class="nexus-chat-backdrop"
         @click="closeFull"
       />
     </Transition>
@@ -14,19 +14,19 @@
       <div
         v-if="isFullOpen"
         ref="windowEl"
-        class="aura-chat-window"
-        :class="{ 'aura-chat-window--fullscreen': isFullScreen }"
+        class="nexus-chat-window"
+        :class="{ 'nexus-chat-window--fullscreen': isFullScreen }"
         role="dialog"
-        aria-label="Aura AI Chat"
+        aria-label="NEXUS AI Chat"
         @click.stop
         @wheel.stop
       >
         <!-- ── Header ─────────────────────────────────────────────── -->
         <div class="chat-header">
           <div class="chat-header-left">
-            <img :src="activeAuraLogo" alt="Aura" class="chat-logo" />
+            <img :src="activeAuraLogo" alt="NEXUS" class="chat-logo" />
             <div class="chat-header-title">
-              <span class="chat-title">Aura AI</span>
+              <span class="chat-title">NEXUS AI</span>
               <span class="chat-subtitle">Your campus assistant</span>
             </div>
           </div>
@@ -140,7 +140,7 @@
                   v-model="inputText"
                   class="chat-input"
                   type="text"
-                  placeholder="Ask Aura anything..."
+                  placeholder="Ask NEXUS anything..."
                   :disabled="isTyping"
                   @keyup.enter="sendMessage"
                 />
@@ -211,7 +211,7 @@ watch(isFullOpen, (val) => {
 
 <style scoped>
 /* ── Backdrop (transparent, catches outside clicks) ────── */
-.aura-chat-backdrop {
+.nexus-chat-backdrop {
   position: fixed;
   inset: 0;
   z-index: 9998;
@@ -229,7 +229,7 @@ watch(isFullOpen, (val) => {
 }
 
 /* ── Floating window shell ─────────────────────────────── */
-.aura-chat-window {
+.nexus-chat-window {
   position: fixed;
   left: 72px;         /* just to the right of the sidebar pill */
   bottom: 64px;       /* float above the bottom of the screen  */
@@ -252,28 +252,28 @@ watch(isFullOpen, (val) => {
   isolation: isolate;
 }
 
-.aura-chat-window::before,
-.aura-chat-window::after {
+.nexus-chat-window::before,
+.nexus-chat-window::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.aura-chat-window::before {
+.nexus-chat-window::before {
   z-index: -2;
   background: var(--color-nav-glass-layer);
   box-shadow: inset 0 1px 0 var(--color-nav-glass-inset);
 }
 
-.aura-chat-window::after {
+.nexus-chat-window::after {
   z-index: -1;
   background:
     var(--color-nav-glass-light),
     linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 48%, rgba(255, 255, 255, 0.08) 100%);
 }
 
-.aura-chat-window--fullscreen {
+.nexus-chat-window--fullscreen {
   left: 0 !important;
   bottom: 0 !important;
   top: 0 !important;
@@ -284,7 +284,7 @@ watch(isFullOpen, (val) => {
 }
 
 @media (max-width: 860px) {
-  .aura-chat-window {
+  .nexus-chat-window {
     left: 16px;
     width: calc(100vw - 32px);
     max-width: calc(100vw - 32px);

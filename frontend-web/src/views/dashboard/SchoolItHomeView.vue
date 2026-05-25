@@ -52,13 +52,13 @@
               class="school-it-home__ai-pill"
               :class="{ 'school-it-home__ai-pill--open': isAiOpen }"
               type="button"
-              aria-label="Talk to Aura AI"
+              aria-label="Talk to NEXUS AI"
               :aria-expanded="isAiOpen ? 'true' : 'false'"
               aria-controls="school-it-ai-panel"
               @click="toggleAiPanel"
             >
-              <img :src="secondaryAuraLogo" alt="Aura" class="school-it-home__ai-logo">
-              <span class="school-it-home__ai-copy">Talk to<br>Aura Ai</span>
+              <img :src="secondaryAuraLogo" alt="NEXUS" class="school-it-home__ai-logo">
+              <span class="school-it-home__ai-copy">Talk to<br>NEXUS Ai</span>
             </button>
           </div>
 
@@ -76,7 +76,7 @@
               id="school-it-ai-panel"
               class="school-it-home__ai-panel"
               role="region"
-              aria-label="Aura AI chat"
+              aria-label="NEXUS AI chat"
             >
               <div class="school-it-home__ai-panel-inner">
                 <div class="school-it-home__ai-shell">
@@ -114,7 +114,7 @@
                         v-model="inputText"
                         class="school-it-home__ai-input-field"
                         type="text"
-                        placeholder="Ask Aura..."
+                        placeholder="Ask NEXUS..."
                         :disabled="isTyping"
                         @keyup.enter="sendMessage"
                       >
@@ -496,7 +496,7 @@ onMounted(async () => {
 })
 
 async function loadSchoolItHomeData(resolvedApiBaseUrl) {
-  const token = localStorage.getItem('aura_token') || ''
+  const token = localStorage.getItem('nexus_token') || ''
   if (!token || hasPrivilegedPendingFace()) {
     remoteAttendanceSummary.value = null
     return

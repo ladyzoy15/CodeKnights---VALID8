@@ -483,9 +483,9 @@ def send_test_email(
     subject: str | None = None,
     body: str | None = None,
 ) -> None:
-    resolved_subject = subject or "Aura email transport connectivity test"
+    resolved_subject = subject or "NEXUS email transport connectivity test"
     resolved_body = body or (
-        "This is a production-style email transport smoke test from Aura.\n\n"
+        "This is a production-style email transport smoke test from NEXUS.\n\n"
         "If you received this email, the backend completed a real outbound email "
         "delivery attempt using the configured transport."
     )
@@ -494,7 +494,7 @@ def send_test_email(
         subject=resolved_subject,
         text_body=resolved_body,
         html_body=(
-            "<p>This is a production-style email transport smoke test from <strong>Aura</strong>.</p>"
+            "<p>This is a production-style email transport smoke test from <strong>NEXUS</strong>.</p>"
             "<p>If you received this email, the backend completed a real outbound email "
             "delivery attempt using the configured transport.</p>"
         ),

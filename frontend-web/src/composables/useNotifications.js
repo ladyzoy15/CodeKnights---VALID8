@@ -17,7 +17,7 @@ import {
 import { getGovernanceAccessUnits } from '@/services/governanceScope.js'
 import { getStoredAuthMeta } from '@/services/localAuth.js'
 
-const READ_STATE_STORAGE_KEY = 'aura_notification_reads_v1'
+const READ_STATE_STORAGE_KEY = 'nexus_notification_reads_v1'
 const PREVIEW_READ_BUCKET_KEY = 'preview'
 const MAX_INBOX_ITEMS = 60
 const MAX_ANNOUNCEMENT_ITEMS = 24

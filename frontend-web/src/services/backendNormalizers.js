@@ -805,3 +805,58 @@ export function normalizeEventTimeStatus(payload = {}) {
         event_id: toOptionalNumber(payload.event_id, null),
     }
 }
+
+export function normalizeExcuseLetter(payload = {}) {
+    if (!payload || typeof payload !== 'object') return null
+
+    return {
+        id: toOptionalNumber(payload.id, 0),
+        school_id: toOptionalNumber(payload.school_id, 0),
+        event_id: toOptionalNumber(payload.event_id, 0),
+        student_profile_id: toOptionalNumber(payload.student_profile_id, 0),
+        reason: toOptionalString(payload.reason, ''),
+        attachment_path: toOptionalString(payload.attachment_path, null),
+        status: toOptionalString(payload.status, 'pending'),
+        reviewer_remarks: toOptionalString(payload.reviewer_remarks, null),
+        reviewed_at: toOptionalUtcDateTimeString(payload.reviewed_at, null),
+        created_at: toOptionalUtcDateTimeString(payload.created_at, null),
+        updated_at: toOptionalUtcDateTimeString(payload.updated_at, null),
+        student: payload.student ? {
+            user_id: toOptionalNumber(payload.student.user_id, 0),
+            student_number: toOptionalString(payload.student.student_number, ''),
+            full_name: toOptionalString(payload.student.full_name, ''),
+            year_level: toOptionalNumber(payload.student.year_level, null),
+            course: toOptionalString(payload.student.course, null),
+            email: toOptionalString(payload.student.email, null),
+        } : null,
+        event: payload.event ? {
+            id: toOptionalNumber(payload.event.id, 0),
+            name: toOptionalString(payload.event.name, ''),
+            start_at: toOptionalUtcDateTimeString(payload.event.start_at, null),
+            status: toOptionalString(payload.event.status, ''),
+        } : null,
+        reviewer: payload.reviewer ? {
+            user_id: toOptionalNumber(payload.reviewer.user_id, 0),
+            full_name: toOptionalString(payload.reviewer.full_name, ''),
+        } : null,
+    }
+}
+
+export function normalizeExcuseLetterStatus(payload = {}) {
+    return {
+        letter_id: toOptionalNumber(payload.letter_id, null),
+        status: toOptionalString(payload.status, null),
+        reviewer_remarks: toOptionalString(payload.reviewer_remarks, null),
+        reviewed_at: toOptionalUtcDateTimeString(payload.reviewed_at, null),
+    }
+}
+
+export function normalizeExcuseLetterDashboard(payload = {}) {
+    return {
+        total: toOptionalNumber(payload.total, 0),
+        pending: toOptionalNumber(payload.pending, 0),
+        approved: toOptionalNumber(payload.approved, 0),
+        rejected: toOptionalNumber(payload.rejected, 0),
+    }
+}
+

@@ -2,7 +2,7 @@ const DEFAULT_ASSISTANT_BASE_URL = '/__assistant__'
 
 function getRuntimeConfig() {
   if (typeof window === 'undefined') return {}
-  const runtimeConfig = window.__AURA_RUNTIME_CONFIG__
+  const runtimeConfig = window.__NEXUS_RUNTIME_CONFIG__
   return runtimeConfig && typeof runtimeConfig === 'object' ? runtimeConfig : {}
 }
 

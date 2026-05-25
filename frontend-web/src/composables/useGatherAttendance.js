@@ -1058,7 +1058,7 @@ export function useGatherAttendance(previewSource = false) {
       return locationCheck.value
     }
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     if (!token) {
       throw new Error('Your session has expired. Please sign in again.')
     }
@@ -1246,7 +1246,7 @@ export function useGatherAttendance(previewSource = false) {
   async function refreshEventStatuses(forceIds = []) {
     if (preview.value) return
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     if (!token) return
 
     const candidateIds = candidateEvents.value.slice(0, 8).map((item) => item.id)

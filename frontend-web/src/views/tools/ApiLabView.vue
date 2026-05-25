@@ -198,7 +198,7 @@
               <div class="logo-preview-shell">
                 <img :src="jrmsuLogoUrl" alt="JRMSU logo preview" class="logo-preview-image" />
               </div>
-              <p class="result-meta">Source: `/public/logos/aura.png`</p>
+              <p class="result-meta">Source: `/public/logos/nexus.png`</p>
             </div>
 
             <form class="panel-form school-setup-form" @submit.prevent="handleCreateSchoolIt">
@@ -820,7 +820,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-const jrmsuLogoUrl = '/logos/aura.png'
+const jrmsuLogoUrl = '/logos/nexus.png'
 import {
   changePassword,
   createSchoolWithSchoolIt,
@@ -1896,7 +1896,7 @@ async function handleCreateSchoolIt() {
       school_it_last_name: schoolForm.lastName,
       school_it_password: schoolForm.password || null,
       logo: logoBlob,
-      logo_name: 'aura.png',
+      logo_name: 'nexus.png',
     })
 
     pushLog(

@@ -593,7 +593,7 @@ async function loadEventTimeStatus() {
     return null
   }
 
-  const token = localStorage.getItem('aura_token')
+  const token = localStorage.getItem('nexus_token')
   if (!token) {
     eventTimeStatus.value = null
     return null
@@ -936,7 +936,7 @@ async function recordFaceScanAttendance() {
     }
   }
 
-  const token = localStorage.getItem('aura_token')
+  const token = localStorage.getItem('nexus_token')
   const rawBase64 = imageDataUrl.includes(',') ? imageDataUrl.split(',')[1] : imageDataUrl
   const payload = {
     eventId: eventIdValue,
@@ -1040,7 +1040,7 @@ async function waitForLocationCheck() {
     }
 
     try {
-      const token = localStorage.getItem('aura_token')
+      const token = localStorage.getItem('nexus_token')
       const verification = await verifyEventLocation(apiBaseUrl, token, eventId.value, {
         latitude: coords.latitude,
         longitude: coords.longitude,

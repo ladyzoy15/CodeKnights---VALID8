@@ -21,7 +21,7 @@ from policy import (
 )
 
 # Initialize FastMCP Server
-mcp = FastMCP("Aura Schema Server")
+mcp = FastMCP("NEXUS Schema Server")
 
 def _serialize_column_type(column_type: Any) -> str:
     if column_type is None:

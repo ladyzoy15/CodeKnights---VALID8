@@ -1,4 +1,4 @@
-﻿# Aura Database Schema
+﻿# NEXUS Database Schema
 
 <!--nav-->
 [Previous](../README.md) | [Next](../README.md) | [Home](/README.md)

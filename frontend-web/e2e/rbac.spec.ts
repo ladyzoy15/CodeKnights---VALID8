@@ -34,15 +34,15 @@ async function waitForBootOverlayToClear(
 
 async function readStoredToken(page: import("@playwright/test").Page) {
   return page.evaluate(() => {
-    const localToken = localStorage.getItem("aura_token");
+    const localToken = localStorage.getItem("nexus_token");
     const sessionToken =
       typeof sessionStorage !== "undefined"
-        ? sessionStorage.getItem("aura_token")
+        ? sessionStorage.getItem("nexus_token")
         : null;
     const cookieToken = document.cookie
       .split(";")
       .map((entry) => entry.trim())
-      .find((entry) => /^aura_token=/.test(entry));
+      .find((entry) => /^nexus_token=/.test(entry));
     return localToken || sessionToken || cookieToken || "";
   });
 }

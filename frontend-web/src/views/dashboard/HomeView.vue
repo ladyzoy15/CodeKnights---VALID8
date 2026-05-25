@@ -13,7 +13,7 @@
       <h1 class="text-[26px] font-extrabold" style="color: var(--color-text-primary);">Home</h1>
     </div>
 
-    <!-- Search bar + Talk to Aura AI row -->
+    <!-- Search bar + Talk to NEXUS AI row -->
     <div class="search-area dashboard-enter dashboard-enter--3">
       <div class="search-row">
         <!-- Search bar — expands to full width when active -->
@@ -56,12 +56,12 @@
           </div>
         </div>
 
-        <!-- Talk to Aura AI (mobile only — hides when search is active) -->
+        <!-- Talk to NEXUS AI (mobile only — hides when search is active) -->
         <button
           v-show="!searchActive"
           class="ai-pill md:hidden"
           :class="{ 'ai-pill--open': isMobileAiOpen }"
-          aria-label="Talk to Aura AI"
+          aria-label="Talk to NEXUS AI"
           :aria-expanded="isMobileAiOpen ? 'true' : 'false'"
           aria-controls="mobile-ai-panel"
           type="button"
@@ -69,14 +69,14 @@
         >
           <img
             :src="secondaryAuraLogo"
-            alt="Aura"
+            alt="NEXUS"
             class="w-4 h-4 object-contain opacity-90"
           />
           <span
             class="text-[9px] font-extrabold text-left leading-[1.1]"
             style="color: var(--color-search-pill-text);"
           >
-            Talk to<br>Aura Ai
+            Talk to<br>NEXUS Ai
           </span>
         </button>
       </div>
@@ -96,7 +96,7 @@
           id="mobile-ai-panel"
           class="mobile-ai-panel md:hidden"
           role="region"
-          aria-label="Aura AI chat"
+          aria-label="NEXUS AI chat"
         >
           <div class="mobile-ai-panel-inner">
             <div class="mobile-ai-shell">
@@ -125,7 +125,7 @@
                     v-model="inputText"
                     class="mobile-ai-input-field"
                     type="text"
-                    placeholder="Ask Aura..."
+                    placeholder="Ask NEXUS..."
                     :disabled="isTyping"
                     @keyup.enter="sendMessage"
                   />

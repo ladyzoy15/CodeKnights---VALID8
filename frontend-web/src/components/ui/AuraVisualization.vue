@@ -1,5 +1,5 @@
 <template>
-  <div class="aura-visualization" :class="[`aura-visualization--${type}`]">
+  <div class="nexus-visualization" :class="[`nexus-visualization--${type}`]">
     <div v-if="title" class="viz-header">
       <h4 class="viz-title">{{ title }}</h4>
     </div>
@@ -152,7 +152,7 @@ const chartOptions = computed(() => {
 </script>
 
 <style scoped>
-.aura-visualization {
+.nexus-visualization {
   background: rgba(22, 27, 34, 0.8);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08);

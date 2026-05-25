@@ -86,7 +86,7 @@ const nativeApiBaseUrl = normalizeAbsoluteUrl(
 );
 
 const webApiBaseUrl = readFirstAbsoluteUrl([
-  env.AURA_API_BASE_URL || "",
+  env.NEXUS_API_BASE_URL || "",
   env.VITE_WEB_API_BASE_URL || "",
   env.VITE_API_BASE_URL || "",
   nativeApiBaseUrl,
@@ -111,8 +111,8 @@ if (importApiTimeoutMs != null) {
 }
 
 const fileContents = [
-  "window.__AURA_RUNTIME_CONFIG__ = Object.assign(",
-  "  window.__AURA_RUNTIME_CONFIG__ || {},",
+  "window.__NEXUS_RUNTIME_CONFIG__ = Object.assign(",
+  "  window.__NEXUS_RUNTIME_CONFIG__ || {},",
   `  ${JSON.stringify(runtimeConfig, null, 2)}`,
   ")",
   "",

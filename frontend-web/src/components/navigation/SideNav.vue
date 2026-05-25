@@ -42,7 +42,7 @@
           </button>
         </div>
 
-        <!-- ── Talk to Aura AI pill ──────────────────────────────── -->
+        <!-- ── Talk to NEXUS AI pill ──────────────────────────────── -->
         <div ref="pillRef" class="relative w-[40px] h-[74px] mx-2 mb-1.5 z-50">
           <div
             class="absolute top-0 left-0 flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-lg origin-left"
@@ -57,12 +57,12 @@
               class="absolute inset-0 flex flex-col items-center justify-center gap-1 transition-opacity duration-300"
               :class="isMiniOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'"
             >
-              <img :src="activeAuraLogo" alt="Aura" class="w-6 h-6 object-contain opacity-90" />
+              <img :src="activeAuraLogo" alt="NEXUS" class="w-6 h-6 object-contain opacity-90" />
               <span
                 class="text-[8px] font-extrabold text-center leading-snug transition-colors duration-200"
                 style="color: var(--color-banner-text);"
               >
-                Talk to<br>Aura Ai
+                Talk to<br>NEXUS Ai
               </span>
             </div>
 
@@ -75,7 +75,7 @@
               <div class="flex items-center justify-between mb-2">
                 <img
                   :src="activeAuraLogo"
-                  alt="Aura"
+                  alt="NEXUS"
                   class="w-7 h-7 object-contain opacity-90 cursor-pointer transition-transform hover:scale-110"
                   title="Collapse chat"
                   @click.stop="closeMini"
@@ -150,7 +150,7 @@
                     v-model="inputText"
                     class="bg-transparent outline-none text-[11px] w-full placeholder-black/40 font-medium"
                     :style="{ color: 'var(--color-banner-text)' }"
-                    placeholder="Ask Aura..."
+                    placeholder="Ask NEXUS..."
                     :disabled="isTyping"
                     @keyup.enter="sendMessage"
                   />
@@ -182,6 +182,7 @@ import { activeAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'
 import ChatMarkdownMessage from '@/components/ui/ChatMarkdownMessage.vue'
 import { getNavigationItemsForRoute } from '@/components/navigation/navigationItems.js'
+import { useSgDashboard } from '@/composables/useSgDashboard.js'
 import { resolveChatLocation, withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
 
 // ── Chat state from singleton composable ──────────────────
@@ -213,7 +214,12 @@ onUnmounted(() => document.removeEventListener('mousedown', handleOutsideClick))
 // ── Navigation ────────────────────────────────────────────
 const router = useRouter()
 const route  = useRoute()
-const navItems = computed(() => getNavigationItemsForRoute(route))
+const { permissionCodes } = useSgDashboard()
+const permissionSet = computed(() => new Set(permissionCodes.value))
+const navItems = computed(() => {
+  const items = getNavigationItemsForRoute(route)
+  return items.filter((item) => !item.permissionCode || permissionSet.value.has(item.permissionCode))
+})
 const railHeight = computed(() => Math.max(380, 150 + (navItems.value.length * 58)))
 const navRailStyle = computed(() => ({
   '--nav-rail-height': `${railHeight.value}px`,

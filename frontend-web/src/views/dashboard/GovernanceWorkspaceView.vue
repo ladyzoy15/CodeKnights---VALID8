@@ -75,15 +75,17 @@
         </div>
       </div>
 
-      <button
-        type="button"
-        class="governance-create-button"
-        aria-label="Open governance create actions"
-        @click="handleOpenCreateSheet"
-      >
-        <Plus :size="18" :stroke-width="2.1" />
-        <span>Create</span>
-      </button>
+      <div class="governance-top-actions">
+        <button
+          type="button"
+          class="governance-create-button"
+          aria-label="Open governance create actions"
+          @click="handleOpenCreateSheet"
+        >
+          <Plus :size="18" :stroke-width="2.1" />
+          <span>Create</span>
+        </button>
+      </div>
     </div>
 
     <section v-if="isWorkspaceLoading" class="governance-state-card dashboard-enter dashboard-enter--3">
@@ -1315,6 +1317,7 @@ import {
   FileText,
   GraduationCap,
   LoaderCircle,
+  Mail as MailIcon,
   Megaphone,
   Plus,
   ShieldCheck,
@@ -1429,6 +1432,7 @@ const {
 
 const searchActive = computed(() => searchQuery.value.trim().length > 0)
 const hasGovernancePermissionCodes = computed(() => permissionCodes.value.length > 0)
+const canReviewExcuseLetters = computed(() => permissionCodes.value.includes('review_excuse_letter'))
 const isPermissionAlertOpen = ref(false)
 const hasShownPermissionAlert = ref(false)
 const isEnhancedOverview = computed(() => isOverviewSection.value && Boolean(activeUnitType.value))
@@ -2545,6 +2549,11 @@ function handleSearchResultClick(item) {
 
 function closePermissionAlert() {
   isPermissionAlertOpen.value = false
+}
+
+function openExcuseLetters() {
+  const routeName = props.preview ? 'PreviewSgExcuseLetters' : 'SgExcuseLetters'
+  router.push({ name: routeName })
 }
 
 function handleOpenCreateSheet() {

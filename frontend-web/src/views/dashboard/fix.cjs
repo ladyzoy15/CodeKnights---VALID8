@@ -1,5 +1,5 @@
 const fs = require('fs');
-const filepath = 'd:/Aura - Frontend/aura-frontend/src/views/dashboard/SchoolItHomeView.vue';
+const filepath = 'd:/NEXUS - Frontend/nexus-frontend/src/views/dashboard/SchoolItHomeView.vue';
 
 try {
     let content = fs.readFileSync(filepath, 'utf8');

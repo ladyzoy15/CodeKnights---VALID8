@@ -20,7 +20,7 @@ Set these in the root `.env` when you want real outbound mail:
 ```env
 EMAIL_TRANSPORT=mailjet_api
 EMAIL_SENDER_EMAIL=notifications@example.com
-EMAIL_SENDER_NAME=Aura Notifications
+EMAIL_SENDER_NAME=NEXUS Notifications
 EMAIL_REPLY_TO=notifications@example.com
 MAILJET_API_KEY=your-mailjet-api-key
 MAILJET_API_SECRET=your-mailjet-api-secret

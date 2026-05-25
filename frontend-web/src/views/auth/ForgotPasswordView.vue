@@ -1,38 +1,51 @@
 <template>
-  <div class="forgot-password-page min-h-dvh flex flex-col font-[Manrope] overflow-auto" style="background: var(--color-bg);">
-    <div class="flex-1 flex flex-col items-center justify-center px-8 relative z-10">
-      <div class="w-full max-w-[340px] flex flex-col gap-6">
-        
-        <h1 
-          class="text-[22px] font-semibold leading-[1.4] tracking-[-0.3px] transition-all duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] relative"
-          style="color: var(--color-text-primary);"
-          :class="isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
-        >
-          Find your account
-        </h1>
+  <div class="forgot-password-page min-h-dvh flex flex-col font-[Manrope] mesh-gradient overflow-hidden relative">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+    </div>
 
-        <p 
-          class="text-[14px] leading-[1.5] transition-all duration-700 delay-75 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          style="color: var(--color-text-secondary);"
-          :class="isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
-        >
-          Enter your email to reset your password.
-        </p>
+    <div class="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
+      <div 
+        class="w-full max-w-[400px] glass-card rounded-[32px] p-8 md:p-10 flex flex-col gap-8 transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        :class="isMounted ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95'"
+      >
+        <!-- Logo & Brand -->
+        <div class="flex flex-col items-center gap-2">
+          <img
+            :src="surfaceAuraLogo"
+            alt="NEXUS"
+            class="h-12 w-auto object-contain brightness-0 invert"
+          />
+        </div>
+
+        <!-- Heading -->
+        <div class="text-center">
+          <h1 class="text-[20px] font-semibold leading-tight text-white/90">
+            Find your account
+          </h1>
+          <p class="text-[14px] text-white/50 mt-2 leading-relaxed">
+            Enter your email and we'll help you reset your password.
+          </p>
+        </div>
 
         <form 
-          class="flex flex-col gap-3 transition-all duration-700 delay-100 ease-[cubic-bezier(0.22,1,0.36,1)] relative" 
-          :class="isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
+          class="flex flex-col gap-4" 
           @submit.prevent="handleSubmit"
         >
-          <BaseInput
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="Email"
-            autocomplete="email"
-            tone="neutral"
-            :disabled="isLoading"
-          />
+          <div class="group relative">
+            <BaseInput
+              id="email"
+              v-model="email"
+              type="email"
+              placeholder="Email Address"
+              autocomplete="email"
+              tone="neutral"
+              class="premium-input"
+              :disabled="isLoading"
+            />
+          </div>
 
           <Transition name="fade">
             <p v-if="message" :class="messageClass">
@@ -43,8 +56,8 @@
           <BaseButton
             type="submit"
             variant="primary"
-            size="md"
-            class="mt-1"
+            size="lg"
+            class="mt-2 premium-action-btn"
             :loading="isLoading"
           >
             Reset Password
@@ -53,46 +66,27 @@
           <BaseButton
             type="button"
             variant="secondary"
-            size="md"
+            size="lg"
+            class="glass-secondary-btn"
             :disabled="isLoading"
             @click="goBack"
           >
             Back to Login
           </BaseButton>
         </form>
+      </div>
 
-        <div 
-          class="flex flex-col items-center justify-center gap-2 mt-1 transition-all duration-700 delay-200 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          :class="isMounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
-        >
-          <div class="flex items-center justify-center gap-2">
-            <img
-              :src="surfaceAuraLogo"
-              alt="Aura"
-              class="h-8 w-auto object-contain"
-            />
-            <span class="text-[13px] font-medium tracking-tight" style="color: var(--color-text-primary);">
-              Powered by Aura Ai
-            </span>
-          </div>
+      <!-- Footer Info -->
+      <div 
+        class="mt-8 flex flex-col items-center gap-4 transition-all duration-1000 delay-300"
+        :class="isMounted ? 'opacity-100' : 'opacity-0'"
+      >
+        <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.03] border border-white/[0.05]">
+          <span class="text-[11px] font-bold tracking-[0.05em] text-white/30 uppercase">Powered by</span>
+          <span class="text-[11px] font-bold text-[var(--color-primary)] uppercase">NEXUS Ai v1.0</span>
         </div>
-
       </div>
     </div>
-
-    <footer 
-      class="pb-8 flex justify-center transition-all duration-1000 delay-300 ease-out relative z-10"
-      :class="isMounted ? 'opacity-100' : 'opacity-0'"
-    >
-      <a
-        href="#"
-        class="text-[12px] font-medium transition-colors"
-        style="color: var(--color-text-secondary);"
-        @click.prevent
-      >
-        Learn more about Aura Project
-      </a>
-    </footer>
   </div>
 </template>
 
@@ -113,8 +107,8 @@ const router = useRouter()
 
 const messageClass = computed(() => {
   return isSuccess.value 
-    ? 'text-green-600 text-xs text-center mt-1'
-    : 'text-red-500 text-xs text-center mt-1'
+    ? 'text-green-400 text-xs text-center font-medium mt-1'
+    : 'text-red-400 text-xs text-center font-medium mt-1'
 })
 
 onBeforeMount(() => {
@@ -165,6 +159,70 @@ function goBack() {
 </script>
 
 <style scoped>
+.forgot-password-page {
+  --color-primary: #AAFF00;
+  --color-primary-glow: rgba(170, 255, 0, 0.4);
+}
+
+/* Background Blobs */
+.blob {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--color-primary-glow) 0%, transparent 70%);
+  filter: blur(80px);
+  opacity: 0.15;
+  z-index: 1;
+}
+
+.blob-1 { top: -10%; left: -10%; animation: float 20s infinite alternate; }
+.blob-2 { bottom: -10%; right: -10%; animation: float 25s infinite alternate-reverse; }
+
+@keyframes float {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(100px, 50px) rotate(30deg); }
+}
+
+/* Premium Component Overrides */
+.premium-input :deep(.base-input) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+}
+
+.premium-input :deep(.base-input:focus) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 20px var(--color-primary-glow) !important;
+}
+
+.premium-input :deep(.base-input::placeholder) {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.premium-action-btn {
+  background: var(--color-primary) !important;
+  color: #050505 !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px -10px var(--color-primary-glow) !important;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+.glass-secondary-btn {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+}
+
+.glass-secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;

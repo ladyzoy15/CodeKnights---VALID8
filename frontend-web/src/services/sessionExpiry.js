@@ -1,5 +1,5 @@
-export const SESSION_EXPIRED_EVENT = 'aura-session-expired'
-const SESSION_EXPIRED_NOTICE_KEY = 'aura_session_expired_notice'
+export const SESSION_EXPIRED_EVENT = 'nexus-session-expired'
+const SESSION_EXPIRED_NOTICE_KEY = 'nexus_session_expired_notice'
 const DEFAULT_SESSION_EXPIRED_MESSAGE = 'Session expired. Please log in again.'
 
 export function markSessionExpiredNotice(message = DEFAULT_SESSION_EXPIRED_MESSAGE) {

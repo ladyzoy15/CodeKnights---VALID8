@@ -54,6 +54,7 @@ from app.models.sanctions import (
     SanctionItemAttribute,
     SanctionRecord,
 )
+from app.models.excuse_letter import ExcuseLetter
 
 from .role import Role
 from .user import User, UserRole, StudentProfile, FacultyProfile
@@ -110,4 +111,5 @@ __all__ = [
     "SanctionDelegation",
     "SanctionComplianceHistory",
     "ClearanceDeadline",
+    "ExcuseLetter",
 ]

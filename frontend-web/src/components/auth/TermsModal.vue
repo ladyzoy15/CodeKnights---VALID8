@@ -3,142 +3,57 @@
     <Transition name="modal-fade">
       <div 
         v-if="isOpen" 
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
         @click.self="close"
       >
         <div 
-          class="w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border border-white/10"
-          style="background: var(--color-surface);"
+          class="w-full max-w-lg max-h-[85vh] flex flex-col rounded-[32px] shadow-2xl overflow-hidden border border-white/10 glass-card"
         >
           <!-- Header -->
-          <div class="p-5 border-b border-gray-200/20 flex justify-between items-center shrink-0">
-            <h2 class="text-lg font-semibold" style="color: var(--color-text-primary);">
-              Aura Terms and Conditions
+          <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+            <h2 class="text-xl font-bold text-white">
+              NEXUS Terms and Conditions
             </h2>
             <button 
               @click="close"
-              class="p-1 rounded-full hover:bg-gray-500/10 transition-colors"
-              style="color: var(--color-text-secondary);"
+              class="p-2 rounded-full hover:bg-white/10 transition-colors text-white/50 hover:text-white"
             >
               <XIcon class="w-5 h-5" />
             </button>
           </div>
 
           <!-- Body (Scrollable) -->
-          <div class="p-5 overflow-y-auto flex-1 font-[Manrope] text-sm space-y-4" style="color: var(--color-text-secondary);">
-            <p>These Terms and Conditions govern access to and use of the Aura platform by students, faculty, staff, administrators, governance officers, institutions, and other authorized users.</p>
-            <p>By registering for, accessing, or using Aura, you agree to be bound by these Terms and Conditions.</p>
+          <div class="p-6 overflow-y-auto flex-1 font-[Manrope] text-[14px] leading-relaxed space-y-5 text-white/60 custom-scrollbar">
+            <p class="font-medium text-white/80">These Terms and Conditions govern access to and use of the NEXUS platform by students, faculty, staff, administrators, governance officers, institutions, and other authorized users.</p>
+            <p>By registering for, accessing, or using NEXUS, you agree to be bound by these Terms and Conditions.</p>
 
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">NATURE OF THE SERVICE</h3>
-            <p>Aura is a software platform intended to facilitate attendance management, identity verification, geofenced attendance validation, scheduling, dashboards, analytics, governance workflows, and related institutional functions.</p>
-            <p>Aura is provided subject to institutional configuration, user role, school policy, and applicable law.</p>
+            <h3 class="font-bold text-[16px] mt-8 text-white/90 tracking-tight">NATURE OF THE SERVICE</h3>
+            <p>NEXUS is a software platform intended to facilitate attendance management, identity verification, geofenced attendance validation, scheduling, dashboards, analytics, governance workflows, and related institutional functions.</p>
 
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">ELIGIBILITY AND AUTHORITY</h3>
-            <p>You may use Aura only if:</p>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>you are an authorized user of a participating institution or organization,</li>
-              <li>the information you provide is true, accurate, current, and complete,</li>
-              <li>and you have the legal capacity to agree to these Terms and Conditions, or a lawful representative has agreed on your behalf where required.</li>
-            </ul>
-            <p>If you are using Aura on behalf of a school, department, organization, or institution, you represent that you are authorized to bind that entity.</p>
+            <h3 class="font-bold text-[16px] mt-8 text-white/90 tracking-tight">ELIGIBILITY AND AUTHORITY</h3>
+            <p>You may use NEXUS only if you are an authorized user of a participating institution, the information you provide is accurate, and you have the legal capacity to agree to these terms.</p>
 
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">ACCOUNT RESPONSIBILITY</h3>
-            <p>You are responsible for:</p>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>maintaining the confidentiality of your login credentials,</li>
-              <li>restricting unauthorized access to your account,</li>
-              <li>promptly reporting suspected misuse, compromise, or unauthorized activity,</li>
-              <li>and ensuring that any information you submit through Aura is accurate and lawful.</li>
-            </ul>
-            <p>You must not share your account with unauthorized users or attempt to bypass role-based access controls.</p>
+            <h3 class="font-bold text-[16px] mt-8 text-white/90 tracking-tight">FACE REGISTRATION AND IDENTITY VERIFICATION</h3>
+            <p>Where enabled, NEXUS may require face registration, face verification, or similar identity validation features. You acknowledge that your face embedding may be processed for attendance verification and security purposes.</p>
 
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">FACE REGISTRATION AND IDENTITY VERIFICATION</h3>
-            <p>Where enabled, Aura may require face registration, face verification, or similar identity validation features for attendance or security purposes.</p>
-            <p>By using these features, you acknowledge and agree that:</p>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>your face image, scan, or face embedding may be processed for attendance verification and security,</li>
-              <li>Aura may compare submitted facial data against registered data to confirm identity or detect misuse,</li>
-              <li>false registration, impersonation, spoofing, or the use of another person’s image, device, or credentials is strictly prohibited,</li>
-              <li>and failure or refusal to complete required verification steps may limit access to certain features.</li>
-            </ul>
+            <h3 class="font-bold text-[16px] mt-8 text-white/90 tracking-tight">ACCEPTABLE USE</h3>
+            <p>You agree not to use NEXUS for unlawful purposes, impersonate others, or attempt to bypass security controls. False registration or spoofing of identity and location data is strictly prohibited.</p>
 
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">LOCATION AND GEOFENCE FEATURES</h3>
-            <p>Where location-enabled attendance is required, you acknowledge and agree that Aura may access device location data to verify attendance eligibility within authorized areas.</p>
-            <p>You agree not to falsify, spoof, manipulate, proxy, or otherwise interfere with device location data, geofence controls, or attendance verification mechanisms.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">ACCEPTABLE USE</h3>
-            <p>You agree not to:</p>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>use Aura for unlawful, fraudulent, abusive, defamatory, or unauthorized purposes,</li>
-              <li>impersonate another person or misrepresent your identity, affiliation, attendance, or authority,</li>
-              <li>upload malicious code, interfere with security, or attempt unauthorized system access,</li>
-              <li>scrape, copy, reverse engineer, or exploit the platform beyond permitted use,</li>
-              <li>access data, reports, or dashboards beyond your role or authorization,</li>
-              <li>use facial or location features for harassment, surveillance abuse, or unauthorized tracking,</li>
-              <li>or circumvent technical, privacy, or security safeguards.</li>
-            </ul>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">INSTITUTIONAL CONTROL AND ROLE-BASED ACCESS</h3>
-            <p>Certain parts of Aura are configured and controlled by the institution that deploys the platform. Visibility of dashboards, analytics, attendance records, sanctions, and governance tools depends on role, institutional settings, and authorization.</p>
-            <p>Institutions may suspend, limit, or revoke user access consistent with policy, governance requirements, contractual rights, or legal obligations.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">DATA ACCURACY AND USER RESPONSIBILITIES</h3>
-            <p>You are responsible for ensuring that the data you submit is accurate, lawful, and not misleading.</p>
-            <p>Aura may rely on user-submitted data, institutional imports, attendance logs, face verification, and location validation. Aura does not guarantee that all data will always be error-free, uninterrupted, or available in every circumstance.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">AVAILABILITY AND SERVICE CHANGES</h3>
-            <p>Aura may update, improve, suspend, or discontinue features, modules, interfaces, workflows, or integrations at any time, with or without prior notice where reasonably necessary for maintenance, security, legal compliance, or operational reasons.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">INTELLECTUAL PROPERTY</h3>
-            <p>All software, designs, workflows, trademarks, text, graphics, code, interfaces, and related materials forming part of Aura are owned by or licensed to Aura Project and are protected by applicable intellectual property laws.</p>
-            <p>Except as expressly allowed, no user acquires ownership rights in Aura by using the platform.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">SUSPENSION AND TERMINATION</h3>
-            <p>Aura or the relevant institution may suspend, restrict, or terminate access if:</p>
-            <ul class="list-disc pl-5 space-y-1">
-              <li>these Terms and Conditions are violated,</li>
-              <li>use presents security, legal, or institutional risk,</li>
-              <li>fraud, spoofing, impersonation, or misuse is suspected,</li>
-              <li>an account becomes inactive, unauthorized, or no longer institutionally valid,</li>
-              <li>or continued access is no longer operationally or legally appropriate.</li>
-            </ul>
-            <p>Termination does not extinguish obligations that by nature should survive, including privacy, confidentiality, liability, intellectual property, and dispute provisions.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">DISCLAIMERS</h3>
-            <p>Aura is provided on an as available and as is basis, subject to maintenance, technical limitations, third-party dependencies, connectivity issues, and institutional configuration.</p>
-            <p>To the fullest extent allowed by law, Aura does not warrant uninterrupted operation, perfect facial recognition, exact geolocation accuracy, or error-free availability at all times.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">LIMITATION OF LIABILITY</h3>
-            <p>To the maximum extent permitted by law, Aura, its affiliates, officers, employees, contractors, licensors, and service providers shall not be liable for indirect, incidental, special, consequential, punitive, or exemplary damages arising from or related to the use of Aura.</p>
-            <p>Nothing in these Terms and Conditions excludes liability that cannot lawfully be excluded under applicable law.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">INDEMNITY</h3>
-            <p>You agree to indemnify and hold harmless Aura and its related parties from claims, losses, liabilities, damages, costs, and expenses arising from your violation of these Terms and Conditions, misuse of Aura, unlawful conduct, or infringement of the rights of others.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">PRIVACY</h3>
-            <p>Your use of Aura is also governed by the Aura Privacy Policy. In the event of inconsistency, the Privacy Policy governs matters specifically relating to personal data processing, while these Terms and Conditions govern platform use and contractual obligations.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">GOVERNING LAW AND VENUE</h3>
-            <p>These Terms and Conditions shall be governed by the laws of the Republic of the Philippines, without prejudice to mandatory rights granted by applicable law.</p>
-            <p>Any dispute arising from or relating to these Terms and Conditions shall be brought before the proper courts of the Philippines, unless otherwise required by law or valid written agreement.</p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">CONTACT INFORMATION</h3>
-            <p>For legal, contractual, or support concerns, please contact: <a href="mailto:auraautomessage@gmail.com" class="text-blue-500 hover:underline">auraautomessage@gmail.com</a></p>
-
-            <h3 class="font-semibold text-[15px] mt-6" style="color: var(--color-text-primary);">CONSENT TO PRIVACY POLICY AND BIOMETRIC AND LOCATION PROCESSING</h3>
-            <p>By creating or using my Aura account, I confirm that I have read and understood the Aura Privacy Policy and Terms and Conditions. I consent to the collection and processing of my personal data, including my profile information, attendance records, facial image or face embedding for identity verification, and location data for geofence-based attendance validation, when applicable, for the purposes stated in the Privacy Policy.</p>
-            <p>If I am a minor or otherwise not legally capable of giving consent, such consent shall be given by my parent, guardian, or lawful representative where required by law.</p>
-            <p>I also confirm that the information I provide in Aura is true, accurate, and complete, and that I will use the platform only for authorized and lawful purposes.</p>
+            <h3 class="font-bold text-[16px] mt-8 text-white/90 tracking-tight">INTELLECTUAL PROPERTY</h3>
+            <p>All software, designs, and workflows forming part of NEXUS are owned by NEXUS Project and are protected by intellectual property laws.</p>
+            
+            <p class="pt-4 border-t border-white/5 text-[12px] italic">For the full legal text and detailed clauses, please contact auraautomessage@gmail.com.</p>
           </div>
 
           <!-- Footer -->
-          <div class="p-5 border-t border-gray-200/20 shrink-0 flex justify-end gap-3">
+          <div class="p-6 border-t border-white/5 shrink-0 flex justify-end gap-3 bg-white/[0.02]">
             <BaseButton
               variant="primary"
               size="md"
+              class="premium-agree-btn"
               @click="agree"
             >
-              I Understand
+              I Understand & Agree
             </BaseButton>
           </div>
         </div>
@@ -171,12 +86,41 @@ function agree() {
 </script>
 
 <style scoped>
+.glass-card {
+  background: rgba(20, 20, 20, 0.8);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.premium-agree-btn {
+  background: #AAFF00 !important;
+  color: #050505 !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 20px -6px rgba(170, 255, 0, 0.4) !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .modal-fade-enter-active,
 .modal-fade-leave-active {
-  transition: opacity 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+  transform: scale(0.9) translateY(20px);
 }
 </style>

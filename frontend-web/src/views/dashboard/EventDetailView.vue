@@ -138,6 +138,51 @@
           </article>
         </div>
       </section>
+
+      <!-- Excuse Letter Panel (students, upcoming events only) -->
+      <section
+        v-if="showExcuseLetterSection"
+        class="excuse-panel dashboard-enter dashboard-enter--6"
+        aria-label="Excuse letter"
+      >
+        <header class="section-header">
+          <div>
+            <p class="eyebrow">Can't Attend?</p>
+            <h2>Excuse Letter</h2>
+          </div>
+          <ExcuseLetterStatusBadge
+            :event-status="statusKey"
+            :is-student="isStudentUser"
+            :status="excuseLetterStatus"
+            :loading="excuseLetterLoading"
+            @send="showExcuseModal = true"
+          />
+        </header>
+
+        <div class="excuse-panel__body">
+          <template v-if="!excuseLetterStatus">
+            <p class="excuse-panel__desc">
+              If you are unable to attend this event, you may submit a formal excuse letter before it starts.
+              Your submission will be reviewed by the governance officers.
+            </p>
+            <button
+              class="detail-action excuse-panel__cta"
+              type="button"
+              :disabled="excuseLetterLoading"
+              @click="showExcuseModal = true"
+            >
+              <MailIcon :size="15" aria-hidden="true" />
+              Send Excuse Letter
+            </button>
+          </template>
+          <template v-else>
+            <p class="excuse-panel__submitted">
+              Your excuse letter has been submitted. Status:
+              <strong :class="`excuse-status-text--${excuseLetterStatus}`">{{ excuseLetterStatusLabel }}</strong>
+            </p>
+          </template>
+        </div>
+      </section>
     </section>
 
     <section v-else class="empty-state empty-state--panel">
@@ -147,6 +192,15 @@
       </button>
     </section>
   </main>
+
+  <!-- Excuse Letter Submission Modal -->
+  <ExcuseLetterModal
+    v-if="!props.preview && isStudentUser && event"
+    :is-open="showExcuseModal"
+    :event="event"
+    @close="showExcuseModal = false"
+    @submitted="showExcuseModal = false"
+  />
 </template>
 
 <script setup>
@@ -158,10 +212,14 @@ import {
   CalendarClock,
   Crosshair,
   LocateFixed,
+  Mail as MailIcon,
   MapPin,
   Navigation,
   Ruler,
 } from 'lucide-vue-next'
+import ExcuseLetterStatusBadge from '@/components/dashboard/ExcuseLetterStatusBadge.vue'
+import ExcuseLetterModal from '@/components/dashboard/ExcuseLetterModal.vue'
+import { useExcuseLetterStore } from '@/stores/excuseLetterStore.js'
 import { applyTheme, loadTheme } from '@/config/theme.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
@@ -178,7 +236,21 @@ const props = defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { ensureDashboardEvent, getDashboardEventById, token, schoolSettings } = useDashboardSession()
+const { ensureDashboardEvent, getDashboardEventById, token, schoolSettings, currentUser } = useDashboardSession()
+const excuseLetterStore = useExcuseLetterStore()
+const showExcuseModal = ref(false)
+const excuseLetterLoading = ref(false)
+
+const isStudentUser = computed(() => Boolean(currentUser.value?.student_profile))
+const showExcuseLetterSection = computed(() => !props.preview && isStudentUser.value)
+const excuseLetterStatus = computed(() => excuseLetterStore.currentEventStatus?.status ?? null)
+const excuseLetterStatusLabel = computed(() => {
+  const s = excuseLetterStatus.value
+  if (s === 'pending') return 'Pending Review'
+  if (s === 'approved') return 'Approved'
+  if (s === 'rejected') return 'Rejected'
+  return ''
+})
 const isCouncilPreviewRoute = computed(() => props.preview && isGovernancePreviewPath(route))
 const isSchoolItPreviewRoute = computed(() => props.preview && route.path.startsWith('/exposed/workspace'))
 const { previewBundle } = useSgPreviewBundle(isCouncilPreviewRoute)
@@ -254,6 +326,22 @@ watch(
       eventLoadError.value = error?.message || 'Unable to load this event.'
     } finally {
       isLoadingEvent.value = false
+    }
+  },
+  { immediate: true }
+)
+
+watch(
+  [eventId, token, isStudentUser],
+  async ([id, sessionToken, isStudent]) => {
+    if (props.preview || !isStudent || !Number.isFinite(id) || !sessionToken) return
+    excuseLetterLoading.value = true
+    try {
+      await excuseLetterStore.fetchStatusForEvent(id)
+    } catch {
+      // Silently ignore — badge just won't show
+    } finally {
+      excuseLetterLoading.value = false
     }
   },
   { immediate: true }
@@ -829,4 +917,45 @@ function openInMaps() {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+.excuse-panel {
+  background: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-surface-border) 88%, transparent);
+  border-radius: 8px;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--color-nav) 9%, transparent);
+  padding: 16px;
+}
+
+.excuse-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.excuse-panel__desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-surface-text-secondary);
+  font-weight: 500;
+}
+
+.excuse-panel__cta {
+  width: auto;
+  align-self: flex-start;
+  gap: 8px;
+  padding: 0 18px;
+  min-height: 40px;
+}
+
+.excuse-panel__submitted {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-surface-text-secondary);
+}
+
+.excuse-status-text--pending  { color: #d97706; }
+.excuse-status-text--approved { color: #16a34a; }
+.excuse-status-text--rejected { color: #dc2626; }
 </style>

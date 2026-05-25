@@ -16,7 +16,7 @@ from app.core.config import get_settings
 def _build_parser() -> argparse.ArgumentParser:
     settings = get_settings()
     parser = argparse.ArgumentParser(
-        description="Bootstrap the Aura backend with the first platform admin account.",
+        description="Bootstrap the NEXUS backend with the first platform admin account.",
     )
     parser.add_argument(
         "--admin-email",

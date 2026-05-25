@@ -345,13 +345,13 @@ const displayName = computed(() => {
 const initials = computed(() => buildInitials(displayName.value))
 const previewDepartmentStorageKey = computed(() => (
   Number.isFinite(schoolId.value)
-    ? `aura_exposed_departments_${schoolId.value}`
-    : 'aura_exposed_departments'
+    ? `nexus_exposed_departments_${schoolId.value}`
+    : 'nexus_exposed_departments'
 ))
 const previewProgramStorageKey = computed(() => (
   Number.isFinite(schoolId.value)
-    ? `aura_exposed_programs_${schoolId.value}`
-    : 'aura_exposed_programs'
+    ? `nexus_exposed_programs_${schoolId.value}`
+    : 'nexus_exposed_programs'
 ))
 const previewDepartments = computed(() => (
   previewDepartmentOverrides.value.length
@@ -616,7 +616,7 @@ async function submitProgram() {
   programPanelError.value = false
 
   try {
-    const authToken = localStorage.getItem('aura_token') || ''
+    const authToken = localStorage.getItem('nexus_token') || ''
     const createdProgram = mutationMode === 'update'
       ? (
         props.preview
@@ -686,7 +686,7 @@ async function deleteProgramItem(program) {
       previewProgramOverrides.value = sortProgramsByName(nextPrograms)
       persistPreviewCollection(previewProgramStorageKey.value, previewProgramOverrides.value)
     } else {
-      await deleteProgram(apiBaseUrl.value, localStorage.getItem('aura_token') || '', program.id)
+      await deleteProgram(apiBaseUrl.value, localStorage.getItem('nexus_token') || '', program.id)
       setProgramsSnapshot(sortProgramsByName(nextPrograms))
       refreshSchoolItWorkspaceData().catch(() => {})
     }

@@ -7,7 +7,7 @@ const DEFAULT_IMPORT_API_TIMEOUT_MS = 60000
 function getRuntimeConfig() {
   if (typeof window === 'undefined') return {}
 
-  const runtimeConfig = window.__AURA_RUNTIME_CONFIG__
+  const runtimeConfig = window.__NEXUS_RUNTIME_CONFIG__
   return runtimeConfig && typeof runtimeConfig === 'object' ? runtimeConfig : {}
 }
 
@@ -75,7 +75,7 @@ function resolveNativeApiBaseUrl(baseUrl = '') {
 
   if (typeof console !== 'undefined') {
     console.warn(
-      'Aura native API base URL is not configured. Set VITE_NATIVE_API_BASE_URL or VITE_BACKEND_PROXY_TARGET before building Android.'
+      'NEXUS native API base URL is not configured. Set VITE_NATIVE_API_BASE_URL or VITE_BACKEND_PROXY_TARGET before building Android.'
     )
   }
 

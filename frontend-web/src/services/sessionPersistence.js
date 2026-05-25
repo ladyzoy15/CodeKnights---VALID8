@@ -1,10 +1,10 @@
 import { Capacitor } from '@capacitor/core'
 import { clearStoredAuthMeta, getStoredAuthMeta } from '@/services/localAuth.js'
 
-const SESSION_TOKEN_STORAGE_KEY = 'aura_token'
-const USER_ROLES_STORAGE_KEY = 'aura_user_roles'
-const DASHBOARD_CACHE_STORAGE_KEY = 'aura_dashboard_cache_v1'
-const NATIVE_RUNTIME_SESSION_KEY = 'aura_native_runtime_session'
+const SESSION_TOKEN_STORAGE_KEY = 'nexus_token'
+const USER_ROLES_STORAGE_KEY = 'nexus_user_roles'
+const DASHBOARD_CACHE_STORAGE_KEY = 'nexus_dashboard_cache_v1'
+const NATIVE_RUNTIME_SESSION_KEY = 'nexus_native_runtime_session'
 
 function normalizeRoleKey(role = '') {
   const normalizedRole = String(role || '')

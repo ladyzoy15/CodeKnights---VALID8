@@ -32,6 +32,7 @@ class PermissionCode(str, Enum):
     CONFIGURE_EVENT_SANCTIONS = "configure_event_sanctions"
     EXPORT_SANCTIONED_STUDENTS = "export_sanctioned_students"
     VIEW_SANCTIONS_DASHBOARD = "view_sanctions_dashboard"
+    REVIEW_EXCUSE_LETTER = "review_excuse_letter"
 
 
 class GovernanceAnnouncementStatus(str, Enum):
@@ -56,6 +57,7 @@ PERMISSION_DEFINITIONS: dict[PermissionCode, dict[str, str]] = {
     PermissionCode.CONFIGURE_EVENT_SANCTIONS: {"permission_name": "Configure Event Sanctions", "description": "Allows members of the unit to configure event sanctions, delegation, and clearance deadline actions."},
     PermissionCode.EXPORT_SANCTIONED_STUDENTS: {"permission_name": "Export Sanctioned Students", "description": "Allows members of the unit to export sanctioned student records for accessible events."},
     PermissionCode.VIEW_SANCTIONS_DASHBOARD: {"permission_name": "View Sanctions Dashboard", "description": "Allows members of the unit to view sanctions dashboard summaries for accessible events."},
+    PermissionCode.REVIEW_EXCUSE_LETTER: {"permission_name": "Review Excuse Letter", "description": "Allows members of the unit to review, approve, or reject excuse letters submitted by students for events within their governance scope."},
 }
 
 

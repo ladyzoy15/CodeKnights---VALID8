@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aura-shell-v5'
+const CACHE_NAME = 'nexus-shell-v5'
 const APP_BASE_PATH = normalizeAppBasePath(self.location.pathname)
 const APP_SHELL_URL = APP_BASE_PATH
 const RUNTIME_CONFIG_PATH = appPath('runtime-config.js')
@@ -6,7 +6,7 @@ const SHELL_ASSETS = [
   APP_SHELL_URL,
   appPath('manifest.webmanifest'),
   RUNTIME_CONFIG_PATH,
-  appPath('logos/aura.png'),
+  appPath('logos/nexus.png'),
   appPath('pwa-192.png'),
   appPath('pwa-512.png'),
   appPath('pwa-maskable-512.png'),
@@ -42,11 +42,11 @@ function isCodeAsset(pathname) {
 
 const isLocalhost = isLocalhostHost(self.location.hostname)
 
-async function deleteOldAuraCaches() {
+async function deleteOldNEXUSCaches() {
   const keys = await caches.keys()
   await Promise.all(
     keys
-      .filter((key) => key.startsWith('aura-') && key !== CACHE_NAME)
+      .filter((key) => key.startsWith('nexus-') && key !== CACHE_NAME)
       .map((key) => caches.delete(key))
   )
 }
@@ -127,7 +127,7 @@ if (isLocalhost) {
   self.addEventListener('activate', (event) => {
     event.waitUntil(
       caches.keys()
-        .then((keys) => Promise.all(keys.filter((key) => key.startsWith('aura-')).map((key) => caches.delete(key))))
+        .then((keys) => Promise.all(keys.filter((key) => key.startsWith('nexus-')).map((key) => caches.delete(key))))
         .then(() => self.registration.unregister())
         .then(() => self.clients.matchAll({ type: 'window' }))
         .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url))))
@@ -143,7 +143,7 @@ if (isLocalhost) {
 
   self.addEventListener('activate', (event) => {
     event.waitUntil((async () => {
-      await deleteOldAuraCaches()
+      await deleteOldNEXUSCaches()
 
       if ('navigationPreload' in self.registration) {
         await self.registration.navigationPreload.enable().catch(() => null)

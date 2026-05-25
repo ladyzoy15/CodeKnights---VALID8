@@ -71,7 +71,7 @@ const previewState = reactive(createState())
 
 let initPromise = null
 
-function resolveTokenSuffix(token = localStorage.getItem('aura_token') || '') {
+function resolveTokenSuffix(token = localStorage.getItem('nexus_token') || '') {
     const normalized = String(token || '').trim()
     return normalized ? normalized.slice(-24) : null
 }
@@ -168,7 +168,7 @@ async function fetchGovernanceSettingsForSelectedSchool(target, token) {
 
 async function fetchAdminWorkspaceData() {
     const authMeta = getStoredAuthMeta()
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
 
     state.apiBaseUrl = resolveApiBaseUrl()
     state.tokenSuffix = resolveTokenSuffix(token)
@@ -293,7 +293,7 @@ export async function selectAdminSchool(schoolId, options = {}) {
         return target.governanceSettingsBySchool[nextSchoolId] ?? null
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     if (!token) return null
     return fetchGovernanceSettingsForSelectedSchool(target, token)
 }
@@ -350,7 +350,7 @@ export async function createAdminSchool(payload, options = {}) {
         }
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     if (!token) {
         throw new BackendApiError('No authenticated admin session is available.')
     }
@@ -425,7 +425,7 @@ export async function saveAdminSchoolStatus(schoolId, payload, options = {}) {
         return target.schools.find((school) => Number(school?.school_id) === normalizedSchoolId) ?? null
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const updated = await updateAdminSchoolStatus(state.apiBaseUrl, token, normalizedSchoolId, payload)
     target.schools = target.schools.map((school) => (
         Number(school?.school_id) === normalizedSchoolId
@@ -461,7 +461,7 @@ export async function saveAdminCampusAccountStatus(userId, isActive, options = {
         return target.campusAccounts.find((account) => Number(account?.user_id) === normalizedUserId) ?? null
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const updated = await updateAdminSchoolItAccountStatus(state.apiBaseUrl, token, normalizedUserId, isActive)
     target.campusAccounts = target.campusAccounts.map((account) => (
         Number(account?.user_id) === normalizedUserId ? updated : account
@@ -485,7 +485,7 @@ export async function resetAdminCampusPassword(userId, options = {}) {
         return result
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const result = await resetAdminSchoolItPassword(state.apiBaseUrl, token, normalizedUserId)
     state.lastPasswordReset = result
     return result
@@ -522,7 +522,7 @@ export async function dispatchAdminNotification(kind, params = {}, options = {})
         return summary
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const actionParams = {
         ...params,
         school_id: schoolId,
@@ -562,7 +562,7 @@ export async function saveAdminGovernanceSettings(payload, options = {}) {
         return updated
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const updated = await updateGovernanceSettings(state.apiBaseUrl, token, payload, {
         school_id: normalizedSchoolId,
     })
@@ -591,7 +591,7 @@ export async function reviewAdminGovernanceRequest(requestId, payload, options =
         return updated
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const updated = await updateGovernanceRequest(state.apiBaseUrl, token, normalizedRequestId, payload)
     state.governanceRequests = state.governanceRequests.map((item) => (
         Number(item?.id) === normalizedRequestId ? updated : item
@@ -621,7 +621,7 @@ export async function runAdminRetentionCleanup(payload, options = {}) {
         return result
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const result = await runGovernanceRetention(state.apiBaseUrl, token, payload, {
         school_id: normalizedSchoolId,
     })

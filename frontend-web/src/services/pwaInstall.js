@@ -64,17 +64,17 @@ export const hasManualPwaInstallInstructions = computed(() => {
 
 export const pwaInstallHelpText = computed(() => {
     if (installed.value) {
-        return 'Aura is already installed on this device.'
+        return 'NEXUS is already installed on this device.'
     }
 
     if (canPromptPwaInstall.value) {
-        return 'Install Aura for a faster home screen experience and standalone launch.'
+        return 'Install NEXUS for a faster home screen experience and standalone launch.'
     }
 
     if (hasManualPwaInstallInstructions.value) {
         return isSafariBrowser()
             ? 'On iPhone or iPad, open the Share menu in Safari and choose Add to Home Screen.'
-            : 'Open this page in Safari to install Aura on iPhone or iPad.'
+            : 'Open this page in Safari to install NEXUS on iPhone or iPad.'
     }
 
     return 'Install becomes available when the browser confirms this app is ready for home screen install.'
@@ -82,7 +82,7 @@ export const pwaInstallHelpText = computed(() => {
 
 export const pwaInstallButtonLabel = computed(() => {
     if (installed.value) return 'Installed'
-    if (canPromptPwaInstall.value) return 'Install Aura'
+    if (canPromptPwaInstall.value) return 'Install NEXUS'
     if (hasManualPwaInstallInstructions.value) {
         return isSafariBrowser() ? 'Add to Home Screen' : 'Open in Safari'
     }

@@ -122,7 +122,7 @@ if (Capacitor.isNativePlatform()) {
 // Cross-tab session sync (for web — logout in one tab logs out all)
 if (typeof window !== 'undefined' && !Capacitor.isNativePlatform()) {
   window.addEventListener('storage', (event) => {
-    if (event.key === 'aura_token' && !event.newValue) {
+    if (event.key === 'nexus_token' && !event.newValue) {
       clearDashboardSession()
       if (router.currentRoute.value?.name !== 'Login') {
         router.replace({ name: 'Login' }).catch(() => null)

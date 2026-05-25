@@ -39,8 +39,8 @@ This repo ships with a production-style Docker setup so the frontend can be demo
 
 ### Container
 
-- `aura-web`
-  Serves the built Aura frontend on port `80`, keeps Vue Router working with `try_files`, forwards API requests to the external backend through `/__backend__`, and injects runtime backend config on container start.
+- `nexus-web`
+  Serves the built NEXUS frontend on port `80`, keeps Vue Router working with `try_files`, forwards API requests to the external backend through `/__backend__`, and injects runtime backend config on container start.
 
 ### Start
 
@@ -49,8 +49,8 @@ This repo ships with a production-style Docker setup so the frontend can be demo
    Use the host root, not the `/api` suffix.
    Example: `https://your-ngrok-host.ngrok-free.dev`
 3. Optional:
-   - keep `AURA_API_BASE_URL=/__backend__` to use the built-in nginx proxy
-   - or set `AURA_API_BASE_URL=https://your-cloud-api.example.com` to call the cloud API directly from the browser
+   - keep `NEXUS_API_BASE_URL=/__backend__` to use the built-in nginx proxy
+   - or set `NEXUS_API_BASE_URL=https://your-cloud-api.example.com` to call the cloud API directly from the browser
    - if you use a direct cloud URL, make sure the backend allows your frontend origin with CORS
 4. Run:
 
@@ -78,7 +78,7 @@ The container exposes a simple health endpoint at `/healthz` for Docker health c
 
 The frontend now resolves the backend in this order:
 
-1. `window.__AURA_RUNTIME_CONFIG__.apiBaseUrl`
+1. `window.__NEXUS_RUNTIME_CONFIG__.apiBaseUrl`
 2. `VITE_API_BASE_URL`
 3. default proxy path `/__backend__`
 
@@ -99,7 +99,7 @@ Use the nginx proxy:
 
 ```env
 BACKEND_ORIGIN=https://your-cloud-backend.example.com
-AURA_API_BASE_URL=/__backend__
+NEXUS_API_BASE_URL=/__backend__
 ```
 
 ### Static / cloud frontend hosting
@@ -107,10 +107,10 @@ AURA_API_BASE_URL=/__backend__
 Publish a `runtime-config.js` alongside the built app with:
 
 ```js
-window.__AURA_RUNTIME_CONFIG__ = {
+window.__NEXUS_RUNTIME_CONFIG__ = {
   apiBaseUrl: "https://your-cloud-backend.example.com",
   apiTimeoutMs: 15000,
 };
 ```
 
-If your backend root is accidentally configured as `https://host/api`, Aura now normalizes that to the host root automatically to avoid duplicated `/api/api/...` requests.
+If your backend root is accidentally configured as `https://host/api`, NEXUS now normalizes that to the host root automatically to avoid duplicated `/api/api/...` requests.

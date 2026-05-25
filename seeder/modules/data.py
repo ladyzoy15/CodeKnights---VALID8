@@ -60,7 +60,7 @@ SUFFIXES: List[str] = ["Jr.", "Sr.", "II", "III", "IV"]
 # ==============================================================================
 
 SCHOOL_NAMES: List[str] = [
-    "Aura University",
+    "NEXUS University",
     "Crestview College",
     "Northwood Institute of Technology",
     "St. Jude State University",
@@ -298,7 +298,7 @@ MOCK_NOTES_POOL: List[str] = [
 
 COMPLIANCE_NOTES: List[str] = [
     "Handwritten apology letter submitted and verified.",
-    "Community fine paid at the Finance Office. Receipt #AURA-924-X.",
+    "Community fine paid at the Finance Office. Receipt #NEXUS-924-X.",
     "Student completed 2 hours of library service in lieu of fine.",
     "Medical certificate provided to justify absence. Sanction waived.",
     "Late submission accepted due to technical difficulties.",

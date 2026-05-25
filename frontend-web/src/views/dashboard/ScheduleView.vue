@@ -48,6 +48,19 @@
         <p>No events found for this category.</p>
       </div>
 
+      <!-- My Excuse Letters (students only) -->
+      <section
+        v-if="!preview && isStudentUser"
+        class="my-letters-section dashboard-enter dashboard-enter--4"
+        aria-label="My excuse letters"
+      >
+        <MyExcuseLettersTable
+          :letters="excuseLetterStore.myLetters"
+          :loading="excuseLetterStore.loading"
+          :error="excuseLetterStore.error"
+        />
+      </section>
+
     </div>
   </div>
 </template>
@@ -56,7 +69,9 @@
 import { ref, computed, watch, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EventCard from '@/components/dashboard/EventCard.vue'
+import MyExcuseLettersTable from '@/components/dashboard/MyExcuseLettersTable.vue'
 import TopBar from '@/components/dashboard/TopBar.vue'
+import { useExcuseLetterStore } from '@/stores/excuseLetterStore.js'
 
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { usePreviewTheme } from '@/composables/usePreviewTheme.js'
@@ -83,6 +98,8 @@ const {
   refreshAttendanceRecords,
   unreadAnnouncements,
 } = useDashboardSession()
+const excuseLetterStore = useExcuseLetterStore()
+const isStudentUser = computed(() => Boolean(currentUser.value?.student_profile))
 const showNotifications = ref(false)
 
 const router = useRouter()
@@ -188,7 +205,7 @@ async function syncEventTimeStatuses(eventIds) {
     return
   }
 
-  const token = localStorage.getItem('aura_token')
+  const token = localStorage.getItem('nexus_token')
   if (!token) {
     eventTimeStatuses.value = {}
     return
@@ -312,6 +329,9 @@ onBeforeUnmount(() => {
 onMounted(() => {
   if (props.preview) return
   refreshAttendanceRecords({ limit: 200 }).catch(() => null)
+  if (isStudentUser.value) {
+    excuseLetterStore.fetchMyLetters().catch(() => null)
+  }
 })
 </script>
 
@@ -423,5 +443,11 @@ onMounted(() => {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 28px;
   }
+}
+
+.my-letters-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
 }
 </style>

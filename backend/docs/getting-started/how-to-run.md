@@ -1,4 +1,4 @@
-# How to Run Aura
+# How to Run NEXUS
 
 <!--nav-->
 [Previous](docker.md) | [Next](linux-deploy.md) | [Home](/README.md)
@@ -95,7 +95,7 @@ db (healthy)
 
 | Role | Email | Password |
 |---|---|---|
-| Platform Admin | `admin@aura.com` | `AdminPass123!` |
+| Platform Admin | `admin@nexus.com` | `AdminPass123!` |
 
 ---
 
@@ -141,7 +141,7 @@ Go to your GitHub repo → **Settings** → **Secrets and variables** → **Acti
 | `AWS_SSH_PRIVATE_KEY` | Full contents of your `.pem` key file |
 | `AWS_HOST` | Your EC2 public IP (e.g. `54.123.45.67`) |
 | `AWS_USER` | SSH username (usually `ubuntu`) |
-| `AWS_PROJECT_PATH` | Project path on server (default: `/opt/aura`) |
+| `AWS_PROJECT_PATH` | Project path on server (default: `/opt/nexus`) |
 
 Then go to **Settings** → **Environments** → **New environment** → name it `production` and save.
 

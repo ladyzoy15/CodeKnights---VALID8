@@ -36,10 +36,10 @@ const requiredVariables = [
   { key: "VITE_API_BASE_URL", kind: "absolute-url", disallowApiPath: true },
   { key: "VITE_ASSISTANT_BASE_URL", kind: "absolute-url" },
   { key: "BACKEND_ORIGIN", kind: "absolute-url", disallowApiPath: true },
-  { key: "AURA_API_BASE_URL", kind: "path-or-absolute-url" },
+  { key: "NEXUS_API_BASE_URL", kind: "path-or-absolute-url" },
   { key: "VITE_API_TIMEOUT_MS", kind: "positive-integer" },
-  { key: "AURA_API_TIMEOUT_MS", kind: "positive-integer" },
-  { key: "AURA_PORT", kind: "port" },
+  { key: "NEXUS_API_TIMEOUT_MS", kind: "positive-integer" },
+  { key: "NEXUS_PORT", kind: "port" },
 ];
 
 const optionalVariables = [

@@ -29,7 +29,7 @@ All seeder configuration lives in `seeder/variables.py`. Edit it directly before
 
 | Variable | Type | Default | Description |
 |---|---|---|---|
-| `SEED_ADMIN_EMAIL` | `str` | `admin@aura.com` | Email for the platform admin account. Created if missing, preserved on wipe. |
+| `SEED_ADMIN_EMAIL` | `str` | `admin@nexus.com` | Email for the platform admin account. Created if missing, preserved on wipe. |
 | `SEED_ADMIN_PASSWORD` | `str` | `AdminPass123!` | Password set on the platform admin. Hashed with bcrypt at rounds=12. |
 
 ### Determinism

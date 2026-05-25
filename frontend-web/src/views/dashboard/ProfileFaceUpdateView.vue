@@ -103,11 +103,11 @@
         </button>
 
         <div class="face-update-brand">
-          <img :src="activeAuraLogo" alt="Aura AI" class="face-update-brand__logo">
-          <span>Powered by Aura Ai</span>
+          <img :src="activeAuraLogo" alt="NEXUS AI" class="face-update-brand__logo">
+          <span>Powered by NEXUS Ai</span>
         </div>
 
-        <p class="face-update-footnote">Learn more about Aura Project</p>
+        <p class="face-update-footnote">Learn more about NEXUS Project</p>
       </section>
     </main>
   </div>
@@ -480,7 +480,7 @@ async function captureAndRegister() {
     capturedPreview.value = imageDataUrl
     stopCamera()
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     try {
       await registerStudentFace(resolveApiBaseUrl(), token, imageDataUrl)
     } catch {

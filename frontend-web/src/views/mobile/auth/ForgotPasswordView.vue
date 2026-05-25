@@ -6,7 +6,7 @@
 
         <img
           :src="auraLogoWhite"
-          alt="Aura"
+          alt="NEXUS"
           class="mobile-login__logo"
         >
       </header>
@@ -68,7 +68,7 @@
             class="mobile-login__footer-link"
             @click.prevent
           >
-            Learn more about Aura Project
+            Learn more about NEXUS Project
           </a>
         </footer>
       </main>
@@ -80,7 +80,7 @@
 import logBackground from '@/assets/images/login_bg.jpg'
 import { useForgotPasswordViewModel } from '@/composables/useForgotPasswordViewModel.js'
 
-const auraLogoWhite = '/logos/aura_logo_white.png'
+const auraLogoWhite = '/logos/nexus_logo_white.png'
 const heroBackgroundStyle = {
   backgroundImage: `linear-gradient(180deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.32) 100%), url(${logBackground})`,
 }

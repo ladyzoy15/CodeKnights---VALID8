@@ -328,7 +328,7 @@ async function openStudentDetail(student) {
   }
 
   try {
-     const token = localStorage.getItem('aura_token') || ''
+     const token = localStorage.getItem('nexus_token') || ''
      const summaryData = await getAttendanceSummary(resolveApiBaseUrl(), token, {
        user_id: student.id
      })

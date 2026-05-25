@@ -22,7 +22,7 @@ from policy import (
 )
 
 # Initialize FastMCP Server
-mcp = FastMCP("Aura Query Server")
+mcp = FastMCP("NEXUS Query Server")
 
 # --- Safety Constants ---
 DISALLOWED_SQL = re.compile(

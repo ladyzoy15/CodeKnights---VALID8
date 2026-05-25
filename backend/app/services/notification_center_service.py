@@ -405,7 +405,7 @@ def dispatch_missed_event_notifications(
             f"Hi {user.first_name or 'Student'},\n\n"
             f"Our records show {absent_count} missed event(s) in the last {lookback_days} days.\n"
             "Please coordinate with your school office if this is incorrect.\n\n"
-            "Aura"
+            "NEXUS"
         )
         statuses.append(
             send_notification_to_user(
@@ -479,7 +479,7 @@ def dispatch_low_attendance_notifications(
             f"Your attendance rate is currently {attendance_percent:.1f}% "
             f"({attended}/{total}) which is below the threshold of {threshold_percent:.1f}%.\n"
             "Please review your recent attendance records.\n\n"
-            "Aura"
+            "NEXUS"
         )
         statuses.append(
             send_notification_to_user(
@@ -553,8 +553,8 @@ def dispatch_event_announcement_notifications(
             f"Hi {user.first_name or 'Student'},\n\n"
             f"A new event has been announced: {event.name}.\n"
             f"It is scheduled to start at {event.start_at}.\n"
-            "Open the Aura app to view details and sign in when the attendance window opens.\n\n"
-            "Aura"
+            "Open the NEXUS app to view details and sign in when the attendance window opens.\n\n"
+            "NEXUS"
         )
         statuses.append(
             send_in_app_notification(
@@ -646,7 +646,7 @@ def dispatch_event_reminder_notifications(
                 f"Hi {user.first_name or 'Student'},\n\n"
                 f"This is a reminder that {event.name} starts at {event.start_at}.\n"
                 "Open the attendance page when the event window is active to complete both sign-in and sign-out.\n\n"
-                "Aura"
+                "NEXUS"
             )
             statuses.append(
                 send_notification_to_user(

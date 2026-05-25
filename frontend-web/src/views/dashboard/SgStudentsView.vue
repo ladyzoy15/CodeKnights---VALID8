@@ -356,7 +356,7 @@ async function loadStudents(url, page = 1) {
       return
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const response = await getGovernanceStudentsPage(url, token, {
       ...governanceQueryParams(),
       page,
@@ -418,7 +418,7 @@ async function loadSelectedStudentAttendance() {
       throw new Error('Student profile is unavailable.')
     }
 
-    const token = localStorage.getItem('aura_token') || ''
+    const token = localStorage.getItem('nexus_token') || ''
     const report = await getStudentAttendanceReport(
       apiBaseUrl.value,
       token,

@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { Capacitor } from '@capacitor/core'
 
-const MOBILE_FULLSCREEN_HINT_KEY = 'aura_mobile_fullscreen_hint_seen'
+const MOBILE_FULLSCREEN_HINT_KEY = 'nexus_mobile_fullscreen_hint_seen'
 const mobileFullscreenEligible = ref(false)
 const mobileFullscreenHintDismissed = ref(false)
 
@@ -113,7 +113,7 @@ async function unregisterAuraServiceWorkers() {
         const cacheKeys = await caches.keys()
         await Promise.all(
             cacheKeys
-                .filter((key) => key.startsWith('aura-'))
+                .filter((key) => key.startsWith('nexus-'))
                 .map((key) => caches.delete(key))
         )
     } catch {

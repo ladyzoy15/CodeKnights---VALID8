@@ -67,11 +67,11 @@
           <div class="flex items-center justify-center gap-2">
             <img
               :src="surfaceAuraLogo"
-              alt="Aura"
+              alt="NEXUS"
               class="h-8 w-auto object-contain"
             >
             <span class="text-[13px] font-medium tracking-tight" style="color: var(--color-text-primary);">
-              Powered by Aura Ai
+              Powered by NEXUS Ai
             </span>
           </div>
         </div>
@@ -87,7 +87,7 @@
         class="text-[12px] font-medium transition-colors"
         style="color: var(--color-text-secondary);"
       >
-        Learn more about Aura Project
+        Learn more about NEXUS Project
       </a>
     </footer>
   </div>

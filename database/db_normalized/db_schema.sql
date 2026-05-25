@@ -1,5 +1,5 @@
--- aura_v4_normalized.sql
--- Purpose: Target normalized schema for Aura (PostgreSQL).
+-- nexus_v4_normalized.sql
+-- Purpose: Target normalized schema for NEXUS (PostgreSQL).
 -- Notes:
 -- 1) This is a forward-looking design in db_normalized/ playground.
 -- 2) Legacy duplicated and denormalized tables are intentionally omitted.

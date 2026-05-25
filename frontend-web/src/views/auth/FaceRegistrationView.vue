@@ -1,5 +1,11 @@
 <template>
-  <div class="face-gate-page">
+  <div class="face-gate-page mesh-gradient relative overflow-hidden">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+    </div>
+
     <AttendancePermissionGate
       v-if="permissionState !== 'permissions_granted'"
       :permission-state="permissionState"
@@ -10,31 +16,31 @@
       @retry="retryPermissions"
     />
 
-    <div v-if="step === 'intro'" class="face-gate-shell face-gate-shell--intro">
-      <section class="intro-card">
-        <span class="intro-chip">{{ schoolName }}</span>
+    <div v-if="step === 'intro'" class="face-gate-shell face-gate-shell--intro relative z-10">
+      <section class="intro-card glass-card">
+        <span class="intro-chip">NEXUS Enrollment</span>
         <h1 class="intro-title">
           Hi {{ firstName }},<br>
-          face is<br>
+          <span class="text-white/60">face is</span><br>
           unregistered<br>
-          please register<br>
+          <span class="text-white/60">please</span> register<br>
           now.
         </h1>
         <p class="intro-copy">
-          We will use the same face-scan experience as attendance so future check-ins feel familiar.
+          We use high-precision face scans to ensure secure and seamless attendance check-ins.
         </p>
 
-        <button class="register-pill" type="button" @click="beginEnrollment">
+        <button class="register-pill group" type="button" @click="beginEnrollment">
           <span class="register-pill__icon">
-            <ArrowRight :size="18" />
+            <ArrowRight :size="20" class="group-hover:translate-x-1 transition-transform" />
           </span>
-          <span class="register-pill__text">Register Now</span>
+          <span class="register-pill__text">Begin Registration</span>
         </button>
       </section>
     </div>
 
-    <div v-else class="face-gate-shell face-gate-shell--capture">
-      <section class="capture-card">
+    <div v-else class="face-gate-shell face-gate-shell--capture relative z-10">
+      <section class="capture-card glass-card">
         <header class="capture-header">
           <span class="capture-chip">Face Setup</span>
           <Transition name="title-fade" mode="out-in">
@@ -43,7 +49,7 @@
         </header>
 
         <FaceScanPanel
-          class="face-gate-panel"
+          class="face-gate-panel premium-scan-panel"
           :caption="panelCaption"
           :progress="scanProgress"
           :is-camera-ready="panelCameraReady"
@@ -58,7 +64,7 @@
       </section>
     </div>
 
-    <button v-if="step === 'intro'" class="signout-link" type="button" @click="logout">
+    <button v-if="step === 'intro'" class="signout-link text-white/40 hover:text-white" type="button" @click="logout">
       Sign Out
     </button>
   </div>
@@ -118,24 +124,6 @@ const captureTitle = computed(() => {
   if (statusState.value === 'detecting') return 'Scanning...'
   if (statusState.value === 'error') return 'Try again'
   return 'Register your face'
-})
-const captureCopy = computed(() => {
-  if (statusState.value === 'success') {
-    return 'Your face profile is saved. We are taking you straight to your dashboard.'
-  }
-  if (statusState.value === 'submitting' || statusState.value === 'capturing') {
-    return 'Stay centered for a moment while we save a clean reference image.'
-  }
-  if (statusState.value === 'starting') {
-    return 'We are warming up your camera and loading the same scan frame used for attendance.'
-  }
-  if (statusState.value === 'detecting') {
-    return 'Use a well-lit angle and keep your face inside the frame so future attendance scans feel natural.'
-  }
-  if (statusState.value === 'error') {
-    return 'Better lighting and a centered face usually fixes this on the next try.'
-  }
-  return 'Use the same school-branded scan flow that powers attendance check-ins.'
 })
 const panelCaption = computed(() => {
   if (statusState.value === 'success') return 'Face registered.'
@@ -207,8 +195,8 @@ function applyRegistrationTheme() {
     school_name: currentUser.value?.school_name || authMeta?.schoolName || null,
     school_code: currentUser.value?.school_code || authMeta?.schoolCode || null,
     logo_url: schoolSettings.value?.logo_url || authMeta?.logoUrl || null,
-    primary_color: schoolSettings.value?.primary_color || authMeta?.primaryColor || '#0057B8',
-    secondary_color: schoolSettings.value?.secondary_color || authMeta?.secondaryColor || '#FFD400',
+    primary_color: schoolSettings.value?.primary_color || authMeta?.primaryColor || '#AAFF00',
+    secondary_color: schoolSettings.value?.secondary_color || authMeta?.secondaryColor || '#AAFF00',
     accent_color: schoolSettings.value?.accent_color || authMeta?.accentColor || '#000000',
   }
 
@@ -496,7 +484,7 @@ async function captureAndRegister() {
 
     stopCamera()
 
-    const token = localStorage.getItem('aura_token')
+    const token = localStorage.getItem('nexus_token')
     try {
       await registerStudentFace(apiBaseUrl.value, token, imageDataUrl)
     } catch {
@@ -533,273 +521,142 @@ function setRegistrationError(message) {
 
 <style scoped>
 .face-gate-page {
-  --scan-size: clamp(244px, 70vw, 292px);
-  --scan-thickness: 9px;
-  --scan-gap: 8px;
-  --scan-media: calc(var(--scan-size) - (var(--scan-thickness) * 2) - (var(--scan-gap) * 2));
+  --color-primary: #AAFF00;
+  --color-primary-glow: rgba(170, 255, 0, 0.4);
   min-height: 100vh;
-  position: relative;
-  overflow: hidden;
-  background: var(--color-bg, #ebebeb);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 34px 24px 28px;
-  font-family: 'Manrope', sans-serif;
+  padding: 34px 24px;
+}
+
+/* Background Blobs */
+.blob {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--color-primary-glow) 0%, transparent 70%);
+  filter: blur(80px);
+  opacity: 0.15;
+}
+.blob-1 { top: -10%; left: -10%; animation: float 20s infinite alternate; }
+.blob-2 { bottom: -10%; right: -10%; animation: float 25s infinite alternate-reverse; }
+
+@keyframes float {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(100px, 50px) rotate(30deg); }
 }
 
 .face-gate-shell {
-  position: relative;
-  z-index: 1;
-  width: min(100%, 420px);
-  display: flex;
-  flex-direction: column;
-}
-
-.face-gate-shell--intro {
-  align-items: stretch;
-}
-
-.face-gate-shell--capture {
-  align-items: center;
+  width: min(100%, 480px);
 }
 
 .intro-card,
 .capture-card {
   width: 100%;
-  border-radius: 32px;
-  padding: 28px 24px 24px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.intro-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
-}
-
-.capture-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
+  padding: 40px;
 }
 
 .intro-chip,
 .capture-chip {
   display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
+  padding: 6px 14px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary, #0057b8) 18%, #ffffff 82%);
-  color: color-mix(in srgb, var(--color-primary, #0057b8) 56%, #0a0a0a 44%);
+  background: rgba(170, 255, 0, 0.1);
+  color: var(--color-primary);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.02em;
   text-transform: uppercase;
-}
-
-.capture-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  text-align: center;
+  letter-spacing: 0.1em;
+  margin-bottom: 24px;
 }
 
 .intro-title {
-  margin: 0;
-  font-size: clamp(27px, 8vw, 44px);
-  line-height: 0.96;
-  letter-spacing: -0.05em;
-  font-weight: 700;
-  color: #0a0a0a;
-}
-
-.intro-copy,
-.capture-copy {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #5b5b54;
-}
-
-.capture-title {
-  margin: 0;
-  font-size: clamp(24px, 7vw, 30px);
-  line-height: 1;
+  font-size: clamp(32px, 8vw, 48px);
+  line-height: 1.1;
+  font-weight: 800;
   letter-spacing: -0.04em;
-  font-weight: 700;
-  color: #111111;
+  color: white;
+  margin-bottom: 24px;
 }
 
-.title-fade-enter-active,
-.title-fade-leave-active {
-  transition: opacity 0.22s ease;
-}
-
-.title-fade-enter-from,
-.title-fade-leave-to {
-  opacity: 0;
+.intro-copy {
+  font-size: 15px;
+  line-height: 1.6;
+  color: white/50;
+  margin-bottom: 40px;
 }
 
 .register-pill {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 18px;
-  min-height: 58px;
-  padding: 4px 22px 4px 4px;
-  border: none;
+  gap: 16px;
+  background: var(--color-primary);
+  color: #050505;
+  padding: 6px 24px 6px 6px;
   border-radius: 999px;
-  background: var(--color-primary, #0057b8);
-  color: var(--color-primary-text, #ffffff);
+  border: none;
+  font-weight: 700;
   cursor: pointer;
-  font-family: 'Manrope', sans-serif;
-  transition: transform 0.16s ease;
-}
-
-.register-pill:active,
-.signout-link:active {
-  transform: scale(0.97);
+  box-shadow: 0 10px 20px -5px var(--color-primary-glow);
 }
 
 .register-pill__icon {
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
+  background: #050505;
+  color: white;
   border-radius: 50%;
-  background: var(--color-nav, #0a0a0a);
-  color: #ffffff;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
 
-.register-pill__text {
-  font-size: 13px;
-  font-weight: 700;
+.capture-header {
+  margin-bottom: 32px;
 }
 
-.face-gate-panel {
-  width: 100%;
+.capture-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: white;
 }
 
 .capture-status {
-  width: min(100%, 276px);
-  min-height: 20px;
-  margin: -2px 0 0;
-  font-size: 12.5px;
-  line-height: 1.4;
+  margin-top: 24px;
+  font-size: 14px;
   font-weight: 600;
-  color: #5f5f5f;
+  color: white/40;
   text-align: center;
 }
 
-.capture-status--error {
-  color: #d24848;
-}
-
-.capture-status--success {
-  color: color-mix(in srgb, var(--color-primary, #0057b8) 52%, #111111 48%);
-}
+.capture-status--error { color: #ff5555; }
+.capture-status--success { color: var(--color-primary); }
 
 .signout-link {
-  margin-top: 24px;
+  margin-top: 32px;
   border: none;
   background: transparent;
-  color: color-mix(in srgb, var(--color-primary, #0057b8) 34%, #4d4d47 66%);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
 }
 
-.face-gate-panel :deep(.face-scan-section) {
-  gap: 16px;
+/* Scan Panel Overrides */
+.premium-scan-panel :deep(.scan-ring-base) {
+  stroke: rgba(255, 255, 255, 0.05) !important;
 }
-
-.face-gate-panel :deep(.step-caption) {
-  font-size: 14px;
-  line-height: 1.35;
-  font-weight: 600;
-  color: #1d1d18;
-  max-width: 250px;
+.premium-scan-panel :deep(.scan-ring-progress) {
+  stroke: var(--color-primary) !important;
+  filter: drop-shadow(0 0 8px var(--color-primary-glow));
 }
-
-.face-gate-panel :deep(.face-scan) {
-  margin-top: 0;
+.premium-scan-panel :deep(.scan-media) {
+  background: rgba(0,0,0,0.3) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
 }
-
-.face-gate-panel :deep(.scan-ring-base) {
-  stroke: color-mix(in srgb, var(--color-primary, #0057b8) 12%, #fff7d7 88%);
-}
-
-.face-gate-panel :deep(.scan-ring-progress) {
-  stroke: var(--color-primary, #0057b8);
-}
-
-.face-gate-panel :deep(.scan-ring-dot) {
-  fill: #111111;
-}
-
-.face-gate-panel :deep(.scan-media) {
-  background: var(--color-surface, #ffffff);
-  box-shadow: none;
-}
-
-.face-gate-panel :deep(.scan-video) {
-  transform: scaleX(-1);
-}
-
-.face-gate-panel :deep(.scan-photo--placeholder) {
-  color: color-mix(in srgb, var(--color-primary, #0057b8) 22%, #7b7b72 78%);
-}
-
-.face-gate-panel :deep(.face-error-block) {
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.face-gate-panel :deep(.face-error) {
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.face-gate-panel :deep(.face-retry-btn) {
-  width: 148px;
-  min-height: 48px;
-  padding: 0 20px;
-  border-radius: 999px;
-  background: #ffffff;
-  color: color-mix(in srgb, var(--color-primary, #0057b8) 30%, #2f2f2a 70%);
-  font-size: 13px;
-  font-weight: 600;
-  font-family: 'Manrope', sans-serif;
-}
-
-@media (max-width: 480px) {
-  .face-gate-page {
-    padding: 24px 18px 20px;
-  }
-
-  .face-gate-shell {
-    width: min(100%, 360px);
-  }
-
-  .intro-title {
-    font-size: clamp(25px, 11vw, 40px);
-  }
-
-  .intro-card,
-  .capture-card {
-    padding: 24px 18px 20px;
-    border-radius: 28px;
-  }
+.premium-scan-panel :deep(.step-caption) {
+  color: white/60 !important;
+  font-weight: 600 !important;
 }
 </style>
