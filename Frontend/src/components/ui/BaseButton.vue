@@ -50,6 +50,7 @@ const props = defineProps({
 const variantClass = computed(() => ({
   'bg-[var(--color-nav)] text-[var(--color-nav-text)] hover:opacity-90 active:scale-[0.98]': props.variant === 'primary',
   'bg-[var(--color-surface)] text-[var(--color-surface-text)] border border-[var(--color-surface-border-strong)] hover:opacity-92 active:scale-[0.98]': props.variant === 'secondary',
+  'bg-white text-[var(--color-surface-text)] border border-[var(--color-surface-border-strong)] hover:bg-gray-50 active:scale-[0.98] shadow-sm': props.variant === 'neutral',
   'bg-transparent text-[var(--color-surface-text)] hover:underline': props.variant === 'ghost',
 }))
 

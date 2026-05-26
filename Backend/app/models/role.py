@@ -20,3 +20,5 @@ class Role(Base):
     @name.setter
     def name(self, value):
         self.code = value
+        if not getattr(self, "display_name", None):
+            self.display_name = value.replace("_", " ").replace("-", " ").title()

@@ -273,6 +273,28 @@ export async function loginForAccessToken(baseUrl, { username, password }) {
     }, [404, 405]))
 }
 
+export async function loginWithGoogle(baseUrl, { idToken, schoolId = null }) {
+    const body = {
+        id_token: idToken,
+        school_id: schoolId
+    }
+
+    return normalizeTokenPayload(await request(baseUrl, '/auth/google', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    }))
+}
+
+export async function getPublicSchools(baseUrl) {
+    const payload = await request(baseUrl, '/api/school/list', {
+        method: 'GET'
+    })
+    return Array.isArray(payload) ? payload.map(normalizeSchoolSummary).filter(Boolean) : []
+}
+
 export async function verifyPasswordForUser(baseUrl, {
     email,
     password,

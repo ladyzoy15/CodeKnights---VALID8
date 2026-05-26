@@ -30,6 +30,7 @@ class Token(BaseModel):
     face_verification_required: Optional[bool] = None
     face_reference_enrolled: Optional[bool] = None
     face_verification_pending: Optional[bool] = None
+    needs_onboarding: Optional[bool] = None
     
 
 class TokenData(BaseModel):
@@ -49,6 +50,7 @@ class LoginRequest(BaseModel):
 
 class GoogleLoginRequest(BaseModel):
     id_token: str
+    school_id: Optional[int] = None
 
 
 class ChangePasswordRequest(BaseModel):

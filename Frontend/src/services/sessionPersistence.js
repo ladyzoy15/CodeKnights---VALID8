@@ -2,6 +2,18 @@ import { Capacitor } from '@capacitor/core'
 import { clearStoredAuthMeta, getStoredAuthMeta } from '@/services/localAuth.js'
 import { getStoredRememberMePreference } from '@/services/userPreferences.js'
 
+/**
+ * XSS HARDENING CHECKLIST & CSP ENFORCEMENT (Audit Finding 6)
+ * ----------------------------------------------------------
+ * Since JWT tokens and user roles are stored in localStorage for hybrid web/native compatibility,
+ * the following security measures are strictly enforced across the application:
+ * 1. CSP Enforcement: index.html defines a strict Content-Security-Policy restricting script execution
+ *    to 'self' and blocked frame-ancestors to prevent clickjacking/XSS token harvesting.
+ * 2. Vue Template Escaping: All dynamic user inputs are rendered using Vue's double-mustache syntax ({{ }})
+ *    which automatically HTML-escapes content. v-html is strictly prohibited for user-generated content.
+ * 3. Sanitization: Any rich text input must be sanitized via DOMPurify before rendering or submission.
+ * 4. Automatic Session Expiry: Tokens contain strict exp claims verified on every backend request.
+ */
 const SESSION_TOKEN_STORAGE_KEY = 'aura_token'
 const USER_ROLES_STORAGE_KEY = 'aura_user_roles'
 const DASHBOARD_CACHE_STORAGE_KEY = 'aura_dashboard_cache_v1'

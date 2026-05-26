@@ -1,7 +1,9 @@
 import {
     Building2,
     CalendarDays,
+    FileText,
     House,
+    Megaphone,
     PieChart,
     Settings,
     ShieldCheck,
@@ -58,8 +60,10 @@ export const exposedAdminNavigationItems = [
 export const sgNavigationItems = [
     { name: 'Home', route: '/sg', icon: House },
     { name: 'Events', route: '/sg/events', icon: CalendarDays },
+    { name: 'Announcements', route: '/sg/announcements', icon: Megaphone },
     { name: 'Members', route: '/sg/members', icon: UsersRound },
-    { name: 'Profile', route: '/dashboard/profile', icon: UserRound },
+    { name: 'Excuse Letters', route: '/sg/excuse-letters', icon: FileText },
+    { name: 'Profile', route: '/sg/profile', icon: UserRound },
 ]
 
 export const exposedSgNavigationItems = [

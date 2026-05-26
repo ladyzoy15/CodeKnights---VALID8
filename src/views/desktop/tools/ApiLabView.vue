@@ -847,8 +847,8 @@ const adminSession = reactive({
 })
 
 const schoolForm = reactive({
-  schoolName: 'JRMSU Test School',
-  schoolCode: 'JRMSU',
+  schoolName: 'Aura Demo School',
+  schoolCode: 'AURA',
   firstName: 'School',
   middleName: '',
   lastName: 'IT',

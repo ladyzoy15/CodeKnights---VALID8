@@ -20,8 +20,8 @@ function createSchools() {
   return [
     normalizeSchoolSummary({
       school_id: 301,
-      school_name: 'Jose Rizal Memorial State University',
-      school_code: 'JRMSU',
+      school_name: 'Aura Demo University',
+      school_code: 'AURA',
       subscription_status: 'active',
       active_status: true,
       primary_color: '#AAFF00',

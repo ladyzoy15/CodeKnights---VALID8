@@ -8,8 +8,14 @@ from collections.abc import Generator
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.types import BigInteger
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
+
+@compiles(BigInteger, "sqlite")
+def compile_big_int_sqlite(type_, compiler, **kw):
+    return "INTEGER"
 
 from app.core.dependencies import get_db
 from app.main import app

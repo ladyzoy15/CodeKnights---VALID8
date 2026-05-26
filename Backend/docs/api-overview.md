@@ -1,4 +1,4 @@
-﻿# Backend API Overview
+# Backend API Overview
 
 <!--nav-->
 [Previous](../README.md) | [Next](BACKEND_CHANGELOG.md) | [Home](/README.md)
@@ -9,14 +9,14 @@
 ## Base Paths
 
 - Public root: `/` (lists major endpoints)
-- Private API prefix: `/api`
+- Canonical Private API prefix: `/api` and `/api/v1`
 - OpenAPI docs: `/docs` when `API_DOCS_ENABLED=true`
 
-Routers are registered in `backend/app/main.py`. In practice, what matters to clients is the final path. Some routers include `/api` in their own router prefix, even if they are included without the `/api` helper.
+Routers are registered in `backend/app/main.py`. To eliminate frontend fallback complexity and maintain a clean contract, all domain routers are canonically mounted under `/api` and `/api/v1`. Root mounts are preserved during the transition for backwards compatibility.
 
 ## Router Map (major entrypoints)
 
-Private API (`/api/...`):
+Canonical Private API (`/api/...` and `/api/v1/...`):
 
 - Users: `/api/users`
 - Events: `/api/events`
@@ -26,6 +26,7 @@ Private API (`/api/...`):
 - Reports: `/api/reports` (see [Reports Module Guide](./BACKEND_REPORTS_MODULE_GUIDE.md))
 - Admin import: `/api/admin/...`
 - School: `/api/school/...`
+- School settings: `/api/school-settings/...`
 - Audit logs: `/api/audit-logs/...`
 - Notifications: `/api/notifications/...`
 - Subscription: `/api/subscription/...`
@@ -34,13 +35,10 @@ Private API (`/api/...`):
 - Security center: `/api/auth/security`
 - Face recognition: `/api/face`
 - Sanctions: `/api/sanctions` (see [Sanctions Management Guide](./BACKEND_SANCTIONS_MANAGEMENT_GUIDE.md))
+- Public attendance: `/api/public-attendance/...`
+- Health: `/api/health/...`
 
-Non-`/api` routes:
-
-- Auth: `/auth/...` (login/session endpoints)
-- School settings: `/school-settings/...`
-- Public attendance: `/public-attendance/...`
-- Health: `/health/...`
+Legacy root mounts (`/school-settings/...`, `/public-attendance/...`, `/health/...`) remain active but are deprecated in favor of the canonical `/api` prefixes.
 
 If you are unsure about the exact request/response schema, use the live OpenAPI docs at `/docs`.
 

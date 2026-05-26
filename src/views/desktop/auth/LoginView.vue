@@ -26,7 +26,7 @@
         <div class="desktop-login__card-head">
           <p class="desktop-login__card-kicker">Sign in</p>
           <h2 class="desktop-login__card-title">Welcome back</h2>
-          <p class="desktop-login__card-copy">Use your school account to open the web workspace.</p>
+          <p class="desktop-login__card-copy">Use your account to open the web workspace.</p>
         </div>
 
         <form class="desktop-login__form" @submit.prevent="handleLogin">
@@ -34,7 +34,7 @@
             id="email"
             v-model="email"
             type="email"
-            placeholder="School email"
+            placeholder="Email"
             autocomplete="email"
             tone="neutral"
             :disabled="isLoading"
@@ -78,17 +78,36 @@
             </BaseButton>
           </div>
         </form>
+
+        <div class="desktop-login__divider">
+          <span>or</span>
+        </div>
+
+        <div class="desktop-login__google">
+          <div id="google-signin-btn"></div>
+        </div>
       </div>
     </div>
+
+    <GoogleOnboardingModal 
+      :show="showOnboarding"
+      :email="onboardingData?.email"
+      :first-name="onboardingData?.first_name"
+      :last-name="onboardingData?.last_name"
+      @close="showOnboarding = false"
+      @submit="handleOnboardingSubmit"
+    />
   </section>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import BaseButton from '@/components/desktop/ui/BaseButton.vue'
 import BaseInput from '@/components/desktop/ui/BaseInput.vue'
+import GoogleOnboardingModal from '@/components/desktop/auth/GoogleOnboardingModal.vue'
 import { applyLightOverride, removeLightOverride, surfaceAuraLogo } from '@/config/theme.js'
 import { useLoginViewModel } from '@/composables/useLoginViewModel.js'
+import { resolveGoogleWebClientId } from '@/services/backendBaseUrl.js'
 
 const {
   email,
@@ -96,12 +115,55 @@ const {
   isMounted,
   isLoading,
   visibleMessage,
+  showOnboarding,
+  onboardingData,
   handleLogin,
+  handleGoogleLogin,
+  handleOnboardingSubmit,
   openQuickAttendance,
 } = useLoginViewModel()
 
+function initGoogleSignIn() {
+  if (typeof google === 'undefined') return
+
+  const clientId = resolveGoogleWebClientId() || 'your-google-client-id.apps.googleusercontent.com'
+
+  google.accounts.id.initialize({
+    client_id: clientId,
+    auto_select: false,
+    itp_support: true,
+    locale: 'en',
+    callback: (response) => {
+      handleGoogleLogin(response.credential)
+    }
+  })
+
+  google.accounts.id.renderButton(
+    document.getElementById('google-signin-btn'),
+    { 
+      theme: 'outline', 
+      size: 'large', 
+      width: 420,
+      text: 'continue_with',
+      shape: 'pill'
+    }
+  )
+}
+
 onMounted(() => {
   applyLightOverride()
+  
+  // Wait for Google script to load if not already there
+  if (typeof google !== 'undefined') {
+    initGoogleSignIn()
+  } else {
+    const checkGoogle = setInterval(() => {
+      if (typeof google !== 'undefined') {
+        initGoogleSignIn()
+        clearInterval(checkGoogle)
+      }
+    }, 100)
+  }
 })
 
 onUnmounted(() => {
@@ -276,6 +338,29 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 10px;
   margin-top: 4px;
+}
+
+.desktop-login__divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0;
+  color: #536355;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.desktop-login__divider::before,
+.desktop-login__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(17, 26, 18, 0.08);
+}
+
+.desktop-login__google {
+  display: flex;
+  justify-content: center;
 }
 
 .desktop-login__message-enter-active,

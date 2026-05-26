@@ -98,6 +98,7 @@ export function normalizeTokenPayload(payload = {}) {
         face_verification_required: Boolean(payload.face_verification_required),
         face_reference_enrolled: Boolean(payload.face_reference_enrolled),
         face_verification_pending: Boolean(payload.face_verification_pending),
+        needs_onboarding: Boolean(payload.needs_onboarding),
         change_password_endpoint: toOptionalString(payload.change_password_endpoint, null),
         is_admin: typeof payload.is_admin === 'boolean' ? payload.is_admin : roles.includes('admin'),
     }

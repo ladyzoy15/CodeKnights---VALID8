@@ -161,6 +161,18 @@
         />
       </Transition>
 
+      <!-- Student Analytics Card -->
+      <Transition name="card-slide-delay" appear>
+        <StudentAnalyticsCard
+          v-if="!searchActive && !props.preview"
+          class="md:flex-1"
+          :present-count="12"
+          :absent-count="2"
+          :excused-count="1"
+          :total-required="15"
+        />
+      </Transition>
+
       <!-- Latest Event card -->
       <Transition name="card-slide-delay" appear>
         <EventsCard
@@ -235,6 +247,7 @@ import TopBar from '@/components/mobile/dashboard/TopBar.vue'
 import UniversityBanner from '@/components/mobile/dashboard/UniversityBanner.vue'
 import EventsCard from '@/components/mobile/dashboard/EventsCard.vue'
 import AnnouncementSheet from '@/components/mobile/dashboard/AnnouncementSheet.vue'
+import StudentAnalyticsCard from '@/components/mobile/dashboard/StudentAnalyticsCard.vue'
 
 import { applyTheme, loadTheme, secondaryAuraLogo } from '@/config/theme.js'
 import { useChat } from '@/composables/useChat.js'
@@ -479,8 +492,7 @@ function normalizeStatus(status) {
 // --- Handlers ---
 function handleAnnouncementClick() {
   if (props.preview) return
-  // TODO: navigate to announcements page or open modal
-  console.log('Announcement clicked')
+  showAnnouncementSheet.value = true
 }
 
 function handleSeeEvent(event) {

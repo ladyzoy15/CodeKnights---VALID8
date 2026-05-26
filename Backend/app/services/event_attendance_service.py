@@ -56,7 +56,7 @@ def finalize_completed_event_attendance(db: Session, event: EventModel) -> dict[
         db.query(AttendanceModel)
         .filter(
             AttendanceModel.event_id == event.id,
-            AttendanceModel.student_id.in_(participant_ids),
+            AttendanceModel.student_profile_id.in_(participant_ids),
         )
         .all()
     )

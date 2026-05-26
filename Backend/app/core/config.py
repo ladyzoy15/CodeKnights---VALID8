@@ -174,7 +174,21 @@ def get_settings() -> Settings:
     redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
     email_transport = (os.getenv("EMAIL_TRANSPORT") or "disabled").strip().lower()
 
-    database_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/fastapi_db")
+    env_mode = os.getenv("ENVIRONMENT", os.getenv("ENV", "development")).strip().lower()
+    is_prod = env_mode in {"production", "prod", "staging"}
+
+    raw_db_url = os.getenv("DATABASE_URL")
+    raw_secret = os.getenv("SECRET_KEY")
+
+    if is_prod:
+        if not raw_db_url:
+            raise RuntimeError("DATABASE_URL environment variable is required in production.")
+        if not raw_secret or raw_secret == "change-this-secret-in-production":
+            raise RuntimeError("A secure, explicit SECRET_KEY environment variable is required in production.")
+
+    database_url = raw_db_url or "postgresql://postgres:postgres@db:5432/fastapi_db"
+    secret_key = raw_secret or "change-this-secret-in-production"
+
     return Settings(
         database_url=database_url,
         database_admin_url=(os.getenv("DATABASE_ADMIN_URL") or "").strip() or None,
@@ -182,7 +196,7 @@ def get_settings() -> Settings:
         db_max_overflow=max(0, int(os.getenv("DB_MAX_OVERFLOW", "10"))),
         db_pool_timeout_seconds=max(1, int(os.getenv("DB_POOL_TIMEOUT_SECONDS", "15"))),
         db_pool_recycle_seconds=max(30, int(os.getenv("DB_POOL_RECYCLE_SECONDS", "1800"))),
-        secret_key=os.getenv("SECRET_KEY", "change-this-secret-in-production"),
+        secret_key=secret_key,
         jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
         access_token_expire_minutes=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")),
         face_scan_bypass_all=_as_bool(os.getenv("FACE_SCAN_BYPASS_ALL"), False),

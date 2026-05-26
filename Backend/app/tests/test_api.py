@@ -44,7 +44,7 @@ def _create_school(test_db, *, code: str) -> School:
 
 
 def _get_or_create_role(test_db, *, name: str) -> Role:
-    role = test_db.query(Role).filter(Role.name == name).first()
+    role = test_db.query(Role).filter(Role.code == name).first()
     if role is None:
         role = Role(name=name)
         test_db.add(role)
@@ -2178,7 +2178,7 @@ def test_create_school_it_honors_submitted_password_and_sets_prompt_flag(client,
     submitted_password = "SchoolItPass123!"
 
     response = client.post(
-        "/api/school/admin/create-school-it",
+        "/api/schools/admin/create-school-it",
         headers={"Authorization": f"Bearer {token}"},
         data={
             "school_name": "Prompt School",

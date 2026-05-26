@@ -3,9 +3,9 @@ services:
     image: postgres:15
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-fastapi_db}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required in production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required in production}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required in production}
     ports:
       - "5432:5432"
     volumes:
@@ -33,14 +33,17 @@ services:
       context: ./Backend
       dockerfile: Dockerfile.prod
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/fastapi_db}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
-      LOGIN_URL: ${LOGIN_URL:-http://localhost}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      LOGIN_URL: ${LOGIN_URL:?LOGIN_URL is required in production}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required in production}
       UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
       SCHOOL_LOGO_STORAGE_DIR: /tmp/valid8_school_logos
       IMPORT_STORAGE_DIR: /tmp/valid8_imports
@@ -71,18 +74,31 @@ services:
     build:
       context: ./Assistant
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     environment:
-      TENANT_DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/fastapi_db}
-      APP_DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/fastapi_db}
-      ASSISTANT_DB_URL: ${ASSISTANT_DB_URL:-postgresql://postgres:postgres@db:5432/fastapi_db}
+      TENANT_DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
+      APP_DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
+      ASSISTANT_DB_URL: ${ASSISTANT_DB_URL:?ASSISTANT_DB_URL is required in production}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
-      ASSISTANT_AUTO_MIGRATE: ${ASSISTANT_AUTO_MIGRATE:-true}
+      ASSISTANT_AUTO_MIGRATE: ${ASSISTANT_AUTO_MIGRATE:-false}
       BACKEND_API_BASE_URL: ${BACKEND_API_BASE_URL:-http://backend:8000}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_API_BASE: ${OPENAI_API_BASE:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_API_BASE: ${AI_API_BASE:-}
+      AI_MODEL: ${AI_MODEL:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_BASE: ${LLM_API_BASE:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
@@ -106,14 +122,17 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     command: celery -A app.workers.celery_app.celery_app worker --loglevel=info
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/fastapi_db}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
-      LOGIN_URL: ${LOGIN_URL:-http://localhost}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      LOGIN_URL: ${LOGIN_URL:?LOGIN_URL is required in production}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required in production}
       SCHOOL_LOGO_STORAGE_DIR: /tmp/valid8_school_logos
       IMPORT_STORAGE_DIR: /tmp/valid8_imports
     depends_on:
@@ -131,14 +150,17 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     command: celery -A app.workers.celery_app.celery_app beat --loglevel=info --schedule /tmp/celerybeat-schedule
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@db:5432/fastapi_db}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required in production}
       CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
       CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/0}
-      LOGIN_URL: ${LOGIN_URL:-http://localhost}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost}
+      LOGIN_URL: ${LOGIN_URL:?LOGIN_URL is required in production}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required in production}
       SCHOOL_LOGO_STORAGE_DIR: /tmp/valid8_school_logos
       IMPORT_STORAGE_DIR: /tmp/valid8_imports
     depends_on:

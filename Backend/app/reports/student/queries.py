@@ -16,7 +16,8 @@ from app.routers.attendance.shared import _apply_student_scope_filters
 
 def _event_type_column():
     """Return the event type ORM column when available in this schema version."""
-    return getattr(Event, "event_type", None)
+    col = Event.__table__.columns.get("event_type")
+    return col if col is not None else None
 
 
 def build_students_overview_base_query(
@@ -43,7 +44,7 @@ def build_students_overview_base_query(
         search_filter = f"%{search}%"
         query = query.filter(
             or_(
-                StudentProfile.student_id.ilike(search_filter),
+                StudentProfile.student_number.ilike(search_filter),
                 func.concat(
                     User.first_name,
                     " ",
@@ -89,7 +90,7 @@ def list_attendances_for_students_overview(
         db.query(AttendanceModel)
         .join(Event, AttendanceModel.event_id == Event.id)
         .filter(
-            AttendanceModel.student_id.in_(student_ids),
+            AttendanceModel.student_profile_id.in_(student_ids),
             Event.school_id == school_id,
         )
     )
@@ -101,10 +102,10 @@ def list_attendances_for_students_overview(
 
     if start_date:
         start_datetime = datetime.combine(start_date, datetime.min.time())
-        attendance_query = attendance_query.filter(Event.start_datetime >= start_datetime)
+        attendance_query = attendance_query.filter(Event.start_at >= start_datetime)
     if end_date:
         end_datetime = datetime.combine(end_date, datetime.max.time())
-        attendance_query = attendance_query.filter(Event.start_datetime <= end_datetime)
+        attendance_query = attendance_query.filter(Event.start_at <= end_datetime)
 
     return attendance_query.order_by(
         AttendanceModel.student_id.asc(),
@@ -163,15 +164,15 @@ def list_student_attendances_for_report(
 
     if start_date:
         start_datetime = datetime.combine(start_date, datetime.min.time())
-        attendance_query = attendance_query.filter(Event.start_datetime >= start_datetime)
+        attendance_query = attendance_query.filter(Event.start_at >= start_datetime)
     if end_date:
         end_datetime = datetime.combine(end_date, datetime.max.time())
-        attendance_query = attendance_query.filter(Event.start_datetime <= end_datetime)
+        attendance_query = attendance_query.filter(Event.start_at <= end_datetime)
     event_type_column = _event_type_column()
     if event_type and event_type_column is not None:
         attendance_query = attendance_query.filter(event_type_column == event_type)
 
-    return attendance_query.order_by(Event.start_datetime.desc()).all()
+    return attendance_query.order_by(Event.start_at.desc()).all()
 
 
 def student_exists_in_school(
@@ -210,20 +211,20 @@ def build_student_stats_base_query(
     )
     if start_date:
         start_datetime = datetime.combine(start_date, datetime.min.time())
-        query = query.filter(Event.start_datetime >= start_datetime)
+        query = query.filter(Event.start_at >= start_datetime)
     if end_date:
         end_datetime = datetime.combine(end_date, datetime.max.time())
-        query = query.filter(Event.start_datetime <= end_datetime)
+        query = query.filter(Event.start_at <= end_datetime)
     return query
 
 
 def list_student_status_counts(base_query) -> list[tuple[str | None, int]]:
     rows = (
         base_query.with_entities(
-            AttendanceModel.status,
+            AttendanceModel.status_code,
             func.count(AttendanceModel.id).label("count"),
         )
-        .group_by(AttendanceModel.status)
+        .group_by(AttendanceModel.status_code)
         .all()
     )
     return [(status, int(count or 0)) for status, count in rows]
@@ -232,14 +233,14 @@ def list_student_status_counts(base_query) -> list[tuple[str | None, int]]:
 def list_student_trend_results(base_query, *, trunc_period: str):
     return (
         base_query.with_entities(
-            func.date_trunc(trunc_period, Event.start_datetime).label("period"),
-            AttendanceModel.status,
+            func.date_trunc(trunc_period, Event.start_at).label("period"),
+            AttendanceModel.status_code,
             func.count(AttendanceModel.id).label("count"),
         )
-        .filter(Event.start_datetime.isnot(None))
+        .filter(Event.start_at.isnot(None))
         .group_by(
-            func.date_trunc(trunc_period, Event.start_datetime),
-            AttendanceModel.status,
+            func.date_trunc(trunc_period, Event.start_at),
+            AttendanceModel.status_code,
         )
         .order_by("period")
         .all()
@@ -252,20 +253,20 @@ def list_student_event_type_breakdown(base_query):
         return (
             base_query.with_entities(
                 literal("Regular Events", type_=String).label("type"),
-                AttendanceModel.status,
+                AttendanceModel.status_code,
                 func.count(AttendanceModel.id).label("count"),
             )
-            .group_by(AttendanceModel.status)
+            .group_by(AttendanceModel.status_code)
             .all()
         )
 
     return (
         base_query.with_entities(
             event_type_column.label("type"),
-            AttendanceModel.status,
+            AttendanceModel.status_code,
             func.count(AttendanceModel.id).label("count"),
         )
-        .group_by(event_type_column, AttendanceModel.status)
+        .group_by(event_type_column, AttendanceModel.status_code)
         .all()
     )
 
@@ -287,7 +288,7 @@ def list_all_student_record_rows(
             User.last_name,
             Event.name.label("event_name"),
         )
-        .join(StudentProfile, AttendanceModel.student_id == StudentProfile.id)
+        .join(StudentProfile, AttendanceModel.student_profile_id == StudentProfile.id)
         .join(User, StudentProfile.user_id == User.id)
         .join(Event, AttendanceModel.event_id == Event.id)
         .filter(
@@ -296,13 +297,13 @@ def list_all_student_record_rows(
         )
     )
     if student_ids:
-        query = query.filter(StudentProfile.student_id.in_(student_ids))
+        query = query.filter(StudentProfile.student_number.in_(student_ids))
     if event_id:
         query = query.filter(AttendanceModel.event_id == event_id)
 
     return (
         query.order_by(
-            StudentProfile.student_id,
+            StudentProfile.student_number,
             AttendanceModel.time_in.desc(),
         )
         .offset(skip)
@@ -321,7 +322,7 @@ def get_student_profile_by_student_code(
         db.query(StudentProfile)
         .join(User, StudentProfile.user_id == User.id)
         .filter(
-            StudentProfile.student_id == student_id,
+            StudentProfile.student_number == student_id,
             User.school_id == school_id,
         )
         .first()
@@ -344,7 +345,7 @@ def list_student_record_rows(
         )
         .join(Event, AttendanceModel.event_id == Event.id)
         .filter(
-            AttendanceModel.student_id == student_profile_id,
+            AttendanceModel.student_profile_id == student_profile_id,
             Event.school_id == school_id,
         )
     )

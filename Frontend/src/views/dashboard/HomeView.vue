@@ -619,8 +619,7 @@ function normalizeStatus(status) {
 // --- Handlers ---
 function handleAnnouncementClick() {
   if (props.preview) return
-  // TODO: navigate to announcements page or open modal
-  console.log('Announcement clicked')
+  router.push('/governance/announcements')
 }
 
 function handleSeeEvent(event) {

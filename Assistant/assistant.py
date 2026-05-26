@@ -144,15 +144,17 @@ JWT_SECRETS = list(
 )
 JWT_PUBLIC_KEY = os.getenv("JWT_PUBLIC_KEY")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-AI_PROVIDER = (os.getenv("AI_PROVIDER") or "").strip().lower()
+AI_PROVIDER = (os.getenv("AI_PROVIDER") or os.getenv("LLM_PROVIDER") or "").strip().lower()
 AI_API_KEY = (
     os.getenv("AI_API_KEY")
+    or os.getenv("LLM_API_KEY")
     or os.getenv("OPENAI_API_KEY")
     or os.getenv("ANTHROPIC_API_KEY")
     or os.getenv("GEMINI_API_KEY")
 )
 AI_API_BASE = (
     os.getenv("AI_API_BASE")
+    or os.getenv("LLM_API_BASE")
     or os.getenv("OPENAI_API_BASE")
     or os.getenv("ANTHROPIC_API_BASE")
     or os.getenv("GEMINI_API_BASE")
@@ -160,6 +162,7 @@ AI_API_BASE = (
 )
 AI_MODEL = (
     os.getenv("AI_MODEL")
+    or os.getenv("LLM_MODEL")
     or os.getenv("OPENAI_MODEL")
     or os.getenv("ANTHROPIC_MODEL")
     or os.getenv("GEMINI_MODEL")
@@ -200,7 +203,7 @@ AI_API_VERSION = (
     or os.getenv("ANTHROPIC_API_VERSION")
     or "2023-06-01"
 ).strip()
-ASSISTANT_AUTO_MIGRATE = os.getenv("ASSISTANT_AUTO_MIGRATE", "true").lower() == "true"
+ASSISTANT_AUTO_MIGRATE = os.getenv("ASSISTANT_AUTO_MIGRATE", "false").lower() == "true"
 MCP_SCHEMA_URL = os.getenv("MCP_SCHEMA_URL") or "http://127.0.0.1:8501/mcp/schema/schema"
 MCP_QUERY_URL = os.getenv("MCP_QUERY_URL") or "http://127.0.0.1:8501/mcp/query/query"
 MCP_SCHOOL_ADMIN_URL = os.getenv("MCP_SCHOOL_ADMIN_URL") or "http://127.0.0.1:8501/mcp/school-admin/action"
@@ -339,7 +342,11 @@ app.mount("/mcp/student-import", student_import_app)
 app.mount("/mcp/visualization", visualization_app)
 
 # CORS setup (Hardened for production)
-cors_allowed = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+raw_cors = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+cors_allowed = [origin.strip() for origin in raw_cors.split(",") if origin.strip() and origin.strip() != "*"]
+if not cors_allowed:
+    cors_allowed = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_allowed,

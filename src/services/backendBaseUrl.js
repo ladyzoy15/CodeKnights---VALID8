@@ -133,3 +133,20 @@ export function resolveApiTimeoutMs(value = null) {
 
   return DEFAULT_API_TIMEOUT_MS
 }
+
+export function resolveGoogleLoginEnabled() {
+  const runtimeConfig = getRuntimeConfig()
+  const val = readFirstDefinedString([
+    runtimeConfig.googleLoginEnabled,
+    import.meta.env.VITE_GOOGLE_LOGIN_ENABLED
+  ])
+  return val === 'true' || val === '1' || val === true
+}
+
+export function resolveGoogleWebClientId() {
+  const runtimeConfig = getRuntimeConfig()
+  return readFirstDefinedString([
+    runtimeConfig.googleWebClientId,
+    import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
+  ])
+}

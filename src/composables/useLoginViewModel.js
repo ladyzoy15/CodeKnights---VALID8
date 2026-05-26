@@ -9,8 +9,11 @@ export function useLoginViewModel() {
   const password = ref('')
   const isMounted = ref(false)
   const sessionNotice = ref('')
+  const onboardingData = ref(null)
+  const showOnboarding = ref(false)
+
   const router = useRouter()
-  const { login, isLoading, error } = useAuth()
+  const { login, loginWithGoogleAuth, isLoading, error } = useAuth()
   const visibleMessage = computed(() => error.value || sessionNotice.value)
 
   onBeforeMount(() => {
@@ -29,6 +32,27 @@ export function useLoginViewModel() {
     await login(email.value, password.value)
   }
 
+  async function handleGoogleLogin(idToken) {
+    const result = await loginWithGoogleAuth(idToken)
+    if (result?.needsOnboarding) {
+      onboardingData.value = {
+        ...result.payload,
+        id_token: idToken
+      }
+      showOnboarding.value = true
+    }
+  }
+
+  async function handleOnboardingSubmit(schoolId) {
+    if (!onboardingData.value?.id_token) return
+    
+    const result = await loginWithGoogleAuth(onboardingData.value.id_token, schoolId)
+    if (result?.success) {
+      showOnboarding.value = false
+      onboardingData.value = null
+    }
+  }
+
   function openQuickAttendance() {
     router.push({ name: 'QuickAttendance' })
   }
@@ -39,7 +63,11 @@ export function useLoginViewModel() {
     isMounted,
     isLoading,
     visibleMessage,
+    showOnboarding,
+    onboardingData,
     handleLogin,
+    handleGoogleLogin,
+    handleOnboardingSubmit,
     openQuickAttendance,
   }
 }

@@ -119,6 +119,9 @@ Routes:
 
 - `POST /token`
 - `POST /login`
+- `POST /auth/google`
+
+### Standard Login Fields
 
 New request field:
 
@@ -141,6 +144,21 @@ remember_me=true
   "remember_me": true
 }
 ```
+
+### Google Login JSON (`/auth/google`):
+
+```json
+{
+  "id_token": "google-id-token-here",
+  "school_id": 1,
+  "remember_me": true
+}
+```
+
+Behavior:
+- If `school_id` is null and the user is new, returns `needs_onboarding: true`.
+- If `school_id` is provided for a new user, auto-registers them as a Student.
+- Uses `remember_me` logic for session duration.
 
 ## Privileged face MFA flow
 

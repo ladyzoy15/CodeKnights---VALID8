@@ -101,7 +101,13 @@
                </div>
             </div>
 
-            <div class="school-it-att-monitor__stats-grid">
+            <p v-if="isLoadingStats" class="school-it-att-monitor__stats-state">Loading attendance stats...</p>
+            <div v-else-if="statsError" class="school-it-att-monitor__stats-state school-it-att-monitor__stats-state--error">
+              <span>{{ statsError }}</span>
+              <button type="button" @click="openStudentDetail(selectedStudent)">Try Again</button>
+            </div>
+
+            <div v-else class="school-it-att-monitor__stats-grid">
                <div class="school-it-att-monitor__stat-card school-it-att-monitor__stat-card--total">
                   <span class="school-it-att-monitor__stat-value">{{ selectedStudentStats.total }}</span>
                   <span class="school-it-att-monitor__stat-label">Total Events</span>
@@ -129,7 +135,7 @@
             </div>
 
             <!-- Clean Graph -->
-            <div class="school-it-att-monitor__graph-section">
+            <div v-if="!isLoadingStats && !statsError" class="school-it-att-monitor__graph-section">
               <h3 class="school-it-att-monitor__graph-title">Attendance Overview</h3>
               <div class="school-it-att-monitor__graph-track">
                 <div class="school-it-att-monitor__graph-fill school-it-att-monitor__graph-fill--present" :style="{ width: `${selectedStudentStats.presentPct}%` }"></div>
@@ -189,6 +195,20 @@ const sortMode = ref('id-asc')
 const isSortMenuOpen = ref(false)
 const selectedStudent = ref(null)
 const isLoadingStats = ref(false)
+const statsError = ref('')
+
+const emptyStats = {
+  total: 0,
+  present: 0,
+  late: 0,
+  absent: 0,
+  excused: 0,
+  rate: 0,
+  presentPct: 0,
+  latePct: 0,
+  absentPct: 0,
+  excusedPct: 0,
+}
 
 const sortOptions = [
   { id: 'first-name-asc', label: 'First Name A-Z' },
@@ -298,7 +318,7 @@ const visibleStudents = computed(() => {
 
 const searchActive = computed(() => searchQuery.value.trim().length > 0)
 
-const selectedStudentStats = computed(() => selectedStudent.value?.stats || {})
+const selectedStudentStats = computed(() => selectedStudent.value?.stats || emptyStats)
 
 watch([apiBaseUrl, () => activeUser.value?.id, () => props.preview], async ([resolvedApiBaseUrl, userId, preview]) => {
   if (preview) return
@@ -322,6 +342,7 @@ function selectSort(nextSortMode) {
 async function openStudentDetail(student) {
   selectedStudent.value = student
   isLoadingStats.value = true
+  statsError.value = ''
 
   if (props.preview) {
      student.stats = generateMockStats(student.id)
@@ -358,7 +379,8 @@ async function openStudentDetail(student) {
      }
   } catch (error) {
      console.error('Failed to fetch attendance summary', error)
-     student.stats = generateMockStats(student.id) // Fallback to mock if API fails for UX resilience
+     student.stats = null
+     statsError.value = error?.message || 'Unable to load attendance stats.'
   } finally {
      isLoadingStats.value = false
   }
@@ -366,6 +388,7 @@ async function openStudentDetail(student) {
 
 function closeStudentDetail() {
   selectedStudent.value = null
+  statsError.value = ''
 }
 
 function goBack() {
@@ -743,6 +766,39 @@ async function handleLogout() {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+
+.school-it-att-monitor__stats-state {
+  margin: 0;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--color-field-surface);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.school-it-att-monitor__stats-state--error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  background: #fff5f5;
+  color: #b91c1c;
+}
+
+.school-it-att-monitor__stats-state--error button {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--color-primary, #bcf00e);
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .school-it-att-monitor__stat-card {

@@ -51,13 +51,13 @@ def get_attendance_summary(
     )
 
     total_records = query.count()
-    present_count = query.filter(AttendanceModel.status == "present").count()
-    late_count = query.filter(AttendanceModel.status == "late").count()
-    absent_count = query.filter(AttendanceModel.status == "absent").count()
-    excused_count = query.filter(AttendanceModel.status == "excused").count()
+    present_count = query.filter(AttendanceModel.status_code == "present").count()
+    late_count = query.filter(AttendanceModel.status_code == "late").count()
+    absent_count = query.filter(AttendanceModel.status_code == "absent").count()
+    excused_count = query.filter(AttendanceModel.status_code == "excused").count()
     attended_count = present_count + late_count
 
-    unique_students = query.with_entities(AttendanceModel.student_id).distinct().count()
+    unique_students = query.with_entities(AttendanceModel.student_profile_id).distinct().count()
     unique_events = query.with_entities(AttendanceModel.event_id).distinct().count()
 
     student_profiles = queries.list_student_profiles_for_login_report(

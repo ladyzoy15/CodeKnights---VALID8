@@ -73,6 +73,25 @@ export function useSgDashboard(preview = false) {
     { immediate: true }
   )
 
+  async function reload() {
+    const url = apiBaseUrl.value
+    const authToken = token.value
+    if (!url || !authToken) return
+
+    cachedIsLoading.value = true
+    cachedError.value = ''
+
+    try {
+      const access = await getGovernanceAccess(url, authToken)
+      updateCache(access, dashboardState.user)
+      hasFetched = true
+    } catch (err) {
+      cachedError.value = err?.message || 'Unable to load SG governance data.'
+    } finally {
+      cachedIsLoading.value = false
+    }
+  }
+
   function updateCache(access, user) {
     const governanceUnit = resolvePreferredGovernanceUnit(access)
 
@@ -129,5 +148,6 @@ export function useSgDashboard(preview = false) {
     schoolLogo,
     activeUnitId,
     hasPermission,
+    reload,
   }
 }

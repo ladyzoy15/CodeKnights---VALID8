@@ -27,3 +27,10 @@ dist-ssr
 # Capacitor
 android/
 ios/
+
+# Environment files with secrets - never commit these
+.env
+.env.*
+!.env.example
+Backend/.env
+database/.env

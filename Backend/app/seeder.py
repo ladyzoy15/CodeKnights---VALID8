@@ -104,7 +104,7 @@ def seed_roles(db: Session, role_names: list[str] | None = None) -> None:
 
 
 def _get_or_create_role(db: Session, role_name: str) -> Role:
-    role = db.query(Role).filter(Role.name == role_name).first()
+    role = db.query(Role).filter(Role.code == role_name).first()
     if role is None:
         role = Role(name=role_name)
         db.add(role)
@@ -225,7 +225,7 @@ def _get_or_create_school(
     if school_code:
         existing = db.query(School).filter(School.school_code == school_code).first()
     if existing is None:
-        existing = db.query(School).filter(School.school_name == name).first()
+        existing = db.query(School).filter(School.display_name == name).first()
     if existing is not None:
         # Ensure settings row exists (older DBs).
         if not db.query(SchoolSetting).filter(SchoolSetting.school_id == existing.id).first():

@@ -67,9 +67,29 @@ class School(Base):
     @active_status.setter
     def active_status(self, value):
         self.is_active = value
-    # subscription_plan = Column(String(100), nullable=False, default="free")
-    # subscription_start = Column(Date, nullable=False, default=date.today)
-    # subscription_end = Column(Date, nullable=True)
+    @property
+    def subscription_plan(self):
+        return "free"
+    
+    @subscription_plan.setter
+    def subscription_plan(self, value):
+        pass
+
+    @property
+    def subscription_start(self):
+        return date.today()
+    
+    @subscription_start.setter
+    def subscription_start(self, value):
+        pass
+
+    @property
+    def subscription_end(self):
+        return None
+    
+    @subscription_end.setter
+    def subscription_end(self, value):
+        pass
     
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(

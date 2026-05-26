@@ -14,6 +14,46 @@ At minimum include:
 - route or schema changes
 - migration or configuration impact
 
+## 2026-05-17 - Production Hardening, Route Normalization, and CSP Enforcement
+
+### Purpose
+
+Transition the Aura project to a production-hardened state by neutralizing security vulnerabilities, enforcing strict secrets validation, standardizing API routing, and implementing frontend Content Security Policy (CSP).
+
+### Main files
+
+- `docker-compose.prod.yml`
+- `Backend/app/core/config.py`
+- `Backend/app/main.py`
+- `Assistant/assistant.py`
+- `Frontend/index.html`
+- `Frontend/src/services/sessionPersistence.js`
+- `Frontend/src/views/dashboard/HomeView.vue`
+
+### Backend changes
+
+- **Fail-Fast Secrets Validation**: Refactored `get_settings()` in `Backend/app/core/config.py` to add a production mode verification block that raises `RuntimeError` if `DATABASE_URL` or `SECRET_KEY` are missing or set to insecure development defaults.
+- **Docker Compose Hardening**: Removed insecure environment variable fallbacks in `docker-compose.prod.yml` and enforced mandatory requirement checking using the shell `?` syntax.
+- **Assistant Service Hardening**: Explicitly disabled auto-migration (`ASSISTANT_AUTO_MIGRATE: false`) and locked down CORS allowed origins against wildcards in `Assistant/assistant.py`.
+- **Route Normalization**: Standardized `include_api_router` in `Backend/app/main.py` to canonically mount all domain routers under both `/api` and `/api/v1` prefixes while preserving root mounts for legacy compatibility.
+- **Frontend CSP & XSS Mitigation**: Added a strict `Content-Security-Policy` header via a `<meta>` tag in `Frontend/index.html` and documented XSS hardening guidelines in `sessionPersistence.js`.
+- **UI Resolution**: Resolved pending UI TODO in `HomeView.vue` by connecting announcement clicks to the Student Governance announcements page (`/governance/announcements`).
+
+### Route or schema impact
+
+- All backend domain routers canonically accessible via `/api` and `/api/v1` prefixes.
+- Assistant service auto-migration disabled by default.
+
+### Migration impact
+
+- None.
+
+### How to test
+
+1. Deploy using `docker compose -f docker-compose.prod.yml up --build`.
+2. Verify startup fails immediately if mandatory production secrets are omitted.
+3. Verify frontend headers include strict CSP enforcement.
+
 ## 2026-05-15 - Standardize API prefixes and restore missing route aliases
 
 ### Purpose

@@ -53,6 +53,8 @@
         Tap anywhere to enter fullscreen
       </button>
     </Transition>
+
+    <ToastContainer />
   </div>
 </template>
 
@@ -65,6 +67,7 @@ import { appFatalErrorMessage, clearAppFatalError } from '@/services/appBootstra
 import { isNavigationPending } from '@/services/navigationState.js'
 import { clearDashboardSession } from '@/composables/useDashboardSession.js'
 import { useRouter } from 'vue-router'
+import ToastContainer from '@/components/desktop/ToastContainer.vue'
 
 const router = useRouter()
 const networkOnline = computed(() => isOnline.value)

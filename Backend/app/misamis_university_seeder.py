@@ -343,7 +343,7 @@ def _create_or_replace_school(db: Session, config: SeedConfig) -> School:
         db.query(School)
         .filter(
             (School.school_code == config.school_code)
-            | (School.school_name == config.school_name)
+            | (School.display_name == config.school_name)
         )
         .first()
     )

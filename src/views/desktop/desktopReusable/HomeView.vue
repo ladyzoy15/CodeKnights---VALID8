@@ -135,12 +135,8 @@
                     :disabled="!inputText.trim() || isTyping"
                     aria-label="Send message"
                     type="button"
-                    @logout="handleLogout"
                     @click="sendMessage"
                   >
-                    <div class="school-it-home__breadcrumbs">
-                      <Breadcrumbs />
-                    </div>
                     <Send :size="15" />
                   </button>
                 </div>
@@ -496,8 +492,7 @@ function normalizeStatus(status) {
 // --- Handlers ---
 function handleAnnouncementClick() {
   if (props.preview) return
-  // TODO: navigate to announcements page or open modal
-  console.log('Announcement clicked')
+  showAnnouncementSheet.value = true
 }
 
 function handleSeeEvent(event) {

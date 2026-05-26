@@ -20,6 +20,16 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
+        // Capacitor shims — keeps existing code intact on web builds
+        '@capacitor/core': fileURLToPath(new URL('./src/shims/capacitor-core.js', import.meta.url)),
+        '@capacitor/camera': fileURLToPath(new URL('./src/shims/capacitor-plugin.js', import.meta.url)),
+        '@capacitor/geolocation': fileURLToPath(new URL('./src/shims/capacitor-plugin.js', import.meta.url)),
+        '@capacitor/haptics': fileURLToPath(new URL('./src/shims/capacitor-plugin.js', import.meta.url)),
+        '@capacitor/status-bar': fileURLToPath(new URL('./src/shims/capacitor-plugin.js', import.meta.url)),
+        '@capacitor/splash-screen': fileURLToPath(new URL('./src/shims/capacitor-plugin.js', import.meta.url)),
+        '@capacitor/app': fileURLToPath(new URL('./src/shims/capacitor-plugin.js', import.meta.url)),
+        '@capacitor/keyboard': fileURLToPath(new URL('./src/shims/capacitor-plugin.js', import.meta.url)),
+        '@capacitor/network': fileURLToPath(new URL('./src/shims/capacitor-plugin.js', import.meta.url)),
       },
     },
     server: hasProxy

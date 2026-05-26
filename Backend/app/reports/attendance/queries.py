@@ -86,11 +86,11 @@ def list_event_attendance_rows_for_report(
         )
         .join(
             participant_subquery,
-            AttendanceModel.student_id == participant_subquery.c.student_id,
+            AttendanceModel.student_profile_id == participant_subquery.c.student_id,
         )
         .filter(AttendanceModel.event_id == event_id)
         .order_by(
-            AttendanceModel.student_id.asc(),
+            AttendanceModel.student_profile_id.asc(),
             AttendanceModel.time_in.desc(),
             AttendanceModel.id.desc(),
         )
@@ -125,7 +125,7 @@ def list_event_attendance_rows_for_attendees(
     return (
         db.query(AttendanceModel)
         .filter(AttendanceModel.event_id == event_id)
-        .order_by(AttendanceModel.status, AttendanceModel.time_in)
+        .order_by(AttendanceModel.status_code, AttendanceModel.time_in)
         .all()
     )
 
@@ -164,7 +164,7 @@ def list_event_attendance_with_students(
             User.first_name,
             User.last_name,
         )
-        .join(StudentProfile, AttendanceModel.student_id == StudentProfile.id)
+        .join(StudentProfile, AttendanceModel.student_profile_id == StudentProfile.id)
         .join(User, StudentProfile.user_id == User.id)
         .join(Event, AttendanceModel.event_id == Event.id)
         .filter(

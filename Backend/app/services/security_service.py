@@ -106,7 +106,8 @@ def assert_session_valid(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session is not valid")
     if session.revoked_at is not None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session has been revoked")
-    if session.expires_at < datetime.utcnow():
+    expires_at = session.expires_at.replace(tzinfo=None) if session.expires_at.tzinfo else session.expires_at
+    if expires_at < datetime.utcnow():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session has expired")
     return session
 

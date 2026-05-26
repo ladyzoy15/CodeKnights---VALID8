@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { loginForAccessToken, resolveApiBaseUrl } from '@/services/backendApi.js'
+import { loginForAccessToken, loginWithGoogle, resolveApiBaseUrl } from '@/services/backendApi.js'
 import {
     clearDashboardSession,
     getDefaultAuthenticatedRoute,
@@ -54,7 +54,7 @@ export function useAuth() {
 
             const initializedSession = await initializeDashboardSession(true)
             if (!initializedSession?.user || sessionUsesLimitedMode()) {
-                throw new Error('The backend did not return a complete user session. Please try again once the backend is stable.')
+                throw new Error('The backend did not return a complete user session.')
             }
             router.push(
                 sessionNeedsFaceRegistration()
@@ -69,10 +69,55 @@ export function useAuth() {
         }
     }
 
+    async function loginWithGoogleAuth(idToken, schoolId = null) {
+        isLoading.value = true
+        error.value = null
+
+        try {
+            const apiBaseUrl = resolveApiBaseUrl()
+            const tokenPayload = await loginWithGoogle(apiBaseUrl, {
+                idToken,
+                schoolId
+            })
+
+            // If onboarding is required, return the payload so the UI can show the modal
+            if (tokenPayload.needs_onboarding) {
+                return { needsOnboarding: true, payload: tokenPayload }
+            }
+
+            const accessToken = tokenPayload?.access_token
+            if (!accessToken) {
+                throw new Error('The API did not return an access token.')
+            }
+
+            localStorage.setItem('aura_token', accessToken)
+            localStorage.setItem('aura_user_roles', JSON.stringify(tokenPayload?.roles ?? []))
+            const authMeta = storeAuthMeta(tokenPayload)
+
+            const initializedSession = await initializeDashboardSession(true)
+            if (!initializedSession?.user || sessionUsesLimitedMode()) {
+                throw new Error('The backend did not return a complete user session.')
+            }
+
+            router.push(
+                sessionNeedsFaceRegistration()
+                    ? { name: 'FaceRegistration' }
+                    : getDefaultAuthenticatedRoute()
+            )
+            return { success: true }
+        } catch (err) {
+            clearDashboardSession()
+            error.value = err?.message || 'Google login failed.'
+            return { error: error.value }
+        } finally {
+            isLoading.value = false
+        }
+    }
+
     function logout() {
         clearDashboardSession()
         router.push({ name: 'Login' })
     }
 
-    return { login, logout, isLoading, error }
+    return { login, loginWithGoogleAuth, logout, isLoading, error }
 }

@@ -24,7 +24,7 @@
 
     <div v-else-if="error" class="sg-error-state">
       <p>{{ error }}</p>
-      <button class="sg-retry-btn" @click="window.location.reload()">Retry</button>
+      <button class="sg-retry-btn" type="button" @click="reloadDashboard">Retry</button>
     </div>
 
     <template v-else>
@@ -62,6 +62,7 @@ const searchQuery = ref('')
 const {
   isLoading,
   error,
+  reload,
   permissionCodes,
   officerPosition,
   officerName,
@@ -74,6 +75,12 @@ const filteredSections = computed(() => filterSectionsBySearch(visibleSections.v
 
 function handleModuleClick(mod) {
   if (mod.route) router.push(mod.route)
+}
+
+async function reloadDashboard() {
+  if (typeof reload === 'function') {
+    await reload()
+  }
 }
 </script>
 
