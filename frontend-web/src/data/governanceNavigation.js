@@ -5,6 +5,7 @@ import {
   Megaphone,
   ShieldCheck,
   UsersRound,
+  MailOpen,
 } from 'lucide-vue-next'
 
 const SECTION_DEFINITIONS = {
@@ -59,6 +60,21 @@ const SECTION_DEFINITIONS = {
       'Surface the directory without mixing it into the student dashboard.',
     ],
   },
+  'excuse-letters': {
+    key: 'excuse-letters',
+    navLabel: 'Excuse Letters',
+    route: '/governance/excuse-letters',
+    previewRoute: '/exposed/governance/excuse-letters',
+    navIcon: MailOpen,
+    panelIcon: MailOpen,
+    title: 'Excuse Letters',
+    description: 'Review and approve student excuse letters.',
+    placeholderTitle: 'Excuse letters workspace',
+    placeholderDescription: 'Manage student excuse letters for absences.',
+    featureList: [
+      'Approve or reject student excuse letters.',
+    ],
+  },
   governance: {
     key: 'governance',
     navLabel: 'Governance',
@@ -82,6 +98,7 @@ export const governanceSectionOrder = [
   'overview',
   'events',
   'students',
+  'excuse-letters',
   'governance',
 ]
 
