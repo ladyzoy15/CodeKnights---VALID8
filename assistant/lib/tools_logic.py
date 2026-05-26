@@ -169,7 +169,7 @@ def sanitize_tool_args(tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             continue
         cleaned[k] = v
     
-    if tool_name == "mcp_query" or tool_name == "nexus-query":
+    if tool_name == "mcp_query" or tool_name == "aura-query":
         if "count_only" not in cleaned:
             cleaned["count_only"] = False
         if "limit" not in cleaned:
@@ -217,6 +217,67 @@ def convert_tools_for_anthropic(tools: Optional[List[Dict[str, Any]]]) -> List[D
         )
     return converted
 
+
+
+UNSUPPORTED_SCHEMA_KEYS = {
+    "additionalProperties", "additional_properties",
+    "anyOf", "any_of",
+    "allOf", "all_of",
+    "oneOf", "one_of",
+    "not", "default", "title", "format",
+    "example", "examples", "x-mcp-label", "pattern"
+}
+
+def _sanitize_schema_for_gemini(schema: Any) -> Any:
+    """
+    Recursively remove unsupported fields from the schema.
+    Gemini REST API rejects many standard JSON Schema fields.
+    """
+    if isinstance(schema, list):
+        return [_sanitize_schema_for_gemini(i) for i in schema]
+    if not isinstance(schema, dict):
+        return schema
+    
+    # Create a copy to avoid mutation
+    sanitized = dict(schema)
+
+    # Handle anyOf/oneOf/allOf by picking the first sub-schema
+    # Gemini doesn't support unions in tool parameters.
+    for k in ["anyOf", "oneOf", "allOf", "any_of", "one_of", "all_of"]:
+        if k in sanitized and isinstance(sanitized[k], list) and len(sanitized[k]) > 0:
+            first_choice = sanitized[k][0]
+            if isinstance(first_choice, dict):
+                # Update sanitized with first choice (excluding the key itself)
+                for ck, cv in first_choice.items():
+                    if ck not in sanitized:
+                        sanitized[ck] = cv
+            break
+
+    # Drop all unsupported keys
+    result = {k: v for k, v in sanitized.items() if k not in UNSUPPORTED_SCHEMA_KEYS}
+    
+    # Recurse into nested objects
+    for k, v in result.items():
+        result[k] = _sanitize_schema_for_gemini(v)
+    
+    # CRITICAL: Clean up 'required' array — Gemini rejects if required references
+    # a property that doesn't exist in the properties object.
+    properties = result.get("properties")
+    if "required" in result:
+        if isinstance(properties, dict):
+            valid_props = set(properties.keys())
+            result["required"] = [
+                r for r in result["required"]
+                if isinstance(r, str) and r in valid_props
+            ]
+            if not result["required"]:
+                del result["required"]
+        else:
+            # If no properties dict exists, nothing can be required.
+            del result["required"]
+
+    return result
+
 def convert_tools_for_gemini(tools: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
     declarations: List[Dict[str, Any]] = []
     for tool in tools or []:
@@ -233,10 +294,10 @@ def convert_tools_for_gemini(tools: Optional[List[Dict[str, Any]]]) -> List[Dict
             {
                 "name": name,
                 "description": description or "",
-                "parameters": parameters or {"type": "object", "properties": {}},
+                "parameters": _sanitize_schema_for_gemini(parameters or {"type": "object", "properties": {}}),
             }
         )
-    return [{"functionDeclarations": declarations}] if declarations else []
+    return [{"function_declarations": declarations}] if declarations else []
 
 def convert_tools_for_openai(tools: Optional[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
     converted: List[Dict[str, Any]] = []

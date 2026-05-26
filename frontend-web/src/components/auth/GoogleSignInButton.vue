@@ -32,13 +32,19 @@ onMounted(async () => {
       emit('unavailable')
       return
     }
+    
+    // Switch to host mode first so it's visible in the DOM
+    showFallback.value = false
     await nextTick()
+    
+    // Small extra delay to ensure dimensions are calculated by the browser
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
     await renderGoogleButton(buttonHost.value, {
       theme: 'outline',
       size: 'large',
       onCredential: (idToken) => emit('credential', idToken),
     })
-    showFallback.value = false
     errorMessage.value = ''
   } catch (err) {
     showFallback.value = true

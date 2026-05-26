@@ -51,10 +51,6 @@ def _normalize_student_id_or_raise(value: str | None) -> str | None:
     normalized_value = value.strip().upper()
     if not normalized_value:
         return None
-    if not any(char.isalpha() for char in normalized_value):
-        raise ValueError("Student ID must contain at least one letter")
-    if not any(char.isdigit() for char in normalized_value):
-        raise ValueError("Student ID must contain at least one number")
     return normalized_value
 
 

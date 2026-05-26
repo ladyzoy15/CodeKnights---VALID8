@@ -19,7 +19,7 @@ from app_settings import APP_SETTINGS, get_backend_api_base_url
 from policy import normalize_role
 
 # Initialize FastMCP Server
-mcp = FastMCP("NEXUS Import Server")
+mcp = FastMCP("Aura Import Server")
 
 EXPECTED_HEADERS = [
     "Student_ID", "Email", "Last Name", "First Name", "Middle Name", "Department", "Course"

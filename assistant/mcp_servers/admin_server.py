@@ -21,7 +21,7 @@ from policy import (
 )
 
 # Initialize FastMCP Server
-mcp = FastMCP("NEXUS Administrative Server")
+mcp = FastMCP("Aura Administrative Server")
 
 # --- Constants ---
 DEFAULT_PRIMARY_COLOR = "#162F65"

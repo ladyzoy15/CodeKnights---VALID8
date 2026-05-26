@@ -6,7 +6,7 @@
 ---
 <!--/nav-->
 
-AI assistant service for NEXUS. Provides streaming LLM responses with MCP tool integration for querying live school data.
+AI assistant service for Aura. Provides streaming LLM responses with MCP tool integration for querying live school data.
 
 ## Stack
 

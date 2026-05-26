@@ -1,4 +1,6 @@
 window.__NEXUS_RUNTIME_CONFIG__ = {
   apiBaseUrl: "${NEXUS_API_BASE_URL}",
-  apiTimeoutMs: "${NEXUS_API_TIMEOUT_MS}"
+  apiTimeoutMs: "${NEXUS_API_TIMEOUT_MS}",
+  assistantBaseUrl: "${NEXUS_ASSISTANT_BASE_URL}",
+  googleWebClientId: "${NEXUS_GOOGLE_WEB_CLIENT_ID}"
 }

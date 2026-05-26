@@ -31,16 +31,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
       interval: 5s
       timeout: 5s
       retries: 10
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   # ---------------------------------------------------------------------------
   # Init jobs — run once in order, then exit
@@ -57,7 +57,7 @@ services:
       postgres:
         condition: service_healthy
     restart: "no"
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   bootstrap:
     build:
@@ -70,7 +70,7 @@ services:
       migrate:
         condition: service_completed_successfully
     restart: "no"
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   seeder:
     build:
@@ -83,7 +83,7 @@ services:
       bootstrap:
         condition: service_completed_successfully
     restart: "no"
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   # ---------------------------------------------------------------------------
   # Application services
@@ -99,7 +99,7 @@ services:
       - ./backend/.env
     volumes: *backend-volumes
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      test: [ "CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -112,7 +112,7 @@ services:
         condition: service_started
       bootstrap:
         condition: service_completed_successfully
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   worker:
     build:
@@ -130,7 +130,7 @@ services:
         condition: service_started
       bootstrap:
         condition: service_completed_successfully
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   beat:
     build:
@@ -147,20 +147,20 @@ services:
         condition: service_started
       bootstrap:
         condition: service_completed_successfully
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   assistant:
-    build: ./assistant
+    build: ./Assistant
     image: nexus-assistant:${APP_ENV:-dev}
     ports:
       - "8500:8500"
     env_file:
-      - ./assistant/.env
+      - ./Assistant/.env
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   frontend:
     build:
@@ -170,11 +170,16 @@ services:
       - "5173:80"
     env_file:
       - ./frontend-web/.env
+    environment:
+      - NEXUS_API_BASE_URL=${AURA_API_BASE_URL:-/__backend__}
+      - NEXUS_API_TIMEOUT_MS=${AURA_API_TIMEOUT_MS:-15000}
+      - NEXUS_ASSISTANT_BASE_URL=${AURA_ASSISTANT_BASE_URL:-/__assistant__}
+      - NEXUS_GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_CLIENT_ID:-1059104622372-jn3avucjr34lht8o6r99i9t57npbv0tt.apps.googleusercontent.com}
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
-    profiles: ["dev", "prod"]
+    profiles: [ "dev", "prod" ]
 
   # ---------------------------------------------------------------------------
   # Dev-only services
@@ -192,7 +197,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    profiles: ["dev"]
+    profiles: [ "dev" ]
 
   log-viewer:
     build: ./docker-log-viewer
@@ -202,7 +207,7 @@ services:
       - "8081:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    profiles: ["dev"]
+    profiles: [ "dev" ]
 
 volumes:
   postgres_data:

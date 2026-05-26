@@ -1,22 +1,22 @@
 {
   "mcpServers": {
-    "nexus-schema": {
+    "aura-schema": {
       "command": "python",
       "args": ["mcp_servers/schema_server.py"]
     },
-    "nexus-query": {
+    "aura-query": {
       "command": "python",
       "args": ["mcp_servers/query_server.py"]
     },
-    "nexus-admin": {
+    "aura-admin": {
       "command": "python",
       "args": ["mcp_servers/admin_server.py"]
     },
-    "nexus-import": {
+    "aura-import": {
       "command": "python",
       "args": ["mcp_servers/import_server.py"]
     },
-    "nexus-report": {
+    "aura-report": {
       "command": "python",
       "args": ["mcp_servers/report_server.py"]
     }

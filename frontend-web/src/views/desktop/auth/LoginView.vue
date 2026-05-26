@@ -67,7 +67,7 @@
               <input
                 v-model="password"
                 placeholder="Password"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
                 autocomplete="current-password"
                 class="light-input pr-12"
                 :disabled="isLoading || googleLoading"
@@ -76,11 +76,19 @@
                 type="button"
                 tabindex="-1"
                 class="absolute right-4 top-1/2 -translate-y-1/2 text-black/20 hover:text-black/60 transition-colors"
+                @click="showPassword = !showPassword"
               >
-                <!-- Eye icon static just for visual match -->
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Eye icon -->
+                <svg v-if="!showPassword" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                   <circle cx="12" cy="12" r="3" />
+                </svg>
+                <!-- Eye-off icon -->
+                <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+                  <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+                  <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
                 </svg>
               </button>
             </div>
@@ -163,6 +171,7 @@ import { consumeSessionExpiredNotice } from '@/services/sessionExpiry.js'
 
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const showTermsModal = ref(false)
 const isMounted = ref(false)
 const sessionNotice = ref('')

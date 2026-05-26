@@ -557,13 +557,14 @@ def dispatch_event_announcement_notifications(
             "NEXUS"
         )
         statuses.append(
-            send_in_app_notification(
+            send_notification_to_user(
                 db,
                 user=user,
                 school_id=event.school_id,
                 category="event_announcement",
                 subject=subject,
                 message=message,
+                deliver_in_app=True,
                 metadata_json={
                     "event_id": event.id,
                     "event_name": event.name,

@@ -14,7 +14,7 @@ def test_list_conversations_requires_auth(client):
 
 def test_list_conversations_with_data(client, auth_headers):
     db = SessionLocal()
-    convo = Conversation(user_id="test@nexus.local", user_role="admin", title="Listed Convo")
+    convo = Conversation(user_id="test@aura.local", user_role="admin", title="Listed Convo")
     db.add(convo)
     db.commit()
     db.close()
@@ -28,7 +28,7 @@ def test_list_conversations_with_data(client, auth_headers):
 def test_get_conversation(client, auth_headers):
     # Seed a conversation directly
     db = SessionLocal()
-    convo = Conversation(user_id="test@nexus.local", user_role="admin", title="Test Convo")
+    convo = Conversation(user_id="test@aura.local", user_role="admin", title="Test Convo")
     db.add(convo)
     db.commit()
     db.refresh(convo)
@@ -45,7 +45,7 @@ def test_get_conversation(client, auth_headers):
 
 def test_get_conversation_requires_auth(client, auth_headers):
     db = SessionLocal()
-    convo = Conversation(user_id="test@nexus.local", user_role="admin", title="Auth Guard Convo")
+    convo = Conversation(user_id="test@aura.local", user_role="admin", title="Auth Guard Convo")
     db.add(convo)
     db.commit()
     db.refresh(convo)
@@ -59,7 +59,7 @@ def test_get_conversation_requires_auth(client, auth_headers):
 def test_get_conversation_other_user_404(client, auth_headers):
     """A conversation belonging to another user must return 404."""
     db = SessionLocal()
-    convo = Conversation(user_id="other@nexus.local", user_role="admin", title="Other User Convo")
+    convo = Conversation(user_id="other@aura.local", user_role="admin", title="Other User Convo")
     db.add(convo)
     db.commit()
     db.refresh(convo)
@@ -86,7 +86,7 @@ def test_rename_conversation_not_found(client, auth_headers):
 
 def test_rename_conversation_requires_auth(client, auth_headers):
     db = SessionLocal()
-    convo = Conversation(user_id="test@nexus.local", user_role="admin", title="No Auth Rename")
+    convo = Conversation(user_id="test@aura.local", user_role="admin", title="No Auth Rename")
     db.add(convo)
     db.commit()
     db.refresh(convo)
@@ -107,7 +107,7 @@ def test_delete_conversation_not_found(client, auth_headers):
 
 def test_delete_conversation_requires_auth(client, auth_headers):
     db = SessionLocal()
-    convo = Conversation(user_id="test@nexus.local", user_role="admin", title="No Auth Delete")
+    convo = Conversation(user_id="test@aura.local", user_role="admin", title="No Auth Delete")
     db.add(convo)
     db.commit()
     db.refresh(convo)
@@ -120,7 +120,7 @@ def test_delete_conversation_requires_auth(client, auth_headers):
 
 def test_rename_conversation(client, auth_headers):
     db = SessionLocal()
-    convo = Conversation(user_id="test@nexus.local", user_role="admin", title="Old Title")
+    convo = Conversation(user_id="test@aura.local", user_role="admin", title="Old Title")
     db.add(convo)
     db.commit()
     db.refresh(convo)
@@ -134,7 +134,7 @@ def test_rename_conversation(client, auth_headers):
 
 def test_delete_conversation(client, auth_headers):
     db = SessionLocal()
-    convo = Conversation(user_id="test@nexus.local", user_role="admin", title="To Delete")
+    convo = Conversation(user_id="test@aura.local", user_role="admin", title="To Delete")
     db.add(convo)
     db.commit()
     db.refresh(convo)

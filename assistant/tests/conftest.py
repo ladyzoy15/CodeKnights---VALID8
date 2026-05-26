@@ -46,7 +46,7 @@ def client():
 @pytest.fixture()
 def auth_token():
     payload = {
-        "sub": "test@nexus.local",
+        "sub": "test@aura.local",
         "school_id": 1,
         "roles": ["admin"],
         "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1),
@@ -57,7 +57,7 @@ def auth_token():
 @pytest.fixture()
 def expired_token():
     payload = {
-        "sub": "test@nexus.local",
+        "sub": "test@aura.local",
         "school_id": 1,
         "roles": ["admin"],
         "exp": datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1),

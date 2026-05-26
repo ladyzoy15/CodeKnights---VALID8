@@ -90,19 +90,14 @@ def create_student_account(
                 exc,
             )
         except Exception as exc:
-            if "EmailConfigurationError" in str(type(exc)) or "EMAIL_TRANSPORT is disabled" in str(exc):
-                 logger.warning(
-                    "Email transport is disabled (caught via generic exception). Student account created without sending welcome email: %s",
-                    exc,
-                )
-            else:
-                raise HTTPException(
-                    status_code=502,
-                    detail=(
-                        "Student account was not created because the welcome email could not be delivered. "
-                        f"Email delivery error: {exc}"
-                    ),
-                ) from exc
+            logger.error(
+                "Failed to send welcome email to %s: %s",
+                db_user.email,
+                exc,
+                exc_info=True
+            )
+            # We don't raise here anymore to let the account creation succeed
+            # even if email transport has issues.
 
         db.commit()
         created_user = (

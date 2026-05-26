@@ -1299,28 +1299,12 @@ async function handleAddStudent() {
       first_name: draft.firstName,
       middle_name: draft.middleName || null,
       last_name: draft.lastName,
+      student_id: draft.studentId,
       department_id: Number(selectedDepartment.value.id),
       program_id: Number(selectedProgram.value.id),
       year_level: draft.yearLevel,
     })
     createdStudent = createdUser
-
-    const createdProfileId = Number(createdUser?.student_profile?.id)
-    if (draft.studentId && Number.isFinite(createdProfileId)) {
-      try {
-        sheetMessage.value = 'Saving student ID...'
-        createdStudent = await updateStudentProfile(apiBaseUrl.value, token, createdProfileId, {
-          student_id: draft.studentId,
-        })
-      } catch (error) {
-        studentIdSaveError = error
-      }
-    } else if (draft.studentId) {
-      studentIdSaveError = new BackendApiError(
-        'The student account was created, but NEXUS could not confirm the student profile needed to save the student ID.',
-        { status: 0 },
-      )
-    }
 
     await finalizeCreatedStudentCreation({ createdUser, createdStudent, studentIdSaveError }, draft)
     closeAddStudentSheet(true)

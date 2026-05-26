@@ -39,6 +39,21 @@ AI_MODEL = (os.getenv("AI_MODEL") or "").strip() or APP_SETTINGS.ai_model
 AI_MAX_TOKENS = _env_int("AI_MAX_TOKENS", APP_SETTINGS.ai_max_tokens)
 AI_API_VERSION = (os.getenv("AI_API_VERSION") or "").strip() or APP_SETTINGS.ai_api_version
 
+# --- Key Rotation Logic ---
+def _collect_api_keys() -> List[str]:
+    keys = []
+    # Primary key
+    if AI_API_KEY:
+        keys.append(AI_API_KEY)
+    # Additional keys (GEMINI_API_KEY_2, GEMINI_API_KEY_3, etc.)
+    for i in range(2, 21):  # Support up to 20 keys
+        k = os.getenv(f"GEMINI_API_KEY_{i}")
+        if k and k.strip() and k.strip() not in keys:
+            keys.append(k.strip())
+    return keys
+
+AI_API_KEYS = _collect_api_keys()
+
 def _infer_ai_provider() -> str:
     explicit = AI_PROVIDER.strip().lower()
     if explicit in {"openai", "openai_compatible", "openai-compatible", "compatible"}:
@@ -53,6 +68,9 @@ def _infer_ai_provider() -> str:
     if "anthropic" in base_url or model_name.startswith("claude"):
         return "anthropic"
     if "generativelanguage.googleapis.com" in base_url or model_name.startswith("gemini"):
+        # If using the OpenAI-compatible Gemini endpoint, treat as openai
+        if "/openai" in base_url:
+            return "openai"
         return "gemini"
     return "openai"
 
@@ -218,7 +236,8 @@ def _convert_messages_for_gemini(messages: List[Dict[str, Any]]) -> tuple[str, L
                 tool_function = tool_call.get("function") or {}
                 parts.append(
                     {
-                        "functionCall": {
+                        "function_call": {
+                            "id": tool_call.get("id") or f"tool_{uuid.uuid4().hex}",
                             "name": tool_function.get("name") or "tool",
                             "args": _safe_json_load(tool_function.get("arguments"), {}),
                         }
@@ -236,7 +255,8 @@ def _convert_messages_for_gemini(messages: List[Dict[str, Any]]) -> tuple[str, L
                     "role": "user",
                     "parts": [
                         {
-                            "functionResponse": {
+                            "function_response": {
+                                "id": message.get("tool_call_id") or "tool",
                                 "name": message.get("name") or "tool",
                                 "response": parsed_tool_content,
                             }
@@ -294,7 +314,7 @@ def _normalize_gemini_response(data: Dict[str, Any]) -> Dict[str, Any]:
             continue
         if isinstance(part.get("text"), str):
             text_parts.append(part.get("text") or "")
-        function_call = part.get("functionCall")
+        function_call = part.get("function_call") or part.get("functionCall")
         if isinstance(function_call, dict):
             tool_calls.append(
                 {
@@ -316,213 +336,258 @@ def _normalize_gemini_response(data: Dict[str, Any]) -> Dict[str, Any]:
 
 async def call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     provider = _infer_ai_provider()
-    try:
-        async with httpx.AsyncClient(timeout=APP_SETTINGS.ai_request_timeout_seconds) as client:
-            if provider == "anthropic":
-                try:
-                    from .tools_logic import convert_tools_for_anthropic
-                except ImportError:
-                    return {"content": "Anthropic SDK dependencies are missing. Please install 'anthropic'."}
+    keys_to_try = AI_API_KEYS if AI_API_KEYS else [None]
+    last_error = "No API keys"
 
-                system_text, anthropic_messages = _convert_messages_for_anthropic(messages)
-                payload: Dict[str, Any] = {
-                    "model": AI_MODEL,
-                    "messages": anthropic_messages,
-                    "max_tokens": AI_MAX_TOKENS,
-                }
-                if system_text:
-                    payload["system"] = system_text
-                if tools:
-                    payload["tools"] = convert_tools_for_anthropic(tools)
-                
-                resp = await client.post(
-                    _resolve_ai_endpoint("messages"),
-                    headers={
-                        "x-api-key": AI_API_KEY,
+    for api_key in keys_to_try:
+        try:
+            async with httpx.AsyncClient(timeout=APP_SETTINGS.ai_request_timeout_seconds) as client:
+                if provider == "anthropic":
+                    try:
+                        from .tools_logic import convert_tools_for_anthropic
+                    except ImportError:
+                        return {"content": "Anthropic SDK dependencies are missing."}
+
+                    system_text, anthropic_messages = _convert_messages_for_anthropic(messages)
+                    payload: Dict[str, Any] = {
+                        "model": AI_MODEL,
+                        "messages": anthropic_messages,
+                        "max_tokens": AI_MAX_TOKENS,
+                    }
+                    if system_text:
+                        payload["system"] = system_text
+                    if tools:
+                        payload["tools"] = convert_tools_for_anthropic(tools)
+                    
+                    headers = {
                         "anthropic-version": AI_API_VERSION,
                         "content-type": "application/json",
-                    },
-                    json=payload,
-                )
-                if resp.status_code >= 400:
-                    return {"content": f"LLM error {resp.status_code}: {resp.text}"}
-                data = resp.json()
-                return _normalize_anthropic_response(data)
+                    }
+                    if api_key:
+                        headers["x-api-key"] = api_key
 
-            if provider == "gemini":
-                system_text, gemini_messages = _convert_messages_for_gemini(messages)
-                payload = {
-                    "contents": gemini_messages,
-                    "generationConfig": {
-                        "maxOutputTokens": AI_MAX_TOKENS,
-                    },
-                }
+                    resp = await client.post(_resolve_ai_endpoint("messages"), headers=headers, json=payload)
+                    if resp.status_code == 429:
+                        last_error = f"429: {resp.text}"
+                        continue
+                    if resp.status_code >= 400:
+                        return {"content": f"LLM error {resp.status_code}: {resp.text}"}
+                    return _normalize_anthropic_response(resp.json())
+
+                if provider == "gemini":
+                    system_text, gemini_messages = _convert_messages_for_gemini(messages)
+                    payload = {
+                        "contents": gemini_messages,
+                        "generation_config": {"max_output_tokens": AI_MAX_TOKENS},
+                    }
+                    if tools:
+                        from .tools_logic import convert_tools_for_gemini
+                        payload["tools"] = convert_tools_for_gemini(tools)
+                    if system_text:
+                        payload["system_instruction"] = {"parts": [{"text": system_text}]}
+                    
+                    url = _resolve_gemini_endpoint()
+                    headers = {"content-type": "application/json"}
+                    if "generativelanguage.googleapis.com" in url and api_key:
+                        separator = "&" if "?" in url else "?"
+                        url = f"{url}{separator}key={api_key}"
+                    elif api_key:
+                        headers["Authorization"] = f"Bearer {api_key}"
+                    
+                    resp = await client.post(url, headers=headers, json=payload)
+                    if resp.status_code == 429:
+                        last_error = f"429: {resp.text}"
+                        continue
+                    if resp.status_code >= 400:
+                        return {"content": f"LLM error {resp.status_code}: {resp.text}"}
+                    return _normalize_gemini_response(resp.json())
+
+                # OpenAI Default
+                headers = {"Content-Type": "application/json"}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                payload = {"model": AI_MODEL, "messages": messages, "max_tokens": AI_MAX_TOKENS}
                 if tools:
-                    from .tools_logic import convert_tools_for_gemini
-                    payload["tools"] = convert_tools_for_gemini(tools)
-                if system_text:
-                    payload["systemInstruction"] = {"parts": [{"text": system_text}]}
+                    from .tools_logic import convert_tools_for_openai
+                    payload["tools"] = convert_tools_for_openai(tools)
                 
-                url = _resolve_gemini_endpoint()
-                headers = {"content-type": "application/json"}
-                if "generativelanguage.googleapis.com" in url:
-                    separator = "&" if "?" in url else "?"
-                    url = f"{url}{separator}key={AI_API_KEY}"
-                else:
-                    headers["Authorization"] = f"Bearer {AI_API_KEY}"
+                endpoint = _resolve_ai_endpoint("chat/completions")
+                resp = await client.post(endpoint, headers=headers, json=payload)
+                if resp.status_code == 429:
+                    last_error = f"429: {resp.text}"
+                    continue
+                if resp.status_code >= 400:
+                    retry_max_tokens = _suggest_retry_max_tokens(resp.text, AI_MAX_TOKENS)
+                    if retry_max_tokens and retry_max_tokens != AI_MAX_TOKENS:
+                        retry_payload = dict(payload)
+                        retry_payload["max_tokens"] = retry_max_tokens
+                        resp = await client.post(endpoint, headers=headers, json=retry_payload)
                 
-                resp = await client.post(url, headers=headers, json=payload)
                 if resp.status_code >= 400:
                     return {"content": f"LLM error {resp.status_code}: {resp.text}"}
+                
                 data = resp.json()
-                return _normalize_gemini_response(data)
+                if "choices" in data:
+                    return data["choices"][0]["message"]
+                return data
 
-            # OpenAI Default
-            headers = {"Content-Type": "application/json"}
-            if AI_API_KEY:
-                headers["Authorization"] = f"Bearer {AI_API_KEY}"
-            payload = {"model": AI_MODEL, "messages": messages, "max_tokens": AI_MAX_TOKENS}
-            if tools:
-                from .tools_logic import convert_tools_for_openai
-                payload["tools"] = convert_tools_for_openai(tools)
-            
-            endpoint = _resolve_ai_endpoint("chat/completions")
-            resp = await client.post(endpoint, headers=headers, json=payload)
-            if resp.status_code >= 400:
-                retry_max_tokens = _suggest_retry_max_tokens(resp.text, AI_MAX_TOKENS)
-                if retry_max_tokens and retry_max_tokens != AI_MAX_TOKENS:
-                    retry_payload = dict(payload)
-                    retry_payload["max_tokens"] = retry_max_tokens
-                    resp = await client.post(endpoint, headers=headers, json=retry_payload)
-            
-            if resp.status_code >= 400:
-                from .tools_logic import recover_tool_call_from_error
-                recovered_tool_call = recover_tool_call_from_error(resp.text)
-                if recovered_tool_call is not None:
-                    return recovered_tool_call
-                return {"content": f"LLM error {resp.status_code}: {resp.text}"}
-            data = resp.json()
-    except Exception as exc:
-        return {"content": f"LLM request failed: {exc}"}
+        except Exception as exc:
+            last_error = f"Exception: {exc}"
+            continue
 
-    try:
-        message = data["choices"][0]["message"]
-        from .tools_logic import recover_tool_call_from_message
-        recovered_tool_call = recover_tool_call_from_message(message)
-        if recovered_tool_call is not None:
-            return recovered_tool_call
-        return message
-    except Exception as exc:
-        return {"content": f"LLM returned an unexpected response shape: {exc}"}
+    return {"content": f"LLM request tried all {len(keys_to_try)} keys. Last error: {last_error}"}
 
 async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Generic SSE streaming generator for LLM providers.
     Yields intermediate text chunks and a final message object.
+    Automatically rotates through available API keys on 401/403/429 errors.
     """
     provider = _infer_ai_provider()
+
+    # For Native providers (Gemini/Anthropic), we fallback to call_openai 
+    # which now handles its own internal key rotation.
     if provider != "openai":
-        # Fallback to non-streaming for now for Anthropic/Gemini to keep it simple, 
-        # but yield as a single 'final' event.
         res = await call_openai(messages, tools=tools)
         yield res
         return
 
-    # OpenAI-Compatible Streaming
-    headers = {"Content-Type": "application/json"}
-    if AI_API_KEY:
-        headers["Authorization"] = f"Bearer {AI_API_KEY}"
-    
-    payload = {
-        "model": AI_MODEL, 
-        "messages": messages, 
-        "max_tokens": AI_MAX_TOKENS, 
-        "stream": True
+    # Build payload once (keys only affect the Authorization header or URL)
+    payload: Dict[str, Any] = {
+        "model": AI_MODEL,
+        "messages": messages,
+        "max_tokens": AI_MAX_TOKENS,
+        "stream": True,
     }
     if tools:
         from .tools_logic import convert_tools_for_openai
         payload["tools"] = convert_tools_for_openai(tools)
-    
-    endpoint = _resolve_ai_endpoint("chat/completions")
-    
-    full_content = ""
-    full_tool_calls: Dict[int, Dict[str, Any]] = {}
 
-    try:
-        async with httpx.AsyncClient(timeout=APP_SETTINGS.ai_request_timeout_seconds) as client:
-            async def _stream_response(response: httpx.Response) -> AsyncGenerator[Dict[str, Any], None]:
-                nonlocal full_content, full_tool_calls
-                async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
+    base_endpoint = _resolve_ai_endpoint("chat/completions")
+    keys_to_try = AI_API_KEYS if AI_API_KEYS else [None]
+    last_error = "No API keys available"
 
-                    data_str = line[6:].strip()
-                    if data_str == "[DONE]":
-                        break
+    for api_key in keys_to_try:
+        full_content = ""
+        full_tool_calls: Dict[int, Dict[str, Any]] = {}
+        key_failed = False
 
-                    try:
-                        chunk = json.loads(data_str)
-                        delta = chunk["choices"][0].get("delta", {})
+        # --- Gemini-specific URL adjustment ---
+        is_google = "generativelanguage.googleapis.com" in base_endpoint.lower()
+        if is_google and api_key:
+            # For Google, passing key as query param is often more reliable than Bearer header
+            connector = "&" if "?" in base_endpoint else "?"
+            current_endpoint = f"{base_endpoint}{connector}key={api_key}"
+            headers = {"Content-Type": "application/json"}
+        else:
+            current_endpoint = base_endpoint
+            headers = {"Content-Type": "application/json"}
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
 
-                        # Handle Text Content
-                        content = delta.get("content")
-                        if content:
-                            full_content += content
-                            yield {"role": "assistant", "content": content, "type": "chunk"}
+        try:
+            async with httpx.AsyncClient(timeout=APP_SETTINGS.ai_request_timeout_seconds) as client:
+                async with client.stream("POST", current_endpoint, headers=headers, json=payload) as response:
+                    # Rotate key on quota/auth errors
+                    if response.status_code in (401, 403, 429):
+                        err_body = await response.aread()
+                        last_error = f"Key failed ({response.status_code}): {err_body.decode(errors='replace')}"
+                        key_failed = True
 
-                        # Handle Tool Calls (Accumulate)
-                        tool_calls = delta.get("tool_calls")
-                        if tool_calls:
-                            for tc in tool_calls:
-                                index = tc.get("index", 0)
-                                if index not in full_tool_calls:
-                                    full_tool_calls[index] = {
-                                        "id": tc.get("id"),
-                                        "type": "function",
-                                        "function": {"name": "", "arguments": ""},
+                    elif response.status_code >= 400:
+                        err_body = await response.aread()
+                        err_text = err_body.decode(errors="replace")
+                        # Try reducing max_tokens once before giving up
+                        retry_max_tokens = _suggest_retry_max_tokens(
+                            err_text, int(payload.get("max_tokens") or AI_MAX_TOKENS)
+                        )
+                        if retry_max_tokens and retry_max_tokens != payload.get("max_tokens"):
+                            retry_payload = dict(payload)
+                            retry_payload["max_tokens"] = retry_max_tokens
+                            async with client.stream("POST", current_endpoint, headers=headers, json=retry_payload) as r2:
+                                if r2.status_code >= 400:
+                                    body2 = await r2.aread()
+                                    yield {
+                                        "role": "assistant",
+                                        "content": f"LLM error {r2.status_code}: {body2.decode(errors='replace')}",
                                     }
+                                    return
+                                async for line in r2.aiter_lines():
+                                    if not line.startswith("data: "):
+                                        continue
+                                    data_str = line[6:].strip()
+                                    if data_str == "[DONE]":
+                                        break
+                                    try:
+                                        chunk = json.loads(data_str)
+                                        delta = chunk["choices"][0].get("delta", {})
+                                        content = delta.get("content")
+                                        if content:
+                                            full_content += content
+                                            yield {"role": "assistant", "content": content, "type": "chunk"}
+                                        for tc in delta.get("tool_calls") or []:
+                                            idx = tc.get("index", 0)
+                                            if idx not in full_tool_calls:
+                                                full_tool_calls[idx] = {
+                                                    "id": tc.get("id"),
+                                                    "type": "function",
+                                                    "function": {"name": "", "arguments": ""},
+                                                }
+                                            f_delta = tc.get("function", {})
+                                            if f_delta.get("name"):
+                                                full_tool_calls[idx]["function"]["name"] += f_delta["name"]
+                                            if f_delta.get("arguments"):
+                                                full_tool_calls[idx]["function"]["arguments"] += f_delta["arguments"]
+                                    except Exception as e:
+                                        logger.error(f"Error parsing SSE chunk (retry): {e}")
+                        else:
+                            yield {"role": "assistant", "content": f"LLM error {response.status_code}: {err_text}"}
+                            return
 
-                                func_delta = tc.get("function", {})
-                                if func_delta.get("name"):
-                                    full_tool_calls[index]["function"]["name"] += func_delta["name"]
-                                if func_delta.get("arguments"):
-                                    full_tool_calls[index]["function"]["arguments"] += func_delta["arguments"]
-
-                    except Exception as e:
-                        logger.error(f"Error parsing SSE chunk: {e}")
-
-            async with client.stream("POST", endpoint, headers=headers, json=payload) as response:
-                if response.status_code >= 400:
-                    err_body = await response.aread()
-                    err_text = err_body.decode(errors="replace")
-                    retry_max_tokens = _suggest_retry_max_tokens(err_text, int(payload.get("max_tokens") or AI_MAX_TOKENS))
-                    if retry_max_tokens and retry_max_tokens != payload.get("max_tokens"):
-                        retry_payload = dict(payload)
-                        retry_payload["max_tokens"] = retry_max_tokens
-                        async with client.stream("POST", endpoint, headers=headers, json=retry_payload) as response2:
-                            if response2.status_code >= 400:
-                                err_body2 = await response2.aread()
-                                yield {
-                                    "role": "assistant",
-                                    "content": f"LLM error {response2.status_code}: {err_body2.decode(errors='replace')}",
-                                }
-                                return
-                            async for chunk in _stream_response(response2):
-                                yield chunk
                     else:
-                        yield {"role": "assistant", "content": f"LLM error {response.status_code}: {err_text}"}
-                        return
-                else:
-                    async for chunk in _stream_response(response):
-                        yield chunk
+                        # Success — stream the response inline
+                        async for line in response.aiter_lines():
+                            if not line.startswith("data: "):
+                                continue
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data_str)
+                                delta = chunk["choices"][0].get("delta", {})
+                                content = delta.get("content")
+                                if content:
+                                    full_content += content
+                                    yield {"role": "assistant", "content": content, "type": "chunk"}
+                                for tc in delta.get("tool_calls") or []:
+                                    idx = tc.get("index", 0)
+                                    if idx not in full_tool_calls:
+                                        full_tool_calls[idx] = {
+                                            "id": tc.get("id"),
+                                            "type": "function",
+                                            "function": {"name": "", "arguments": ""},
+                                        }
+                                    f_delta = tc.get("function", {})
+                                    if f_delta.get("name"):
+                                        full_tool_calls[idx]["function"]["name"] += f_delta["name"]
+                                    if f_delta.get("arguments"):
+                                        full_tool_calls[idx]["function"]["arguments"] += f_delta["arguments"]
+                            except Exception as e:
+                                logger.error(f"Error parsing SSE chunk: {e}")
 
-        # Final Yield: The complete message for the recursive logic to process
-        final_msg = {"role": "assistant", "content": full_content}
-        if full_tool_calls:
-            final_msg["tool_calls"] = [tc for i, tc in sorted(full_tool_calls.items())]
-        
-        yield final_msg
+            if key_failed:
+                continue
 
-    except Exception as e:
-        yield {"role": "assistant", "content": f"Streaming failed: {e}"}
+            # Final Yield of the complete message
+            final_msg = {"role": "assistant", "content": full_content}
+            if full_tool_calls:
+                final_msg["tool_calls"] = [tc for i, tc in sorted(full_tool_calls.items())]
+            yield final_msg
+            return
 
+        except Exception as e:
+            last_error = f"Streaming exception: {e}"
+            continue
+
+    # All keys exhausted
+    yield {"role": "assistant", "content": f"Streaming failed after trying all {len(keys_to_try)} key(s). Last error: {last_error}"}
