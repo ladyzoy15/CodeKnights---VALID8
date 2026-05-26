@@ -1,4 +1,4 @@
-﻿import { ref } from 'vue';
+import { ref } from 'vue';
 import { useDashboardSession } from '@/composables/useDashboardSession';
 import { 
   getExcuseLetters, 
@@ -43,13 +43,6 @@ export function useExcuseLetters() {
       return data;
     } catch (err) {
       error.value = err.message || 'Failed to fetch student excuse letters';
-      // Fallback to mock data if API fails in dev
-      if (import.meta.env.DEV) {
-        letters.value = [
-          { id: 1, event_id: 101, eventName: 'General Assembly', status: 'Pending', submittedAt: new Date().toISOString(), reason: 'Medical emergency' },
-          { id: 2, event_id: 102, eventName: 'Tech Workshop', status: 'Approved', submittedAt: new Date().toISOString(), reason: 'Family event', reviewerRemarks: 'Approved as requested' }
-        ];
-      }
       return [];
     } finally {
       loading.value = false;
@@ -68,12 +61,6 @@ export function useExcuseLetters() {
       return data;
     } catch (err) {
       error.value = err.message || 'Failed to fetch governance excuse letters';
-      if (import.meta.env.DEV) {
-        letters.value = [
-          { id: 1, studentName: 'John Doe', eventName: 'General Assembly', status: 'Pending', submittedAt: new Date().toISOString(), reason: 'Medical emergency', course: 'BSIT', yearLevel: '3' },
-          { id: 2, studentName: 'Jane Smith', eventName: 'Tech Workshop', status: 'Approved', submittedAt: new Date().toISOString(), reason: 'Family event', course: 'BSCS', yearLevel: '2', reviewerRemarks: 'Valid reason' }
-        ];
-      }
       return [];
     } finally {
       loading.value = false;

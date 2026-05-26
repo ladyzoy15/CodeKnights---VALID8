@@ -1,7 +1,6 @@
 import { computed, onBeforeMount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
-import { useGoogleLogin } from '@/composables/useGoogleLogin.js'
 import { applyTheme, loadUnbrandedTheme } from '@/config/theme.js'
 import { consumeSessionExpiredNotice } from '@/services/sessionExpiry.js'
 
@@ -10,14 +9,12 @@ export function useLoginViewModel() {
   const password = ref('')
   const isMounted = ref(false)
   const sessionNotice = ref('')
+  const onboardingData = ref(null)
+  const showOnboarding = ref(false)
+
   const router = useRouter()
-  const { login, isLoading, error } = useAuth()
-  const {
-    loginWithGoogleCredential,
-    isLoading: googleLoading,
-    error: googleError,
-  } = useGoogleLogin()
-  const visibleMessage = computed(() => error.value || googleError.value || sessionNotice.value)
+  const { login, loginWithGoogleAuth, isLoading, error } = useAuth()
+  const visibleMessage = computed(() => error.value || sessionNotice.value)
 
   onBeforeMount(() => {
     applyTheme(loadUnbrandedTheme())
@@ -35,12 +32,29 @@ export function useLoginViewModel() {
     await login(email.value, password.value)
   }
 
-  async function handleGoogleCredential(credential) {
-    await loginWithGoogleCredential(credential)
+  async function handleGoogleLogin(idToken) {
+    const result = await loginWithGoogleAuth(idToken)
+    if (result?.needsOnboarding) {
+      onboardingData.value = {
+        ...result.payload,
+        id_token: idToken
+      }
+      showOnboarding.value = true
+    }
   }
 
-  function goToForgotPassword() {
-    router.push({ name: 'ForgotPassword' })
+  async function handleOnboardingSubmit(schoolId) {
+    if (!onboardingData.value?.id_token) return
+    
+    const result = await loginWithGoogleAuth(onboardingData.value.id_token, schoolId)
+    if (result?.success) {
+      showOnboarding.value = false
+      onboardingData.value = null
+    }
+  }
+
+  function openQuickAttendance() {
+    router.push({ name: 'QuickAttendance' })
   }
 
   return {
@@ -48,10 +62,13 @@ export function useLoginViewModel() {
     password,
     isMounted,
     isLoading,
-    googleLoading,
     visibleMessage,
+    showOnboarding,
+    onboardingData,
     handleLogin,
-    handleGoogleCredential,
-    goToForgotPassword,
+    handleGoogleLogin,
+    handleOnboardingSubmit,
+    openQuickAttendance,
   }
 }
+

@@ -38,6 +38,8 @@ from app.routers import (
     public_attendance,
     health,
     sanctions,
+    excuse_letters,
+    overrides,
 )
 
 logger = logging.getLogger(__name__)
@@ -147,6 +149,9 @@ include_api_router(security_center.router)
 
 app.include_router(subscription.router)
 app.include_router(subscription.router, prefix="/api/v1")
+
+include_api_router(overrides.router)
+include_api_router(excuse_letters.router)
 
 app.include_router(governance.router)
 app.include_router(governance.router, prefix="/api/v1")

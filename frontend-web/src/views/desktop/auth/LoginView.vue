@@ -1,472 +1,396 @@
 <template>
-  <div class="desktop-login" :class="{ 'desktop-login--mounted': isMounted }">
-    <!-- Left: Dynamic Obsidian Hero -->
-    <ObsidianHero class="desktop-login__hero">
-      <div class="desktop-login__hero-content">
-        <img :src="auraLogoWhite" alt="Aura" class="desktop-login__logo" />
-        
-        <div class="desktop-login__hero-text">
-          <h2 class="desktop-login__hero-headline">
-            The Intelligence <br />
-            <span>of your Campus.</span>
-          </h2>
-          <p class="desktop-login__hero-tagline">
-            The premier Institutional Operating System. <br />
-            Built for enterprise scale, secured with biometric precision.
-          </p>
+  <section class="desktop-login">
+    <div class="desktop-login__backdrop" aria-hidden="true"></div>
 
-          <ul class="desktop-login__hero-features">
-            <li><span>✦</span> <strong>High-Availability:</strong> 99.9% uptime infrastructure.</li>
-            <li><span>✦</span> <strong>Global Governance:</strong> Manage complex hierarchies.</li>
-            <li><span>✦</span> <strong>Advanced Security:</strong> Biometric & encrypted.</li>
-          </ul>
+    <div class="desktop-login__shell">
+      <aside class="desktop-login__hero" :class="isMounted ? 'desktop-login__hero--ready' : ''">
+        <div class="desktop-login__brand">
+          <img :src="surfaceAuraLogo" alt="Aura" class="desktop-login__brand-logo">
+          <span class="desktop-login__brand-copy">Powered by Aura Ai</span>
         </div>
-      </div>
-    </ObsidianHero>
 
-    <!-- Right: Form sheet -->
-    <div class="desktop-login__sheet">
-      <div class="desktop-login__content">
-        <h1 class="desktop-login__title">Log In.</h1>
+        <p class="desktop-login__eyebrow">Desktop Workspace</p>
+        <h1 class="desktop-login__title">Operate the full campus portal from one focused control room.</h1>
+        <p class="desktop-login__copy">
+          Desktop and mobile now live in separate folders, while auth, stores, and API services stay shared underneath.
+        </p>
+
+        <div class="desktop-login__chips">
+          <span class="desktop-login__chip">Shared Pinia stores</span>
+          <span class="desktop-login__chip">Shared API services</span>
+          <span class="desktop-login__chip">Desktop-only UI files</span>
+        </div>
+      </aside>
+
+      <div class="desktop-login__card" :class="isMounted ? 'desktop-login__card--ready' : ''">
+        <div class="desktop-login__card-head">
+          <p class="desktop-login__card-kicker">Sign in</p>
+          <h2 class="desktop-login__card-title">Welcome back</h2>
+          <p class="desktop-login__card-copy">Use your account to open the web workspace.</p>
+        </div>
 
         <form class="desktop-login__form" @submit.prevent="handleLogin">
-          <label class="desktop-login__field">
-            <span class="sr-only">Gmail</span>
-            <input
-              id="email"
-              v-model="email"
-              class="desktop-login__input"
-              type="email"
-              placeholder="Gmail"
-              autocomplete="email"
-              autocapitalize="none"
-              spellcheck="false"
-              :disabled="isLoading || googleLoading"
-            />
-          </label>
+          <BaseInput
+            id="email"
+            v-model="email"
+            type="email"
+            placeholder="Email"
+            autocomplete="email"
+            tone="neutral"
+            :disabled="isLoading"
+          />
 
-          <label class="desktop-login__field desktop-login__field--password">
-            <span class="sr-only">Password</span>
-            <input
-              id="password"
-              v-model="password"
-              class="desktop-login__input"
-              :type="passwordVisible ? 'text' : 'password'"
-              placeholder="Password"
-              autocomplete="current-password"
-              :disabled="isLoading || googleLoading"
-            />
-            <button
-              type="button"
-              class="desktop-login__field-action"
-              :aria-label="passwordVisible ? 'Hide password' : 'Show password'"
-              :disabled="isLoading || googleLoading"
-              @click="passwordVisible = !passwordVisible"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  d="M1.5 12s3.75-6.75 10.5-6.75S22.5 12 22.5 12 18.75 18.75 12 18.75 1.5 12 1.5 12Z"
-                  fill="none" stroke="currentColor" stroke-linecap="round"
-                  stroke-linejoin="round" stroke-width="1.6"
-                />
-                <circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6" />
-              </svg>
-            </button>
-          </label>
+          <BaseInput
+            id="password"
+            v-model="password"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+            tone="neutral"
+            :disabled="isLoading"
+            @enter="handleLogin"
+          />
 
-          <div class="desktop-login__forgot-password">
-            <a href="#" class="desktop-login__forgot-link" @click.prevent="goToForgotPassword">
-              Forgot password?
-            </a>
-          </div>
-
-          <Transition name="login-message">
-            <p v-if="visibleMessage" class="desktop-login__message">{{ visibleMessage }}</p>
+          <Transition name="desktop-login__message">
+            <p v-if="visibleMessage" class="desktop-login__message">
+              {{ visibleMessage }}
+            </p>
           </Transition>
 
-          <button
-            type="submit"
-            class="desktop-login__button desktop-login__button--primary"
-            :disabled="isLoading || googleLoading"
-          >
-            {{ isLoading ? 'Logging In...' : 'Log In' }}
-          </button>
+          <div class="desktop-login__actions">
+            <BaseButton
+              type="submit"
+              variant="primary"
+              size="md"
+              :loading="isLoading"
+            >
+              Log In
+            </BaseButton>
 
-          <div class="desktop-login__divider" aria-hidden="true">
-            <span /><strong>or</strong><span />
-          </div>
-
-          <div class="desktop-login__google">
-            <GoogleSignInButton @credential="handleGoogleCredential" />
+            <BaseButton
+              type="button"
+              variant="secondary"
+              size="md"
+              :disabled="isLoading"
+              @click="openQuickAttendance"
+            >
+              Quick Attendance
+            </BaseButton>
           </div>
         </form>
-      </div>
 
-      <footer class="desktop-login__footer">
-        <div class="desktop-login__footer-branding">
-          <img src="/logos/aura_logo_black.png" alt="Aura" class="desktop-login__footer-logo" />
-          <span class="desktop-login__footer-powered">Powered by Aura Ai</span>
+        <div class="desktop-login__divider">
+          <span>or</span>
         </div>
-        <a
-          href="https://aura-landing-page-iota.vercel.app/"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="desktop-login__footer-link"
-        >
-          Learn more about Aura Project
-        </a>
-      </footer>
+
+        <div class="desktop-login__google">
+          <div id="google-signin-btn"></div>
+        </div>
+      </div>
     </div>
-  </div>
+
+    <GoogleOnboardingModal 
+      :show="showOnboarding"
+      :email="onboardingData?.email"
+      :first-name="onboardingData?.first_name"
+      :last-name="onboardingData?.last_name"
+      @close="showOnboarding = false"
+      @submit="handleOnboardingSubmit"
+    />
+  </section>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import GoogleSignInButton from '@/components/auth/GoogleSignInButton.vue'
-import ObsidianHero from '@/components/auth/ObsidianHero.vue'
+import { onMounted, onUnmounted, watch } from 'vue'
+import BaseButton from '@/components/desktop/ui/BaseButton.vue'
+import BaseInput from '@/components/desktop/ui/BaseInput.vue'
+import GoogleOnboardingModal from '@/components/desktop/auth/GoogleOnboardingModal.vue'
+import { applyLightOverride, removeLightOverride, surfaceAuraLogo } from '@/config/theme.js'
 import { useLoginViewModel } from '@/composables/useLoginViewModel.js'
-
-const passwordVisible = ref(false)
-const auraLogoWhite = '/logos/aura_logo_white.png'
+import { resolveGoogleWebClientId } from '@/services/backendBaseUrl.js'
 
 const {
-  email, password, isMounted, isLoading, googleLoading,
-  visibleMessage, handleLogin, handleGoogleCredential, goToForgotPassword,
+  email,
+  password,
+  isMounted,
+  isLoading,
+  visibleMessage,
+  showOnboarding,
+  onboardingData,
+  handleLogin,
+  handleGoogleLogin,
+  handleOnboardingSubmit,
+  openQuickAttendance,
 } = useLoginViewModel()
+
+function initGoogleSignIn() {
+  if (typeof google === 'undefined') return
+
+  const clientId = resolveGoogleWebClientId() || 'your-google-client-id.apps.googleusercontent.com'
+
+  google.accounts.id.initialize({
+    client_id: clientId,
+    auto_select: false,
+    itp_support: true,
+    locale: 'en',
+    callback: (response) => {
+      handleGoogleLogin(response.credential)
+    }
+  })
+
+  google.accounts.id.renderButton(
+    document.getElementById('google-signin-btn'),
+    { 
+      theme: 'outline', 
+      size: 'large', 
+      width: 420,
+      text: 'continue_with',
+      shape: 'pill'
+    }
+  )
+}
+
+onMounted(() => {
+  applyLightOverride()
+  
+  // Wait for Google script to load if not already there
+  if (typeof google !== 'undefined') {
+    initGoogleSignIn()
+  } else {
+    const checkGoogle = setInterval(() => {
+      if (typeof google !== 'undefined') {
+        initGoogleSignIn()
+        clearInterval(checkGoogle)
+      }
+    }, 100)
+  }
+})
+
+onUnmounted(() => {
+  removeLightOverride()
+})
 </script>
 
 <style scoped>
-.sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0;
-  margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
-  white-space: nowrap; border: 0;
-}
-
 .desktop-login {
-  display: flex;
+  position: relative;
   min-height: 100dvh;
-  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  padding: 40px;
+  background:
+    radial-gradient(circle at top left, rgba(206, 255, 132, 0.34), transparent 36%),
+    radial-gradient(circle at bottom right, rgba(18, 28, 35, 0.16), transparent 34%),
+    linear-gradient(135deg, #eef2e5 0%, #dce4d5 46%, #f7f8f3 100%);
+  font-family: 'Manrope', sans-serif;
 }
 
-/* Hero — left half */
-.desktop-login__hero {
-  flex: 1;
+.desktop-login__backdrop {
+  position: absolute;
+  inset: 24px;
+  border-radius: 36px;
+  border: 1px solid rgba(10, 10, 10, 0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.16));
+  backdrop-filter: blur(8px);
+}
+
+.desktop-login__shell {
   position: relative;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 52px 40px;
-  opacity: 0;
-  transform: translateX(-24px);
-  transition: opacity 0.72s ease, transform 0.72s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.desktop-login--mounted .desktop-login__hero {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.desktop-login__hero-content {
-  position: relative;
-  z-index: 10;
-  width: 100%;
-  height: 100%;
-  padding: 60px 80px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  pointer-events: none; /* Let clicks pass through to the mesh */
-}
-
-.desktop-login__logo {
-  width: 48px;
-  height: auto;
-  opacity: 0;
-  transform: translateY(-20px);
-  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.desktop-login--mounted .desktop-login__logo {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.desktop-login__hero-text {
-  margin-top: auto;
-  margin-bottom: 40px;
-}
-
-.desktop-login__hero-headline {
-  font-size: 56px;
-  font-weight: 700;
-  line-height: 1.1;
-  color: #ffffff;
-  letter-spacing: -0.04em;
-  margin-bottom: 24px;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s;
-}
-
-.desktop-login__hero-headline span {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.desktop-login--mounted .desktop-login__hero-headline {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.desktop-login__hero-tagline {
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.5);
-  max-width: 400px;
-  line-height: 1.6;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s;
-}
-
-.desktop-login--mounted .desktop-login__hero-tagline {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.desktop-login--mounted .desktop-login__hero-tagline {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.desktop-login__hero-features {
-  margin-top: 32px;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s;
-}
-
-.desktop-login--mounted .desktop-login__hero-features {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.desktop-login__hero-features li {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.6);
-  display: flex;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(320px, 1.15fr) minmax(360px, 480px);
   align-items: center;
-  gap: 10px;
-}
-
-.desktop-login__hero-features li span {
-  color: #ffffff;
-  font-size: 12px;
-}
-
-.desktop-login__hero-features li strong {
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 600;
-}
-
-/* Sheet — right half */
-.desktop-login__sheet {
-  width: min(480px, 45vw);
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  background: #f7f7f4;
-  padding: 52px 52px calc(env(safe-area-inset-bottom, 0px) + 32px);
-  opacity: 0;
-  transform: translateX(24px);
-  transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-  overflow-y: auto;
-}
-
-.desktop-login--mounted .desktop-login__sheet {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.desktop-login__content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  max-width: 360px;
-  width: 100%;
+  gap: 36px;
+  min-height: calc(100dvh - 80px);
+  max-width: 1180px;
   margin: 0 auto;
 }
 
+.desktop-login__hero,
+.desktop-login__card {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.desktop-login__hero--ready,
+.desktop-login__card--ready {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.desktop-login__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 34px;
+}
+
+.desktop-login__brand-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
+.desktop-login__brand-copy {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #203025;
+}
+
+.desktop-login__eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #425740;
+}
+
 .desktop-login__title {
-  margin: 0 0 48px;
-  font-size: 2.4rem;
-  font-weight: 600;
-  letter-spacing: -0.04em;
-  line-height: 1.02;
-  color: #111111;
+  max-width: 11ch;
+  margin: 16px 0 0;
+  font-size: clamp(38px, 4.4vw, 62px);
+  line-height: 0.94;
+  letter-spacing: -0.06em;
+  color: #111a12;
+}
+
+.desktop-login__copy {
+  max-width: 48ch;
+  margin: 18px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #405046;
+}
+
+.desktop-login__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.desktop-login__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(17, 26, 18, 0.08);
+  color: #203025;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.desktop-login__card {
+  border-radius: 32px;
+  padding: 34px 30px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(17, 26, 18, 0.08);
+  box-shadow: 0 30px 60px rgba(17, 26, 18, 0.12);
+}
+
+.desktop-login__card-head {
+  margin-bottom: 24px;
+}
+
+.desktop-login__card-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #56714f;
+}
+
+.desktop-login__card-title {
+  margin: 12px 0 0;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: #111a12;
+}
+
+.desktop-login__card-copy {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #536355;
 }
 
 .desktop-login__form {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 14px;
 }
-
-.desktop-login__field {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-height: 42px;
-  padding: 0 4px 10px;
-  border-bottom: 1.4px solid rgba(15,15,15,0.34);
-}
-
-.desktop-login__field--password { padding-right: 40px; }
-
-.desktop-login__input {
-  width: 100%;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: #131313;
-  font-size: 1.05rem;
-  font-weight: 400;
-  line-height: 1.4;
-  outline: none;
-  appearance: none;
-}
-
-.desktop-login__input::placeholder { color: rgba(17,17,17,0.28); }
-.desktop-login__input:disabled { cursor: not-allowed; opacity: 0.56; }
-
-.desktop-login__field-action {
-  position: absolute;
-  right: 0; top: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px; height: 30px;
-  margin-top: -16px;
-  border: 0; border-radius: 999px;
-  background: transparent;
-  color: rgba(17,17,17,0.84);
-  padding: 0; cursor: pointer;
-}
-
-.desktop-login__field-action:disabled { opacity: 0.48; }
-.desktop-login__field-action svg { width: 21px; height: 21px; }
 
 .desktop-login__message {
-  margin: -6px 0 0;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: #c33232;
+  margin: 0;
+  color: #b42318;
+  font-size: 12px;
+  text-align: center;
 }
 
-.desktop-login__button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 58px;
-  border-radius: 999px;
-  padding: 0 24px;
-  font-size: 1rem;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
-}
-
-.desktop-login__button:disabled { cursor: not-allowed; opacity: 0.6; }
-.desktop-login__button:active:not(:disabled) { transform: scale(0.985); }
-
-.desktop-login__button--primary {
-  margin-top: 10px;
-  border: 0;
-  background: #050505;
-  color: #ffffff;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.14);
-}
-
-.desktop-login__forgot-password {
+.desktop-login__actions {
   display: flex;
-  justify-content: flex-end;
-  margin-top: -10px;
-}
-
-.desktop-login__forgot-link {
-  font-size: 0.88rem;
-  font-weight: 500;
-  letter-spacing: -0.015em;
-  color: rgba(16,16,16,0.72);
-  text-decoration: none;
-  transition: color 0.18s ease;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .desktop-login__divider {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: -4px 0;
-  color: rgba(16,16,16,0.54);
+  gap: 16px;
+  margin: 16px 0;
+  color: #536355;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.desktop-login__divider span {
-  flex: 1; height: 1px;
-  background: rgba(16,16,16,0.18);
+.desktop-login__divider::before,
+.desktop-login__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(17, 26, 18, 0.08);
 }
 
-.desktop-login__divider strong {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.desktop-login__google { min-height: 44px; }
-
-.desktop-login__footer {
+.desktop-login__google {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding-top: 40px;
-  max-width: 360px;
-  width: 100%;
-  margin: 0 auto;
+  justify-content: center;
 }
 
-.desktop-login__footer-branding {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.desktop-login__message-enter-active,
+.desktop-login__message-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-.desktop-login__footer-logo { width: 28px; height: 28px; object-fit: contain; }
-
-.desktop-login__footer-powered {
-  font-size: 0.82rem;
-  font-weight: 500;
-  letter-spacing: -0.015em;
-  color: rgba(16,16,16,0.82);
+.desktop-login__message-enter-from,
+.desktop-login__message-leave-to {
+  opacity: 0;
 }
 
-.desktop-login__footer-link {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: rgba(16,16,16,0.72);
-  text-decoration: none;
-  transition: color 0.18s ease;
-}
+@media (max-width: 960px) {
+  .desktop-login {
+    padding: 22px;
+  }
 
-.login-message-enter-active, .login-message-leave-active {
-  transition: opacity 0.24s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  .desktop-login__shell {
+    grid-template-columns: 1fr;
+    gap: 22px;
+    min-height: calc(100dvh - 44px);
+  }
+
+  .desktop-login__backdrop {
+    inset: 12px;
+  }
+
+  .desktop-login__title {
+    max-width: 14ch;
+  }
 }
-.login-message-enter-from, .login-message-leave-to { opacity: 0; }
 </style>
+

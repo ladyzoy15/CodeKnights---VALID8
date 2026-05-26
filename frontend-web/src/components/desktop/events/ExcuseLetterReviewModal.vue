@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div v-if="modelValue" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md p-4 transition-opacity">
     <div class="rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] transition-transform scale-100" style="background-color: var(--color-surface); border: 1px solid var(--color-surface-border);">
       <!-- Header -->
@@ -19,7 +19,7 @@
           </div>
           <div>
             <h4 class="text-lg font-bold leading-tight mb-1" style="color: var(--color-surface-text);">{{ letter?.studentName || 'Student Name' }}</h4>
-            <p class="text-xs font-bold opacity-60 uppercase tracking-wider mb-1" style="color: var(--color-surface-text);">{{ letter?.course || 'Course' }} ΓÇó Year {{ letter?.yearLevel || 'Level' }}</p>
+            <p class="text-xs font-bold opacity-60 uppercase tracking-wider mb-1" style="color: var(--color-surface-text);">{{ letter?.course || 'Course' }} • Year {{ letter?.yearLevel || 'Level' }}</p>
             <p class="text-[10px] font-black uppercase tracking-widest opacity-40" style="color: var(--color-surface-text);">Submitted: {{ formatDate(letter?.submittedAt) }}</p>
           </div>
         </div>

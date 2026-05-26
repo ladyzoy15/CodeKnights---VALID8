@@ -1,6 +1,5 @@
 import { ref, watch, computed } from 'vue'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import { useSgPreviewBundle } from '@/composables/useSgPreviewBundle.js'
 import { getGovernanceAccess } from '@/services/backendApi.js'
 import { resolvePreferredGovernanceUnit } from '@/services/governanceScope.js'
 
@@ -11,37 +10,25 @@ const cachedPermissions = ref([])
 const cachedOfficerPosition = ref('')
 const cachedAcronym = ref('SSG')
 const cachedUnitName = ref('Student Government')
+const cachedActiveUnitId = ref(null)
 let hasFetched = false
 
 /**
  * Composable for the SG Dashboard.
- *
- * Sources permissions directly from /api/governance/access/me which returns:
- *   { user_id, school_id, permission_codes: [...], units: [{ governance_unit_id, unit_code, unit_name, unit_type, permission_codes: [...] }] }
- *
- * The backend decides the user's unit scope, so we preserve access order rather
- * than hardcoding SSG-over-SG precedence in the frontend.
  */
 export function useSgDashboard(preview = false) {
   const { dashboardState, apiBaseUrl, token } = useDashboardSession()
-  const { previewBundle } = useSgPreviewBundle(() => preview)
 
-  const isLoading = preview ? computed(() => false) : cachedIsLoading
-  const error = preview ? computed(() => '') : cachedError
-  const permissionCodes = preview ? computed(() => [...(previewBundle.value?.permissionCodes || [])]) : cachedPermissions
-  const officerPosition = preview ? computed(() => {
-    const unitMember = previewBundle.value?.activeUnit?.members?.[0]
-    return unitMember?.position_title || 'President'
-  }) : cachedOfficerPosition
-  const acronym = preview ? computed(() => (
-    previewBundle.value?.activeUnit?.unit_code || 'SSG'
-  )) : cachedAcronym
-  const unitName = preview ? computed(() => (
-    previewBundle.value?.activeUnit?.unit_name || 'Supreme Student Government'
-  )) : cachedUnitName
+  const isLoading = preview ? ref(false) : cachedIsLoading
+  const error = preview ? ref('') : cachedError
+  const permissionCodes = preview ? ref([]) : cachedPermissions
+  const officerPosition = preview ? ref('President') : cachedOfficerPosition
+  const acronym = preview ? ref('SSG') : cachedAcronym
+  const unitName = preview ? ref('Supreme Student Government') : cachedUnitName
+  const activeUnitId = preview ? ref(1) : cachedActiveUnitId
 
-  const currentUser = computed(() => preview ? previewBundle.value?.user || null : dashboardState.user)
-  const schoolSettings = computed(() => preview ? previewBundle.value?.schoolSettings || null : dashboardState.schoolSettings)
+  const currentUser = computed(() => dashboardState.user)
+  const schoolSettings = computed(() => dashboardState.schoolSettings)
 
   const officerName = computed(() => {
     const user = currentUser.value
@@ -56,6 +43,7 @@ export function useSgDashboard(preview = false) {
     return {
       isLoading, error, permissionCodes, officerPosition,
       officerName, acronym, unitName, currentUser, schoolSettings, schoolName, schoolLogo,
+      activeUnitId,
     }
   }
 
@@ -65,7 +53,6 @@ export function useSgDashboard(preview = false) {
       if (!isInit || !url || !authToken) return
 
       if (hasFetched) {
-        // Silently update cache in the background to ensure permissions are fresh on return visits
         getGovernanceAccess(url, authToken).then(access => updateCache(access, dashboardState.user)).catch(() => {})
         return
       }
@@ -86,6 +73,25 @@ export function useSgDashboard(preview = false) {
     { immediate: true }
   )
 
+  async function reload() {
+    const url = apiBaseUrl.value
+    const authToken = token.value
+    if (!url || !authToken) return
+
+    cachedIsLoading.value = true
+    cachedError.value = ''
+
+    try {
+      const access = await getGovernanceAccess(url, authToken)
+      updateCache(access, dashboardState.user)
+      hasFetched = true
+    } catch (err) {
+      cachedError.value = err?.message || 'Unable to load SG governance data.'
+    } finally {
+      cachedIsLoading.value = false
+    }
+  }
+
   function updateCache(access, user) {
     const governanceUnit = resolvePreferredGovernanceUnit(access)
 
@@ -94,6 +100,7 @@ export function useSgDashboard(preview = false) {
       cachedOfficerPosition.value = ''
       cachedAcronym.value = 'SG'
       cachedUnitName.value = 'Student Government'
+      cachedActiveUnitId.value = null
       cachedError.value = 'You do not have access to a governance unit.'
       return
     }
@@ -102,6 +109,7 @@ export function useSgDashboard(preview = false) {
     const topPerms = Array.isArray(access.permission_codes) ? access.permission_codes : []
     cachedPermissions.value = [...new Set([...unitPerms, ...topPerms])]
 
+    cachedActiveUnitId.value = governanceUnit.governance_unit_id ?? null
     cachedAcronym.value = governanceUnit.unit_code || 'SG'
     cachedUnitName.value = governanceUnit.unit_name || 'Student Government'
 
@@ -122,8 +130,24 @@ export function useSgDashboard(preview = false) {
     }
   }
 
+  const hasPermission = (code) => {
+    return (permissionCodes.value || []).includes(code);
+  };
+
   return {
-    isLoading, error, permissionCodes, officerPosition,
-    officerName, acronym, unitName, currentUser, schoolSettings, schoolName, schoolLogo,
+    isLoading,
+    error,
+    permissionCodes,
+    officerPosition,
+    officerName,
+    acronym,
+    unitName,
+    currentUser,
+    schoolSettings,
+    schoolName,
+    schoolLogo,
+    activeUnitId,
+    hasPermission,
+    reload,
   }
 }

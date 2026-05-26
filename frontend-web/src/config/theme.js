@@ -1,41 +1,42 @@
+/**
+ * |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+ * Purpose: Global Theme Management and Dark Mode Logic
+ */
 import { ref } from 'vue'
-import { Capacitor } from '@capacitor/core'
 const defaultSchoolLogo = '/logos/aura.png'
-const DARK_MODE_STORAGE_KEY = 'aura_dark_mode'
-
-function readStoredDarkModePreference() {
-    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
-        return false
-    }
-
-    try {
-        return window.localStorage.getItem(DARK_MODE_STORAGE_KEY) === '1'
-    } catch {
-        return false
-    }
-}
-
-function persistDarkModePreference(value) {
-    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
-        return
-    }
-
-    try {
-        window.localStorage.setItem(DARK_MODE_STORAGE_KEY, value ? '1' : '0')
-    } catch {
-        // Ignore storage failures and keep theme switching usable.
-    }
-}
 
 /**
  * Global Dark Mode State
  */
-export const isDarkMode = ref(readStoredDarkModePreference())
+const savedTheme = typeof window !== 'undefined' ? localStorage.getItem('aura_theme_dark') : null
+export const isDarkMode = ref(savedTheme === 'true')
+export const isForcedLight = ref(false)
 export const activeAuraLogo = ref('/logos/aura_logo_black.png')
 export const surfaceAuraLogo = ref('/logos/aura_logo_black.png')
 export const secondaryAuraLogo = ref('/logos/aura_logo_black.png')
 let currentActiveTheme = null
-let nativeStatusBarSyncPromise = null
+let currentUserId = null
+
+export function configureThemeForUser(userId) {
+    currentUserId = userId
+    if (typeof window === 'undefined') return
+    
+    if (userId) {
+        const userTheme = localStorage.getItem(`aura_theme_dark_${userId}`)
+        if (userTheme !== null) {
+            isDarkMode.value = userTheme === 'true'
+        } else {
+            isDarkMode.value = false
+        }
+    } else {
+        const defaultTheme = localStorage.getItem('aura_theme_dark')
+        if (defaultTheme !== null) {
+            isDarkMode.value = defaultTheme === 'true'
+        } else {
+            isDarkMode.value = false
+        }
+    }
+}
 
 function updateDocumentThemeColor(color) {
     if (typeof document === 'undefined') return
@@ -45,27 +46,6 @@ function updateDocumentThemeColor(color) {
     }
 }
 
-function syncNativeStatusBar(color) {
-    if (!Capacitor.isNativePlatform()) return
-    if (!/^#[0-9A-F]{6}$/i.test(String(color || ''))) return
-
-    nativeStatusBarSyncPromise = (
-        nativeStatusBarSyncPromise
-        || import('@capacitor/status-bar').catch(() => null)
-    )
-
-    nativeStatusBarSyncPromise.then((module) => {
-        if (!module?.StatusBar || !module?.Style) return
-
-        const preferredStyle = getContrastYIQ(color) === '#FFFFFF'
-            ? module.Style.Light
-            : module.Style.Dark
-
-        module.StatusBar.setStyle({ style: preferredStyle }).catch(() => null)
-        module.StatusBar.setBackgroundColor({ color }).catch(() => null)
-    }).catch(() => null)
-}
-
 /**
  * School Theme Configuration
  * School IT can customize: primary accent color, logo, and school name.
@@ -73,7 +53,7 @@ function syncNativeStatusBar(color) {
  */
 export const defaultTheme = {
     // Customizable by School IT
-    primaryColor: '#ffffffff',       // Lime green - the accent/brand color
+    primaryColor: '#AAFF00',       // Lime green - the accent/brand color
     primaryDark: '#88CC00',        // Slightly darker for hover states
     primaryText: '#0A0A0A',        // Text on primary colored backgrounds
     secondaryColor: '#AAFF00',
@@ -94,12 +74,12 @@ export const defaultTheme = {
 
 export const unbrandedTheme = {
     ...defaultTheme,
-    primaryColor: '#0A0A0A',
+    primaryColor: '#000000',
     primaryDark: '#000000',
     primaryText: '#FFFFFF',
-    secondaryColor: '#0A0A0A',
+    secondaryColor: '#000000',
     secondaryText: '#FFFFFF',
-    navActiveColor: '#FFFFFF',
+    navActiveColor: '#000000',
 }
 
 function normalizeHexColor(hex, fallback = '#0A0A0A') {
@@ -243,13 +223,25 @@ export function resolveAuraLogoForBackground(backgroundColor) {
 }
 
 export function toggleDarkMode() {
-    setDarkMode(!isDarkMode.value)
+    isDarkMode.value = !isDarkMode.value
+    if (typeof window !== 'undefined') {
+        const key = currentUserId ? `aura_theme_dark_${currentUserId}` : 'aura_theme_dark'
+        localStorage.setItem(key, isDarkMode.value ? 'true' : 'false')
+    }
+    if (currentActiveTheme) {
+        applyTheme(currentActiveTheme)
+    }
 }
 
-export function setDarkMode(value) {
-    isDarkMode.value = Boolean(value)
-    persistDarkModePreference(isDarkMode.value)
+export function applyLightOverride() {
+    isForcedLight.value = true
+    if (currentActiveTheme) {
+        applyTheme(currentActiveTheme)
+    }
+}
 
+export function removeLightOverride() {
+    isForcedLight.value = false
     if (currentActiveTheme) {
         applyTheme(currentActiveTheme)
     }
@@ -261,29 +253,32 @@ export function setDarkMode(value) {
 export function applyTheme(theme) {
     currentActiveTheme = theme
     const root = document.documentElement
+    const effectiveDarkMode = isDarkMode.value && !isForcedLight.value
 
     // Dynamic colors based on dark mode state
     let bgColor = theme.background
     let surfaceColor = theme.surfaceColor
     let textPrimary = theme.textPrimary
 
-    if (isDarkMode.value) {
-        // Dark mode: background is 96% darker than primary color
-        // Example: #AAFF00 -> #070a00
+    if (effectiveDarkMode) {
+        // --- Premium Dark Mode Palette ---
+        // Background: Deep charcoal (96% dark variant of primary)
         bgColor = darkenHex(theme.primaryColor, 96)
+        
+        // Deepen background if it's too bright
+        if (getContrastYIQ(bgColor) === '#0A0A0A') {
+            bgColor = '#0A0A0C'
+        }
 
-        // In the dark mode Figma reference:
-        // - the main cards (Welcome, Latest Event, Upcoming Events) remain white surfaces
-        // - the profile pill remains white
-        // - the navigation pill turns slightly light grey
-        // - text on the dark body needs to be white, but text inside white cards remains black
-
-        // We keep surfaceColor white for the big cards
-        textPrimary = '#FFFFFF' // This applies to body text (like "Home", "Upcoming Events" headers)
+        // Surface: Off-black surface for cards
+        surfaceColor = '#18181B' 
+        
+        // Body text color
+        textPrimary = '#F8FAFC' 
     }
 
     const profileBg = surfaceColor
-    const navPillBg = isDarkMode.value ? '#EBEBEB' : surfaceColor
+    const navPillBg = effectiveDarkMode ? '#27272A' : surfaceColor
     const bgTextColor = getContrastYIQ(bgColor)
     const surfaceTextColor = getContrastYIQ(surfaceColor)
     const profileTextColor = getContrastYIQ(profileBg)
@@ -302,6 +297,12 @@ export function applyTheme(theme) {
     const navGlassBorder = `rgba(255, 255, 255, 0.16)`
     const navGlassInset = `rgba(255, 255, 255, 0.09)`
     const navGlassShadow = '0 18px 32px rgba(0, 0, 0, 0.22), 0 2px 10px rgba(0, 0, 0, 0.12)'
+    const glassBg = effectiveDarkMode ? 'rgba(24, 24, 27, 0.72)' : 'rgba(255, 255, 255, 0.65)'
+    const glassBorder = effectiveDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.06)'
+    const iridescentBorder = effectiveDarkMode 
+        ? `linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 50%, rgba(170,255,0,0.12) 100%)`
+        : `linear-gradient(135deg, rgba(10,10,10,0.06) 0%, rgba(10,10,10,0.02) 100%)`
+    const meshPrimary = `radial-gradient(at 0% 0%, ${theme.primaryColor} 0%, transparent 50%), radial-gradient(at 100% 0%, ${secondaryColor} 0%, transparent 50%), radial-gradient(at 100% 100%, ${theme.primaryDark} 0%, transparent 50%), radial-gradient(at 0% 100%, ${secondaryColor} 0%, transparent 50%)`
 
     const bgSecondaryText = mixHexColors(bgTextColor, bgColor, 0.68)
     const bgMutedText = mixHexColors(bgTextColor, bgColor, 0.48)
@@ -344,7 +345,7 @@ export function applyTheme(theme) {
     root.style.setProperty('--color-nav-glass-shadow', navGlassShadow)
     root.style.setProperty('--nav-glass-blur', '12px')
     root.style.setProperty('--color-text-primary', bgTextColor || textPrimary)
-    root.style.setProperty('--color-text-secondary', isDarkMode.value ? '#A0A0A0' : bgSecondaryText)
+    root.style.setProperty('--color-text-secondary', effectiveDarkMode ? '#A0A0A0' : bgSecondaryText)
     root.style.setProperty('--color-text-muted', bgMutedText)
     root.style.setProperty('--color-surface-text', surfaceTextColor)
     root.style.setProperty('--color-surface-text-secondary', surfaceSecondaryText)
@@ -368,8 +369,17 @@ export function applyTheme(theme) {
     root.style.setProperty('--color-pill-row-active-bg', secondaryColor)
     root.style.setProperty('--color-pill-row-active-text', secondaryTextColor)
     root.style.setProperty('--color-pill-row-outline', secondaryColor)
-    root.style.setProperty('color-scheme', isDarkMode.value ? 'dark' : 'light')
-    root.dataset.themeMode = isDarkMode.value ? 'dark' : 'light'
+    root.style.setProperty('--aura-glass-bg', glassBg)
+    root.style.setProperty('--aura-glass-border', glassBorder)
+    root.style.setProperty('--aura-mesh-primary', meshPrimary)
+    root.style.setProperty('--aura-iridescent-border', iridescentBorder)
+    const primaryGlow = effectiveDarkMode ? `0 0 20px rgba(${hexToRgb(theme.primaryColor).r}, ${hexToRgb(theme.primaryColor).g}, ${hexToRgb(theme.primaryColor).b}, 0.16)` : 'none'
+    const shadowSoft = effectiveDarkMode ? '0 10px 40px -10px rgba(0, 0, 0, 0.8)' : '0 10px 40px -10px rgba(0, 0, 0, 0.12)'
+    const shadowPremium = effectiveDarkMode ? `0 20px 50px -12px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.3)` : '0 20px 50px -12px rgba(0, 0, 0, 0.25)'
+
+    root.style.setProperty('--aura-glow-primary', primaryGlow)
+    root.style.setProperty('--aura-shadow-soft', shadowSoft)
+    root.style.setProperty('--aura-shadow-premium', shadowPremium)
 
     // Backwards-compatible alias for existing white-card text references.
     root.style.setProperty('--color-text-always-dark', surfaceTextColor)
@@ -377,19 +387,9 @@ export function applyTheme(theme) {
     // Smart contrast text for the dark/light University Banner
     root.style.setProperty('--color-banner-text', primaryTextColor)
 
-    // Semantic status colors — fixed, not derived from school branding
-    root.style.setProperty('--color-status-compliant', '#22C55E')
-    root.style.setProperty('--color-status-at-risk', '#F59E0B')
-    root.style.setProperty('--color-status-non-compliant', '#EF4444')
-    root.style.setProperty('--color-status-excused', '#F97316')
-    root.style.setProperty('--color-status-late', '#FB923C')
-    root.style.setProperty('--color-ssg-accent', '#6366F1')
-    root.style.setProperty('--color-sg-accent', '#8B5CF6')
-
     // Automatically serve the correct Aura logo color based on banner contrast
     activeAuraLogo.value = resolveAuraLogoForBackground(theme.primaryColor)
     surfaceAuraLogo.value = resolveAuraLogoForBackground(surfaceColor)
     secondaryAuraLogo.value = resolveAuraLogoForBackground(secondaryColor)
     updateDocumentThemeColor(bgColor)
-    syncNativeStatusBar(bgColor)
 }

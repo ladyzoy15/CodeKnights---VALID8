@@ -52,6 +52,8 @@
       </button>
     </Transition>
 
+    <ToastContainer />
+
     <NotificationsPanel 
       :is-open="showNotifications" 
       :notifications="notificationItems"
@@ -79,6 +81,7 @@ import { clearDashboardSession } from '@/composables/useDashboardSession.js'
 import { useRouter } from 'vue-router'
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel.vue'
 import { useNotifications } from '@/composables/useNotifications.js'
+import ToastContainer from '@/components/desktop/ToastContainer.vue'
 
 const router = useRouter()
 const networkOnline = computed(() => isOnline.value)

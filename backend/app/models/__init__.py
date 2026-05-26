@@ -10,6 +10,8 @@ from app.models.department import Department
 from app.models.program import Program
 from app.models.event import Event
 from app.models.event_type import EventType
+from app.models.excuse_letter import ExcuseLetter
+from app.models.face_recognition import FaceEncoding
 from app.models.school import School, SchoolSetting, SchoolAuditLog
 from app.models.subscription import SubscriptionPlan, SchoolSubscription, SchoolSubscriptionReminder
 from app.models.import_job import BulkImportJob, BulkImportError, BulkImportErrorCell, EmailDeliveryLog

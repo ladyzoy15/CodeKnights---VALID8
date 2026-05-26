@@ -1538,3 +1538,41 @@ function appendFormValue(formData, key, value) {
     if (value == null || value === '') return
     formData.append(key, String(value))
 }
+
+export async function submitExcuseLetter(baseUrl, token, eventId, payload) {
+    return await request(baseUrl, `/api/v1/excuse-letters/events/${eventId}`, {
+        method: 'POST',
+        token,
+        params: { student_id: payload.student_id },
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            reason: payload.reason,
+            attachment_url: payload.attachment_url,
+        }),
+    })
+}
+
+export async function getExcuseLetters(baseUrl, token, params = {}) {
+    return await request(baseUrl, `/api/v1/excuse-letters`, {
+        method: 'GET',
+        token,
+        params,
+    })
+}
+
+export async function reviewExcuseLetter(baseUrl, token, letterId, payload) {
+    return await request(baseUrl, `/api/v1/excuse-letters/${letterId}/review`, {
+        method: 'POST',
+        token,
+        params: { reviewer_id: payload.reviewer_id },
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            status: payload.status,
+            remarks: payload.remarks,
+        }),
+    })
+}

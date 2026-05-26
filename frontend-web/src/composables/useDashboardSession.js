@@ -1,5 +1,9 @@
+/**
+ * |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+ * Purpose: Global Session and State Management
+ */
 import { computed, reactive, readonly } from 'vue'
-import { applyTheme, loadTheme } from '@/config/theme.js'
+import { applyTheme, loadTheme, configureThemeForUser } from '@/config/theme.js'
 import {
     getFaceStatus,
     getCurrentUserProfile,
@@ -7,6 +11,8 @@ import {
     getEvents,
     getMyAttendance,
     getSchoolSettings,
+    getGovernanceUnits,
+    getGovernanceAnnouncements,
     resolveApiBaseUrl,
     updateUser,
 } from '@/services/backendApi.js'
@@ -15,8 +21,7 @@ import {
     isResolvedAttendanceRecord,
 } from '@/services/attendanceFlow.js'
 import { resolveBackendMediaUrl } from '@/services/backendMedia.js'
-import { getStoredAuthMeta, patchStoredAuthMeta } from '@/services/localAuth.js'
-import { clearStoredSessionArtifacts, hasStoredSessionToken, readStoredSessionToken } from '@/services/sessionPersistence.js'
+import { clearStoredAuthMeta, getStoredAuthMeta, patchStoredAuthMeta } from '@/services/localAuth.js'
 
 const DASHBOARD_CACHE_KEY = 'aura_dashboard_cache_v1'
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000
@@ -27,11 +32,12 @@ const DASHBOARD_CACHE_TTL_MS = Number.isFinite(configuredCacheTtl) && configured
 
 const state = reactive({
     apiBaseUrl: resolveApiBaseUrl(),
-    token: readStoredSessionToken(),
+    token: localStorage.getItem('aura_token') || '',
     initializedToken: '',
     user: null,
     schoolSettings: null,
     events: [],
+    announcements: [],
     attendanceRecords: [],
     faceStatus: null,
     initialized: false,
@@ -96,6 +102,7 @@ function persistDashboardSnapshot() {
             user: state.user,
             schoolSettings: state.schoolSettings,
             events: state.events,
+            announcements: state.announcements || [],
             attendanceRecords: state.attendanceRecords,
             faceStatus: state.faceStatus,
             limitedMode: false,
@@ -127,6 +134,7 @@ function applyDashboardSnapshot(snapshot, token = state.token) {
     state.user = snapshot.user ?? null
     state.schoolSettings = snapshot.schoolSettings ?? null
     state.events = Array.isArray(snapshot.events) ? sortEvents(snapshot.events.map(normalizeEvent).filter(Boolean)) : []
+    state.announcements = Array.isArray(snapshot.announcements) ? sortAnnouncements(snapshot.announcements) : []
     state.attendanceRecords = Array.isArray(snapshot.attendanceRecords) ? snapshot.attendanceRecords : []
     state.faceStatus = snapshot.faceStatus ?? null
     state.limitedMode = Boolean(snapshot.limitedMode)
@@ -176,6 +184,12 @@ function sortEvents(events) {
         const bRank = statusRank[b?.status] ?? 99
         if (aRank !== bRank) return aRank - bRank
         return new Date(a?.start_datetime ?? 0) - new Date(b?.start_datetime ?? 0)
+    })
+}
+
+function sortAnnouncements(announcements) {
+    return [...announcements].sort((a, b) => {
+        return new Date(b?.created_at || 0) - new Date(a?.created_at || 0)
     })
 }
 
@@ -244,12 +258,8 @@ function hasRole(user, roleName) {
     )
 }
 
-function isStudentUser(user) {
-    return Boolean(user?.student_profile) || hasRole(user, 'student')
-}
-
 function isPrivilegedFaceUser(user) {
-    return hasRole(user, 'admin') || hasRole(user, 'school_IT')
+    return hasRole(user, 'admin') || hasRole(user, 'school_IT') || hasRole(user, 'governance')
 }
 
 function isSchoolItUser(user) {
@@ -261,6 +271,11 @@ function isAdminUser(user) {
 }
 
 function applyActiveTheme() {
+    if (state.user?.id) {
+        configureThemeForUser(state.user.id)
+    } else {
+        configureThemeForUser(null)
+    }
     applyTheme(loadTheme(
         state.schoolSettings
         || buildFallbackSchoolSettings(getStoredAuthMeta())
@@ -271,6 +286,7 @@ function resetDashboardState() {
     state.user = null
     state.schoolSettings = null
     state.events = []
+    state.announcements = []
     state.attendanceRecords = []
     state.faceStatus = null
     state.initialized = false
@@ -380,31 +396,35 @@ async function fetchDashboardData() {
         }
 
         const shouldLoadPrivilegedFaceStatus = isPrivilegedFaceUser(user)
-        const shouldLoadAttendance = isStudentUser(user)
-        const hasGovernanceRole = hasRole(user, 'ssg') || hasRole(user, 'sg')
-        // Some deployments answer optional, role-scoped dashboard endpoints with 401
-        // even though the authenticated session is still valid. Suppress the global
-        // expiry handler for these auxiliary requests so students stay signed in.
-        const auxiliaryRequestOptions = {
-            suppressSessionExpiryHandling: true,
-        }
 
-        const eventParams = hasGovernanceRole
-            ? { limit: 1000, governance_context: hasRole(user, 'ssg') ? 'SSG' : 'SG' }
-            : { limit: 1000 }
-
-        const [settingsResult, eventsResult, attendanceResult, faceStatusResult] = await Promise.allSettled([
-            getSchoolSettings(state.apiBaseUrl, state.token, auxiliaryRequestOptions),
-            getEvents(state.apiBaseUrl, state.token, eventParams, auxiliaryRequestOptions),
-            shouldLoadAttendance
-                ? getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }, auxiliaryRequestOptions)
-                : Promise.resolve([]),
+        const [settingsResult, eventsResult, attendanceResult, faceStatusResult, unitsResult] = await Promise.allSettled([
+            getSchoolSettings(state.apiBaseUrl, state.token),
+            getEvents(state.apiBaseUrl, state.token, { limit: 200 }),
+            getMyAttendance(state.apiBaseUrl, state.token, { limit: 200 }),
             shouldLoadPrivilegedFaceStatus
-                ? getFaceStatus(state.apiBaseUrl, state.token, auxiliaryRequestOptions)
+                ? getFaceStatus(state.apiBaseUrl, state.token)
                 : Promise.resolve(null),
+            getGovernanceUnits(state.apiBaseUrl, state.token),
         ])
 
         const schoolId = Number(user?.school_id)
+
+        // Fetch announcements for the school's SSG unit
+        let announcements = []
+        if (unitsResult.status === 'fulfilled') {
+            const ssgUnit = (unitsResult.value || []).find(u => 
+                Number(u.school_id) === schoolId && 
+                String(u.unit_type).toUpperCase() === 'SSG'
+            )
+            if (ssgUnit) {
+                try {
+                    announcements = await getGovernanceAnnouncements(state.apiBaseUrl, state.token, ssgUnit.id)
+                } catch (e) {
+                    console.warn('Failed to fetch announcements:', e)
+                }
+            }
+        }
+
         const nextEvents = eventsResult.status === 'fulfilled' && Array.isArray(eventsResult.value)
             ? eventsResult.value
                 .map(normalizeEvent)
@@ -417,6 +437,7 @@ async function fetchDashboardData() {
             ? settingsResult.value
             : buildFallbackSchoolSettings(authMeta)
         state.events = sortEvents(nextEvents)
+        state.announcements = sortAnnouncements(announcements)
         state.attendanceRecords = attendanceResult.status === 'fulfilled' && Array.isArray(attendanceResult.value)
             ? attendanceResult.value
             : []
@@ -467,12 +488,12 @@ async function fetchDashboardData() {
 }
 
 export function hasSessionToken() {
-    return hasStoredSessionToken()
+    return Boolean(localStorage.getItem('aura_token'))
 }
 
 export async function initializeDashboardSession(force = false) {
     const resolvedApiBaseUrl = resolveApiBaseUrl()
-    const storedToken = readStoredSessionToken()
+    const storedToken = localStorage.getItem('aura_token') || ''
 
     state.apiBaseUrl = resolvedApiBaseUrl
     state.token = storedToken
@@ -482,7 +503,7 @@ export async function initializeDashboardSession(force = false) {
         return null
     }
 
-    if (getStoredAuthMeta()?.mustChangePassword) {
+    if (Boolean(getStoredAuthMeta()?.mustChangePassword)) {
         resetDashboardState()
         return null
     }
@@ -521,12 +542,6 @@ export async function initializeDashboardSession(force = false) {
 
 export async function refreshAttendanceRecords(params = {}) {
     if (!state.token) return []
-    if (!isStudentUser(state.user)) {
-        state.attendanceRecords = []
-        syncUserAttendanceRecords()
-        persistDashboardSnapshot()
-        return state.attendanceRecords
-    }
 
     const records = await getMyAttendance(state.apiBaseUrl, state.token, {
         limit: 200,
@@ -674,7 +689,10 @@ export function applySchoolSettingsSnapshot(nextSchoolSettings) {
 }
 
 export function clearDashboardSession() {
-    clearStoredSessionArtifacts()
+    localStorage.removeItem('aura_token')
+    localStorage.removeItem('aura_user_roles')
+    clearStoredAuthMeta()
+    clearDashboardSnapshot()
     setToken('')
     resetDashboardState()
 }
@@ -750,11 +768,17 @@ export function isAdminSession(user = state.user) {
     return isAdminUser(user)
 }
 
+export function isGovernanceSession(user = state.user) {
+    return hasRole(user, 'governance')
+}
+
 export function getDefaultAuthenticatedRoute(user = state.user) {
     return isSchoolItSession(user)
         ? { name: 'SchoolItHome' }
         : isAdminSession(user)
         ? { name: 'AdminHome' }
+        : isGovernanceSession(user)
+        ? { name: 'SgDashboard' }
         : isPrivilegedSession(user)
         ? { name: 'PrivilegedDashboard' }
         : { name: 'Home' }
@@ -770,9 +794,10 @@ export function useDashboardSession() {
         events: computed(() => state.events),
         attendanceRecords: computed(() => state.attendanceRecords),
         faceStatus: computed(() => state.faceStatus),
+        announcements: computed(() => state.announcements),
         limitedMode: computed(() => state.limitedMode),
         needsFaceRegistration: computed(() => sessionNeedsFaceRegistration()),
-        unreadAnnouncements: computed(() => 0),
+        unreadAnnouncements: computed(() => state.announcements.filter(a => a.status === 'published').length),
         initializeDashboardSession,
         refreshAttendanceRecords,
         replaceAttendanceRecordsForEvent,
@@ -794,6 +819,7 @@ export function useDashboardSession() {
         isPrivilegedSession,
         isSchoolItSession,
         isAdminSession,
+        isGovernanceSession,
         getDefaultAuthenticatedRoute,
         sessionNeedsFaceRegistration,
     }

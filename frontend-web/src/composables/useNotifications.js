@@ -1,621 +1,282 @@
-import { computed, ref, watch } from 'vue'
-import {
-  Bell,
-  CalendarClock,
-  Megaphone,
-  ShieldAlert,
-  TriangleAlert,
-} from 'lucide-vue-next'
-import { useDashboardSession } from '@/composables/useDashboardSession.js'
-import {
-  BackendApiError,
-  getGovernanceAccess,
-  getGovernanceAnnouncementMonitor,
-  getGovernanceAnnouncements,
-  getMyNotificationInbox,
-} from '@/services/backendApi.js'
-import { getGovernanceAccessUnits } from '@/services/governanceScope.js'
-import { getStoredAuthMeta } from '@/services/localAuth.js'
+import { computed, ref } from 'vue'
+import { Bell, CalendarDays, CircleAlert, ShieldAlert } from 'lucide-vue-next'
+import { getMyNotificationInbox } from '@/services/backendApi.js'
 
-const READ_STATE_STORAGE_KEY = 'aura_notification_reads_v1'
-const PREVIEW_READ_BUCKET_KEY = 'preview'
-const MAX_INBOX_ITEMS = 60
-const MAX_ANNOUNCEMENT_ITEMS = 24
+const READ_STORAGE_PREFIX = 'aura_notification_reads:'
 
 const showNotifications = ref(false)
-const notificationItems = ref([])
+const notificationLogs = ref([])
 const notificationsLoading = ref(false)
 const notificationsError = ref('')
-const notificationsHydrated = ref(false)
-const activeSessionKey = ref('')
+const notificationContext = ref({
+  baseUrl: '',
+  token: '',
+  sessionKey: '',
+})
+const readNotificationIds = ref(new Set())
 
-let refreshPromise = null
-let notificationBindingsReady = false
+let inFlightPromise = null
 
-const relativeTimeFormatter = typeof Intl !== 'undefined'
-  ? new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
-  : null
-
-const { apiBaseUrl, token, currentUser } = useDashboardSession()
-
-function toTimestamp(value) {
-  const timestamp = new Date(value || Date.now()).getTime()
-  return Number.isFinite(timestamp) ? timestamp : Date.now()
+function getReadStorageKey(sessionKey) {
+  return `${READ_STORAGE_PREFIX}${sessionKey || 'anonymous'}`
 }
 
-function sortItems(items = []) {
-  return [...items].sort((left, right) => right.timestamp - left.timestamp)
+function loadReadNotificationIds(sessionKey) {
+  if (typeof window === 'undefined') return new Set()
+
+  try {
+    const rawValue = window.localStorage.getItem(getReadStorageKey(sessionKey))
+    const parsed = JSON.parse(rawValue || '[]')
+    if (!Array.isArray(parsed)) return new Set()
+
+    return new Set(
+      parsed
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && value > 0)
+    )
+  } catch {
+    return new Set()
+  }
 }
 
-function truncateText(value, maxLength = 160) {
+function persistReadNotificationIds() {
+  if (typeof window === 'undefined') return
+  if (!notificationContext.value.sessionKey) return
+
+  window.localStorage.setItem(
+    getReadStorageKey(notificationContext.value.sessionKey),
+    JSON.stringify([...readNotificationIds.value])
+  )
+}
+
+function markNotificationsAsRead(items = []) {
+  if (!items.length) return
+
+  let changed = false
+  const nextIds = new Set(readNotificationIds.value)
+
+  for (const item of items) {
+    const notificationId = Number(item?.id)
+    if (!Number.isFinite(notificationId) || notificationId <= 0 || nextIds.has(notificationId)) continue
+    nextIds.add(notificationId)
+    changed = true
+  }
+
+  if (!changed) return
+
+  readNotificationIds.value = nextIds
+  persistReadNotificationIds()
+}
+
+function prettifyNotificationValue(value) {
+  return String(value || '')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function compactNotificationText(value, maxLength = 96) {
   const normalized = String(value || '').replace(/\s+/g, ' ').trim()
-  if (!normalized) return 'No details available.'
+  if (!normalized) return ''
   if (normalized.length <= maxLength) return normalized
-  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}...`
 }
 
-function formatRelativeTime(value) {
-  const timestamp = toTimestamp(value)
-  const diffMs = timestamp - Date.now()
-  const diffMinutes = Math.round(diffMs / 60000)
+function formatNotificationTime(isoValue) {
+  const timestamp = new Date(isoValue).getTime()
+  if (!Number.isFinite(timestamp)) return 'Just now'
 
-  if (Math.abs(diffMinutes) < 1) return 'Now'
-  if (Math.abs(diffMinutes) < 60) {
-    return relativeTimeFormatter
-      ? relativeTimeFormatter.format(diffMinutes, 'minute')
-      : `${Math.abs(diffMinutes)}m ago`
-  }
+  const diffMs = Date.now() - timestamp
+  const minuteMs = 60 * 1000
+  const hourMs = 60 * minuteMs
+  const dayMs = 24 * hourMs
 
-  const diffHours = Math.round(diffMinutes / 60)
-  if (Math.abs(diffHours) < 24) {
-    return relativeTimeFormatter
-      ? relativeTimeFormatter.format(diffHours, 'hour')
-      : `${Math.abs(diffHours)}h ago`
-  }
+  if (diffMs < minuteMs) return 'Just now'
+  if (diffMs < hourMs) return `${Math.max(1, Math.round(diffMs / minuteMs))}m ago`
+  if (diffMs < dayMs) return `${Math.max(1, Math.round(diffMs / hourMs))}h ago`
+  if (diffMs < dayMs * 7) return `${Math.max(1, Math.round(diffMs / dayMs))}d ago`
 
-  const diffDays = Math.round(diffHours / 24)
-  if (Math.abs(diffDays) < 7) {
-    return relativeTimeFormatter
-      ? relativeTimeFormatter.format(diffDays, 'day')
-      : `${Math.abs(diffDays)}d ago`
-  }
-
-  return new Intl.DateTimeFormat('en-PH', {
+  return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
   }).format(new Date(timestamp))
 }
 
-function prettifyLabel(value, fallback = 'Notification') {
-  const normalized = String(value || '')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+function resolveNotificationVisual(item = null) {
+  const category = String(item?.category || '').trim().toLowerCase()
+  const status = String(item?.status || '').trim().toLowerCase()
 
-  if (!normalized) return fallback
-
-  return normalized
-    .split(' ')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-function normalizeRoleKey(value) {
-  const normalized = String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/_/g, '-')
-
-  if (normalized === 'campus-admin') return 'school-it'
-  return normalized
-}
-
-function getCurrentRoleKeys() {
-  const currentRoles = Array.isArray(currentUser.value?.roles)
-    ? currentUser.value.roles
-    : []
-  const storedRoles = Array.isArray(getStoredAuthMeta()?.roles)
-    ? getStoredAuthMeta().roles
-    : []
-
-  const roles = [
-    ...currentRoles.map((entry) => entry?.role?.name || entry?.name || entry),
-    ...storedRoles,
-  ]
-
-  return [...new Set(
-    roles
-      .map((role) => normalizeRoleKey(role))
-      .filter(Boolean)
-  )]
-}
-
-function hasStaffAnnouncementScope() {
-  const roles = getCurrentRoleKeys()
-  return roles.includes('admin') || roles.includes('school-it')
-}
-
-function buildPreviewNotifications() {
-  const now = Date.now()
-  return sortItems([
-    {
-      id: 'preview:announcement:assembly',
-      timestamp: now - (18 * 60 * 1000),
-      title: 'Campus assembly moved to 4:00 PM',
-      bodyPreview: 'The student council published a revised call time for this afternoon’s campus assembly.',
-      kindLabel: 'Announcement',
-      metaLabel: 'Preview',
-      icon: Megaphone,
-      iconBgClass: 'bg-[#FFF1E8] text-[#C2410C]',
-      isUnreadCandidate: true,
-    },
-    {
-      id: 'preview:notification:attendance',
-      timestamp: now - (54 * 60 * 1000),
-      title: 'Attendance recorded',
-      bodyPreview: 'Your latest event attendance was synced successfully.',
-      kindLabel: 'Attendance',
-      metaLabel: 'Preview',
-      icon: CalendarClock,
-      iconBgClass: 'bg-[#EEF2FF] text-[#3730A3]',
-      isUnreadCandidate: true,
-    },
-    {
-      id: 'preview:notification:security',
-      timestamp: now - (2 * 60 * 60 * 1000),
-      title: 'Security notice',
-      bodyPreview: 'A sign-in was detected from a new device in Manila, Philippines.',
-      kindLabel: 'Security',
-      metaLabel: 'Preview',
-      icon: ShieldAlert,
-      iconBgClass: 'bg-[#FEF2F2] text-[#B91C1C]',
-      isUnreadCandidate: true,
-    },
-  ]).map(finalizeNotificationItem)
-}
-
-function resolveReadBucketKey() {
-  const userId = Number(currentUser.value?.id ?? getStoredAuthMeta()?.userId)
-  return Number.isFinite(userId) ? `user:${userId}` : PREVIEW_READ_BUCKET_KEY
-}
-
-function readStoredReadState() {
-  if (typeof window === 'undefined') return {}
-
-  try {
-    const raw = localStorage.getItem(READ_STATE_STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    localStorage.removeItem(READ_STATE_STORAGE_KEY)
-    return {}
-  }
-}
-
-function writeStoredReadState(nextValue) {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(READ_STATE_STORAGE_KEY, JSON.stringify(nextValue))
-}
-
-function isNotificationRead(itemId) {
-  const readState = readStoredReadState()
-  const bucket = readState[resolveReadBucketKey()]
-  return Boolean(bucket && bucket[itemId])
-}
-
-function finalizeNotificationItem(item = null) {
-  if (!item || typeof item !== 'object') return null
-
-  return {
-    ...item,
-    time: formatRelativeTime(item.timestamp),
-    unread: Boolean(item.isUnreadCandidate) && !isNotificationRead(item.id),
-  }
-}
-
-function applyReadState(items = []) {
-  return sortItems(items)
-    .map(finalizeNotificationItem)
-    .filter(Boolean)
-}
-
-function markNotificationRead(notification) {
-  const itemId = typeof notification === 'string' ? notification : notification?.id
-  if (!itemId) return
-
-  const readState = readStoredReadState()
-  const bucketKey = resolveReadBucketKey()
-  const bucket = {
-    ...(readState[bucketKey] && typeof readState[bucketKey] === 'object' ? readState[bucketKey] : {}),
-    [itemId]: Date.now(),
-  }
-
-  writeStoredReadState({
-    ...readState,
-    [bucketKey]: bucket,
-  })
-
-  notificationItems.value = notificationItems.value.map((item) => (
-    item.id === itemId
-      ? { ...item, unread: false }
-      : item
-  ))
-}
-
-function markAllNotificationsRead() {
-  if (!notificationItems.value.length) return
-
-  const readState = readStoredReadState()
-  const bucketKey = resolveReadBucketKey()
-  const bucket = {
-    ...(readState[bucketKey] && typeof readState[bucketKey] === 'object' ? readState[bucketKey] : {}),
-  }
-
-  notificationItems.value.forEach((item) => {
-    bucket[item.id] = Date.now()
-  })
-
-  writeStoredReadState({
-    ...readState,
-    [bucketKey]: bucket,
-  })
-
-  notificationItems.value = notificationItems.value.map((item) => ({
-    ...item,
-    unread: false,
-  }))
-}
-
-function resolveNotificationVisual(category = '') {
-  const normalized = String(category || '').toLowerCase()
-
-  if (normalized.includes('security')) {
+  if (category === 'account_security') {
     return {
       icon: ShieldAlert,
-      iconBgClass: 'bg-[#FEF2F2] text-[#B91C1C]',
-      kindLabel: 'Security',
+      iconBgClass: 'bg-[#FFF1F2] text-[#D92D20]',
     }
   }
 
-  if (normalized.includes('attendance')) {
+  if (category === 'event_reminder') {
     return {
-      icon: TriangleAlert,
-      iconBgClass: 'bg-[#FFF7ED] text-[#C2410C]',
-      kindLabel: 'Attendance',
+      icon: CalendarDays,
+      iconBgClass: 'bg-[#EFF6FF] text-[#2563EB]',
     }
   }
 
-  if (normalized.includes('event')) {
+  if (category === 'missed_events' || category === 'low_attendance' || status === 'failed') {
     return {
-      icon: CalendarClock,
-      iconBgClass: 'bg-[#EEF2FF] text-[#3730A3]',
-      kindLabel: 'Events',
+      icon: CircleAlert,
+      iconBgClass: status === 'failed'
+        ? 'bg-[#FEF2F2] text-[#DC2626]'
+        : 'bg-[#FFF7ED] text-[#EA580C]',
     }
   }
 
   return {
     icon: Bell,
-    iconBgClass: 'bg-[#F3F4F6] text-[#111827]',
-    kindLabel: 'Notification',
+    iconBgClass: 'bg-[#F4F4F4] text-[#111]',
   }
 }
 
-function resolveChannelLabel(value = '') {
-  const normalized = String(value || '').toLowerCase()
-  if (!normalized || normalized === 'none') return ''
-  if (normalized === 'in_app') return 'In app'
-  return prettifyLabel(normalized, 'Channel')
+function buildNotificationDescription(item = null) {
+  const lines = String(item?.message || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  const preferredLine = lines.find((line) => !/^hi\b/i.test(line))
+    || lines[0]
+    || item?.subject
+    || 'System notification'
+
+  return compactNotificationText(preferredLine, 104)
 }
 
-function buildNotificationSignature(item = null) {
-  const createdMinute = String(item?.created_at || '').slice(0, 16)
-  const metadata = item?.metadata_json && typeof item.metadata_json === 'object'
-    ? JSON.stringify(item.metadata_json)
-    : ''
+function buildNotificationDetails(item = null) {
+  const detailParts = [
+    prettifyNotificationValue(item?.channel || 'in_app'),
+    prettifyNotificationValue(item?.status || 'unknown'),
+  ]
 
-  return [
-    String(item?.category || '').toLowerCase(),
-    String(item?.subject || '').trim(),
-    String(item?.message || '').trim(),
-    metadata,
-    createdMinute,
-  ].join('|')
-}
-
-function dedupeInboxItems(items = []) {
-  const channelPriority = {
-    in_app: 0,
-    email: 1,
-    sms: 2,
-    none: 3,
+  if (item?.error_message) {
+    detailParts.push(compactNotificationText(item.error_message, 70))
   }
-  const selected = new Map()
 
-  ;[...items]
-    .filter((item) => String(item?.status || '').toLowerCase() === 'sent')
-    .sort((left, right) => toTimestamp(right?.created_at) - toTimestamp(left?.created_at))
-    .forEach((item) => {
-      const signature = buildNotificationSignature(item)
-      const existing = selected.get(signature)
-
-      if (!existing) {
-        selected.set(signature, item)
-        return
-      }
-
-      const nextPriority = channelPriority[String(item?.channel || '').toLowerCase()] ?? 99
-      const currentPriority = channelPriority[String(existing?.channel || '').toLowerCase()] ?? 99
-      if (nextPriority < currentPriority) {
-        selected.set(signature, item)
-      }
-    })
-
-  return [...selected.values()]
+  return detailParts.filter(Boolean).join(' • ')
 }
 
-function normalizeInboxItem(item = null) {
+function mapNotificationItem(item = null) {
   if (!item || typeof item !== 'object') return null
 
-  const signature = buildNotificationSignature(item)
-  const visual = resolveNotificationVisual(item.category)
+  const notificationId = Number(item.id)
+  const { icon, iconBgClass } = resolveNotificationVisual(item)
 
   return {
-    id: `notification:${signature}`,
-    timestamp: toTimestamp(item.created_at),
-    title: String(item.subject || '').trim() || prettifyLabel(item.category, 'Notification'),
-    bodyPreview: truncateText(item.message, 170),
-    kindLabel: visual.kindLabel,
-    metaLabel: resolveChannelLabel(item.channel) || 'System',
-    icon: visual.icon,
-    iconBgClass: visual.iconBgClass,
-    isUnreadCandidate: true,
+    id: notificationId,
+    icon,
+    iconBgClass,
+    title: compactNotificationText(item.subject || prettifyNotificationValue(item.category || 'notification'), 58),
+    time: formatNotificationTime(item.created_at),
+    description: buildNotificationDescription(item),
+    details: buildNotificationDetails(item),
+    unread: !readNotificationIds.value.has(notificationId),
   }
 }
 
-function normalizeAnnouncementItem(item = null, unit = null) {
-  if (!item || typeof item !== 'object') return null
-  if (String(item.status || '').toLowerCase() !== 'published') return null
+export async function refreshNotifications(options = {}) {
+  const { force = false, limit = 50 } = options
+  const { baseUrl, token } = notificationContext.value
 
-  const unitLabel = String(
-    unit?.unit_name
-    || item?.governance_unit_name
-    || item?.author_name
-    || 'Governance'
-  ).trim()
-
-  return {
-    id: `announcement:${item.id}`,
-    timestamp: toTimestamp(item.updated_at || item.created_at),
-    title: String(item.title || '').trim() || 'Announcement',
-    bodyPreview: truncateText(item.body, 190),
-    kindLabel: 'Announcement',
-    metaLabel: unitLabel || 'Governance',
-    icon: Megaphone,
-    iconBgClass: 'bg-[#FFF1E8] text-[#C2410C]',
-    isUnreadCandidate: true,
-  }
-}
-
-function clearNotificationsForSession() {
-  notificationsError.value = ''
-  notificationsLoading.value = false
-  notificationsHydrated.value = false
-
-  if (String(token.value || '').trim()) {
-    notificationItems.value = []
-    return
-  }
-
-  notificationItems.value = buildPreviewNotifications()
-}
-
-function resolveSessionKey() {
-  const authToken = String(token.value || '').trim()
-  if (!authToken) return ''
-
-  const userId = Number(currentUser.value?.id ?? getStoredAuthMeta()?.userId)
-  const normalizedUserId = Number.isFinite(userId) ? userId : 'anon'
-  return `${normalizedUserId}:${authToken.slice(-16)}`
-}
-
-function isIgnorableGovernanceError(error) {
-  return error instanceof BackendApiError
-    && [403, 404].includes(Number(error.status))
-}
-
-async function loadGovernanceAnnouncementFeed(baseUrl, authToken) {
-  let access = null
-
-  try {
-    access = await getGovernanceAccess(baseUrl, authToken)
-  } catch (error) {
-    if (!isIgnorableGovernanceError(error)) {
-      throw error
-    }
-  }
-
-  const units = getGovernanceAccessUnits(access).slice(0, 6)
-  const announcements = []
-
-  if (units.length) {
-    const settled = await Promise.allSettled(
-      units.map((unit) => getGovernanceAnnouncements(baseUrl, authToken, unit.governance_unit_id))
-    )
-
-    settled.forEach((result, index) => {
-      if (result.status !== 'fulfilled' || !Array.isArray(result.value)) return
-
-      result.value.forEach((item) => {
-        const normalized = normalizeAnnouncementItem(item, units[index])
-        if (normalized) {
-          announcements.push(normalized)
-        }
-      })
-    })
-  }
-
-  if (announcements.length) {
-    return sortItems(announcements).slice(0, MAX_ANNOUNCEMENT_ITEMS)
-  }
-
-  if (!hasStaffAnnouncementScope()) {
+  if (!baseUrl || !token) {
+    notificationLogs.value = []
+    notificationsError.value = ''
     return []
   }
 
-  try {
-    const monitoredAnnouncements = await getGovernanceAnnouncementMonitor(baseUrl, authToken, {
-      status: 'published',
-      limit: MAX_ANNOUNCEMENT_ITEMS,
+  if (notificationsLoading.value && !force && inFlightPromise) {
+    return inFlightPromise
+  }
+
+  notificationsLoading.value = true
+  notificationsError.value = ''
+
+  inFlightPromise = getMyNotificationInbox(baseUrl, token, { limit })
+    .then((items) => {
+      notificationLogs.value = Array.isArray(items) ? items : []
+      if (showNotifications.value) {
+        markNotificationsAsRead(notificationLogs.value)
+      }
+      return notificationLogs.value
+    })
+    .catch((error) => {
+      notificationsError.value = error?.message || 'Unable to load notifications right now.'
+      return notificationLogs.value
+    })
+    .finally(() => {
+      notificationsLoading.value = false
+      inFlightPromise = null
     })
 
-    return monitoredAnnouncements
-      .map((item) => normalizeAnnouncementItem(item))
-      .filter(Boolean)
-      .slice(0, MAX_ANNOUNCEMENT_ITEMS)
-  } catch (error) {
-    if (isIgnorableGovernanceError(error)) {
-      return []
-    }
-    throw error
-  }
+  return inFlightPromise
 }
 
-async function refreshNotifications(options = {}) {
-  const {
-    force = false,
-    silent = false,
-  } = options
-  const authToken = String(token.value || '').trim()
-
-  if (!authToken) {
-    clearNotificationsForSession()
-    return notificationItems.value
+export async function syncNotificationSession({ baseUrl = '', token = '', sessionKey = '' } = {}) {
+  const normalizedContext = {
+    baseUrl: String(baseUrl || '').trim(),
+    token: String(token || '').trim(),
+    sessionKey: String(sessionKey || '').trim(),
   }
 
-  if (refreshPromise) {
-    return refreshPromise
-  }
+  const didSessionChange = normalizedContext.sessionKey !== notificationContext.value.sessionKey
+    || normalizedContext.baseUrl !== notificationContext.value.baseUrl
+    || normalizedContext.token !== notificationContext.value.token
 
-  if (notificationsHydrated.value && !force) {
-    return notificationItems.value
-  }
+  notificationContext.value = normalizedContext
 
-  if (!silent) {
-    notificationsLoading.value = true
-  }
-
-  refreshPromise = (async () => {
-    const baseUrl = apiBaseUrl.value
-    const previousItems = [...notificationItems.value]
-
-    const [inboxResult, announcementsResult] = await Promise.allSettled([
-      getMyNotificationInbox(baseUrl, authToken, { limit: MAX_INBOX_ITEMS }),
-      loadGovernanceAnnouncementFeed(baseUrl, authToken),
-    ])
-
-    const mergedItems = []
-    const errors = []
-
-    if (inboxResult.status === 'fulfilled') {
-      dedupeInboxItems(inboxResult.value)
-        .map(normalizeInboxItem)
-        .filter(Boolean)
-        .forEach((item) => mergedItems.push(item))
-    } else if (!isIgnorableGovernanceError(inboxResult.reason)) {
-      errors.push(inboxResult.reason?.message || 'Unable to load notifications.')
-    }
-
-    if (announcementsResult.status === 'fulfilled') {
-      announcementsResult.value.forEach((item) => mergedItems.push(item))
-    } else if (!isIgnorableGovernanceError(announcementsResult.reason)) {
-      errors.push(announcementsResult.reason?.message || 'Unable to load announcements.')
-    }
-
-    if (!mergedItems.length && errors.length) {
-      notificationsError.value = errors[0]
-      notificationItems.value = previousItems.length ? previousItems : []
-      notificationsHydrated.value = true
-      return notificationItems.value
-    }
-
-    notificationItems.value = applyReadState(mergedItems)
+  if (!normalizedContext.baseUrl || !normalizedContext.token || !normalizedContext.sessionKey) {
+    notificationLogs.value = []
     notificationsError.value = ''
-    notificationsHydrated.value = true
-    return notificationItems.value
-  })().finally(() => {
-    notificationsLoading.value = false
-    refreshPromise = null
-  })
+    readNotificationIds.value = new Set()
+    return []
+  }
 
-  return refreshPromise
+  if (didSessionChange) {
+    readNotificationIds.value = loadReadNotificationIds(normalizedContext.sessionKey)
+  }
+
+  if (!didSessionChange && notificationLogs.value.length) {
+    return notificationLogs.value
+  }
+
+  return refreshNotifications({ force: true })
 }
 
 function toggleNotifications() {
   showNotifications.value = !showNotifications.value
 
-  if (showNotifications.value) {
-    void refreshNotifications({ force: true })
-  }
+  if (!showNotifications.value) return
+
+  markNotificationsAsRead(notificationLogs.value)
+  void refreshNotifications({ force: true }).then((items) => {
+    markNotificationsAsRead(items)
+  })
 }
 
-function closeNotifications() {
-  showNotifications.value = false
-}
-
-const unreadNotifCount = computed(() => (
-  notificationItems.value.filter((item) => item.unread).length
+const notifications = computed(() => (
+  notificationLogs.value
+    .map(mapNotificationItem)
+    .filter(Boolean)
 ))
 
-function ensureNotificationBindings() {
-  if (notificationBindingsReady) return
-  notificationBindingsReady = true
-
-  watch(
-    [token, currentUser],
-    () => {
-      const nextSessionKey = resolveSessionKey()
-
-      if (nextSessionKey !== activeSessionKey.value) {
-        activeSessionKey.value = nextSessionKey
-        clearNotificationsForSession()
-      } else {
-        notificationItems.value = applyReadState(notificationItems.value)
-      }
-
-      if (!String(token.value || '').trim()) {
-        return
-      }
-
-      void refreshNotifications({
-        force: !notificationsHydrated.value,
-        silent: true,
-      })
-    },
-    { immediate: true }
-  )
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('focus', () => {
-      if (!String(token.value || '').trim()) return
-      void refreshNotifications({ force: true, silent: true })
-    }, { passive: true })
-  }
-}
+const unreadNotifCount = computed(() => notifications.value.filter((item) => item.unread).length)
 
 export function useNotifications() {
-  ensureNotificationBindings()
-
   return {
     showNotifications,
-    notificationItems,
+    notifications,
     notificationsLoading,
     notificationsError,
     unreadNotifCount,
-    toggleNotifications,
-    closeNotifications,
     refreshNotifications,
-    markNotificationRead,
-    markAllNotificationsRead,
+    syncNotificationSession,
+    toggleNotifications,
   }
 }

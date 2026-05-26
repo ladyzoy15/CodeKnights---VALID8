@@ -25,7 +25,7 @@
               :is="item.icon"
               :size="19"
               :stroke-width="isActive(item) ? 2.2 : 1.6"
-              :color="'var(--color-primary)'"
+              :color="isActive(item) ? 'var(--color-primary)' : 'var(--color-nav-text)'"
               class="nav-rail__icon"
             />
 
@@ -37,23 +37,8 @@
             />
           </button>
         </div>
-
-        <div ref="pillRef" class="relative w-[40px] h-[74px] mx-2 mb-1.5 z-50">
-          <div
-            class="absolute top-0 left-0 flex flex-col overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-lg origin-left w-[40px] h-[74px] rounded-[26px] cursor-pointer hover:brightness-110 hover:scale-105 active:scale-95"
-            style="background: var(--color-primary);"
-            @click="expandToFull"
-          >
-            <div class="absolute inset-0 flex flex-col items-center justify-center gap-1">
-              <img :src="activeAuraLogo" alt="Aura" class="w-6 h-6 object-contain opacity-90" />
-              <span
-                class="text-[8px] font-extrabold text-center leading-snug"
-                style="color: var(--color-banner-text);"
-              >
-                Talk to<br>Aura Ai
-              </span>
-            </div>
-          </div>
+        <div class="nav-rail__ai">
+          <AuraChatPill />
         </div>
       </div>
     </div>
@@ -63,17 +48,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { activeAuraLogo } from '@/config/theme.js'
-import { useChat } from '@/composables/useChat.js'
-import AuraChatWindow from '@/components/ui/AuraChatWindow.vue'
-import { getNavigationItemsForRoute } from '@/components/navigation/navigationItems.js'
-import { withPreservedGovernancePreviewQuery } from '@/services/routeWorkspace.js'
-
-const {
-  expandToFull,
-} = useChat()
+import { getNavigationItemsForRoute } from '@/components/desktop/navigation/navigationItems.js'
+import AuraChatPill from '@/components/desktop/ai/AuraChatPill.vue'
+import AuraChatWindow from '@/components/desktop/ai/AuraChatWindow.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -94,8 +73,6 @@ function isActive(item) {
     path === '/exposed/workspace' ||
     path === '/admin' ||
     path === '/exposed/admin' ||
-    path === '/governance' ||
-    path === '/exposed/governance' ||
     path === '/sg' ||
     path === '/exposed/sg'
   ) {
@@ -107,13 +84,9 @@ function isActive(item) {
 }
 
 function navigate(path) {
-  const target = withPreservedGovernancePreviewQuery(route, path)
-  const resolvedTarget = router.resolve(target)
-  if (route.fullPath === resolvedTarget.fullPath) return
-  router.push(target)
+  if (route.path === path) return
+  router.push(path)
 }
-
-
 </script>
 
 <style scoped>
@@ -136,8 +109,6 @@ function navigate(path) {
   height: 100%;
   border-radius: 32px;
   background: var(--color-nav-glass-bg);
-  backdrop-filter: blur(var(--nav-glass-blur)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--nav-glass-blur)) saturate(160%);
   border: 1px solid var(--color-nav-glass-border);
   box-shadow: var(--color-nav-glass-shadow);
 }
@@ -183,6 +154,15 @@ function navigate(path) {
   padding: 18px 0 12px;
   gap: 2px;
   flex: 1;
+}
+
+.nav-rail__ai {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .nav-rail__button {
@@ -252,4 +232,75 @@ function navigate(path) {
   }
 }
 
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.mini-messages {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.mini-messages-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mini-bubble {
+  max-width: 90%;
+  padding: 10px 14px;
+  border-radius: 25px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  word-break: break-word;
+  font-family: 'Manrope', sans-serif;
+}
+
+.mini-bubble--ai {
+  align-self: flex-start;
+  background: var(--color-surface);
+  color: var(--color-surface-text);
+  border: 1px solid var(--color-surface-border);
+}
+
+.mini-bubble--user {
+  align-self: flex-end;
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--color-primary-text);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mini-bubble--typing {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 14px;
+}
+
+.mini-bubble-enter-active {
+  animation: mini-bubble-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.mini-bubble--ai.mini-bubble-enter-active {
+  transform-origin: bottom left;
+}
+
+.mini-bubble--user.mini-bubble-enter-active {
+  transform-origin: bottom right;
+}
+
+@keyframes mini-bubble-pop {
+  0% { opacity: 0; transform: scale(0.55); }
+  65% { opacity: 1; transform: scale(1.04); }
+  82% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
 </style>
+

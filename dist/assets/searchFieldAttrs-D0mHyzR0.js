@@ -1,0 +1,1 @@
+function t(e="search"){return{autocomplete:"off",autocorrect:"off",autocapitalize:"none",spellcheck:"false",inputmode:"search",enterkeyhint:"search",name:e,"data-form-type":"other","data-1p-ignore":"true","data-lpignore":"true","data-bwignore":"true"}}export{t as c};
