@@ -10,7 +10,7 @@ from .app_settings import APP_SETTINGS
 
 logger = logging.getLogger("uvicorn.error")
 
-# --- AI Configuration (Verbatim from v1) ---
+# --- AI Configuration ---
 def _env_int(name: str, default: int) -> int:
     raw = os.getenv(name)
     if raw is None:
@@ -22,12 +22,6 @@ def _env_int(name: str, default: int) -> int:
     return value if value > 0 else default
 
 AI_PROVIDER = (os.getenv("AI_PROVIDER") or "").strip() or APP_SETTINGS.ai_provider
-AI_API_KEY = (
-    os.getenv("AI_API_KEY")
-    or os.getenv("OPENAI_API_KEY")
-    or os.getenv("ANTHROPIC_API_KEY")
-    or os.getenv("GEMINI_API_KEY")
-)
 AI_API_BASE = (
     os.getenv("AI_API_BASE")
     or os.getenv("OPENAI_API_BASE")
@@ -42,17 +36,22 @@ AI_API_VERSION = (os.getenv("AI_API_VERSION") or "").strip() or APP_SETTINGS.ai_
 # --- Key Rotation Logic ---
 def _collect_api_keys() -> List[str]:
     keys = []
-    # Primary key
-    if AI_API_KEY:
-        keys.append(AI_API_KEY)
-    # Additional keys (GEMINI_API_KEY_2, GEMINI_API_KEY_3, etc.)
-    for i in range(2, 21):  # Support up to 20 keys
+    primary = (
+        os.getenv("AI_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+        or os.getenv("ANTHROPIC_API_KEY")
+        or os.getenv("GEMINI_API_KEY")
+    )
+    if primary and primary.strip():
+        keys.append(primary.strip())
+    for i in range(2, 21):
         k = os.getenv(f"GEMINI_API_KEY_{i}")
         if k and k.strip() and k.strip() not in keys:
             keys.append(k.strip())
     return keys
 
 AI_API_KEYS = _collect_api_keys()
+AI_API_KEY = AI_API_KEYS[0] if AI_API_KEYS else ""
 
 def _infer_ai_provider() -> str:
     explicit = AI_PROVIDER.strip().lower()
@@ -68,7 +67,6 @@ def _infer_ai_provider() -> str:
     if "anthropic" in base_url or model_name.startswith("claude"):
         return "anthropic"
     if "generativelanguage.googleapis.com" in base_url or model_name.startswith("gemini"):
-        # If using the OpenAI-compatible Gemini endpoint, treat as openai
         if "/openai" in base_url:
             return "openai"
         return "gemini"
@@ -145,7 +143,6 @@ def _safe_json_load(value: Any, default: Any) -> Any:
 
 def _suggest_retry_max_tokens(error_text: str, current_max_tokens: int) -> Optional[int]:
     text_value = str(error_text or "")
-    # Common OpenAI-compatible error shape (for example Groq).
     max_allowed_match = re.search(r"max_tokens` must be less than or equal to `(\d+)`", text_value, re.IGNORECASE)
     if not max_allowed_match:
         max_allowed_match = re.search(r"maximum value for `max_tokens` is\s+`?(\d+)`?", text_value, re.IGNORECASE)
@@ -236,8 +233,7 @@ def _convert_messages_for_gemini(messages: List[Dict[str, Any]]) -> tuple[str, L
                 tool_function = tool_call.get("function") or {}
                 parts.append(
                     {
-                        "function_call": {
-                            "id": tool_call.get("id") or f"tool_{uuid.uuid4().hex}",
+                        "functionCall": {
                             "name": tool_function.get("name") or "tool",
                             "args": _safe_json_load(tool_function.get("arguments"), {}),
                         }
@@ -255,8 +251,7 @@ def _convert_messages_for_gemini(messages: List[Dict[str, Any]]) -> tuple[str, L
                     "role": "user",
                     "parts": [
                         {
-                            "function_response": {
-                                "id": message.get("tool_call_id") or "tool",
+                            "functionResponse": {
                                 "name": message.get("name") or "tool",
                                 "response": parsed_tool_content,
                             }
@@ -314,7 +309,7 @@ def _normalize_gemini_response(data: Dict[str, Any]) -> Dict[str, Any]:
             continue
         if isinstance(part.get("text"), str):
             text_parts.append(part.get("text") or "")
-        function_call = part.get("function_call") or part.get("functionCall")
+        function_call = part.get("functionCall") or part.get("function_call")
         if isinstance(function_call, dict):
             tool_calls.append(
                 {
@@ -358,7 +353,7 @@ async def call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict[
                         payload["system"] = system_text
                     if tools:
                         payload["tools"] = convert_tools_for_anthropic(tools)
-                    
+
                     headers = {
                         "anthropic-version": AI_API_VERSION,
                         "content-type": "application/json",
@@ -369,6 +364,7 @@ async def call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict[
                     resp = await client.post(_resolve_ai_endpoint("messages"), headers=headers, json=payload)
                     if resp.status_code == 429:
                         last_error = f"429: {resp.text}"
+                        logger.warning(f"API key quota exceeded, rotating to next key...")
                         continue
                     if resp.status_code >= 400:
                         return {"content": f"LLM error {resp.status_code}: {resp.text}"}
@@ -378,14 +374,14 @@ async def call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict[
                     system_text, gemini_messages = _convert_messages_for_gemini(messages)
                     payload = {
                         "contents": gemini_messages,
-                        "generation_config": {"max_output_tokens": AI_MAX_TOKENS},
+                        "generationConfig": {"maxOutputTokens": AI_MAX_TOKENS},
                     }
                     if tools:
                         from .tools_logic import convert_tools_for_gemini
                         payload["tools"] = convert_tools_for_gemini(tools)
                     if system_text:
-                        payload["system_instruction"] = {"parts": [{"text": system_text}]}
-                    
+                        payload["systemInstruction"] = {"parts": [{"text": system_text}]}
+
                     url = _resolve_gemini_endpoint()
                     headers = {"content-type": "application/json"}
                     if "generativelanguage.googleapis.com" in url and api_key:
@@ -393,10 +389,11 @@ async def call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict[
                         url = f"{url}{separator}key={api_key}"
                     elif api_key:
                         headers["Authorization"] = f"Bearer {api_key}"
-                    
+
                     resp = await client.post(url, headers=headers, json=payload)
                     if resp.status_code == 429:
                         last_error = f"429: {resp.text}"
+                        logger.warning(f"Gemini API key quota exceeded, rotating to next key...")
                         continue
                     if resp.status_code >= 400:
                         return {"content": f"LLM error {resp.status_code}: {resp.text}"}
@@ -410,11 +407,12 @@ async def call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict[
                 if tools:
                     from .tools_logic import convert_tools_for_openai
                     payload["tools"] = convert_tools_for_openai(tools)
-                
+
                 endpoint = _resolve_ai_endpoint("chat/completions")
                 resp = await client.post(endpoint, headers=headers, json=payload)
                 if resp.status_code == 429:
                     last_error = f"429: {resp.text}"
+                    logger.warning(f"OpenAI API key quota exceeded, rotating to next key...")
                     continue
                 if resp.status_code >= 400:
                     retry_max_tokens = _suggest_retry_max_tokens(resp.text, AI_MAX_TOKENS)
@@ -422,37 +420,43 @@ async def call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict[
                         retry_payload = dict(payload)
                         retry_payload["max_tokens"] = retry_max_tokens
                         resp = await client.post(endpoint, headers=headers, json=retry_payload)
-                
+
                 if resp.status_code >= 400:
                     return {"content": f"LLM error {resp.status_code}: {resp.text}"}
-                
+
                 data = resp.json()
-                if "choices" in data:
-                    return data["choices"][0]["message"]
-                return data
+                try:
+                    from .tools_logic import recover_tool_call_from_message
+                    message = data["choices"][0]["message"]
+                    recovered = recover_tool_call_from_message(message)
+                    if recovered is not None:
+                        return recovered
+                    return message
+                except Exception as exc:
+                    return {"content": f"LLM returned an unexpected response shape: {exc}"}
 
         except Exception as exc:
             last_error = f"Exception: {exc}"
+            logger.warning(f"API key attempt failed: {exc}")
             continue
 
-    return {"content": f"LLM request tried all {len(keys_to_try)} keys. Last error: {last_error}"}
+    return {"content": f"LLM request tried all {len(keys_to_try)} key(s). Last error: {last_error}"}
+
 
 async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Generic SSE streaming generator for LLM providers.
-    Yields intermediate text chunks and a final message object.
-    Automatically rotates through available API keys on 401/403/429 errors.
+    Automatically rotates through all available API keys on 429/401/403 errors.
     """
     provider = _infer_ai_provider()
 
-    # For Native providers (Gemini/Anthropic), we fallback to call_openai 
-    # which now handles its own internal key rotation.
+    # For Gemini/Anthropic, fallback to call_openai which handles key rotation internally.
     if provider != "openai":
         res = await call_openai(messages, tools=tools)
         yield res
         return
 
-    # Build payload once (keys only affect the Authorization header or URL)
+    # OpenAI-Compatible Streaming
     payload: Dict[str, Any] = {
         "model": AI_MODEL,
         "messages": messages,
@@ -472,10 +476,8 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
         full_tool_calls: Dict[int, Dict[str, Any]] = {}
         key_failed = False
 
-        # --- Gemini-specific URL adjustment ---
         is_google = "generativelanguage.googleapis.com" in base_endpoint.lower()
         if is_google and api_key:
-            # For Google, passing key as query param is often more reliable than Bearer header
             connector = "&" if "?" in base_endpoint else "?"
             current_endpoint = f"{base_endpoint}{connector}key={api_key}"
             headers = {"Content-Type": "application/json"}
@@ -488,16 +490,15 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
         try:
             async with httpx.AsyncClient(timeout=APP_SETTINGS.ai_request_timeout_seconds) as client:
                 async with client.stream("POST", current_endpoint, headers=headers, json=payload) as response:
-                    # Rotate key on quota/auth errors
                     if response.status_code in (401, 403, 429):
                         err_body = await response.aread()
                         last_error = f"Key failed ({response.status_code}): {err_body.decode(errors='replace')}"
+                        logger.warning(f"Streaming key rotation triggered: {response.status_code}")
                         key_failed = True
 
                     elif response.status_code >= 400:
                         err_body = await response.aread()
                         err_text = err_body.decode(errors="replace")
-                        # Try reducing max_tokens once before giving up
                         retry_max_tokens = _suggest_retry_max_tokens(
                             err_text, int(payload.get("max_tokens") or AI_MAX_TOKENS)
                         )
@@ -528,11 +529,7 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
                                         for tc in delta.get("tool_calls") or []:
                                             idx = tc.get("index", 0)
                                             if idx not in full_tool_calls:
-                                                full_tool_calls[idx] = {
-                                                    "id": tc.get("id"),
-                                                    "type": "function",
-                                                    "function": {"name": "", "arguments": ""},
-                                                }
+                                                full_tool_calls[idx] = {"id": tc.get("id"), "type": "function", "function": {"name": "", "arguments": ""}}
                                             f_delta = tc.get("function", {})
                                             if f_delta.get("name"):
                                                 full_tool_calls[idx]["function"]["name"] += f_delta["name"]
@@ -545,7 +542,6 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
                             return
 
                     else:
-                        # Success — stream the response inline
                         async for line in response.aiter_lines():
                             if not line.startswith("data: "):
                                 continue
@@ -562,11 +558,7 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
                                 for tc in delta.get("tool_calls") or []:
                                     idx = tc.get("index", 0)
                                     if idx not in full_tool_calls:
-                                        full_tool_calls[idx] = {
-                                            "id": tc.get("id"),
-                                            "type": "function",
-                                            "function": {"name": "", "arguments": ""},
-                                        }
+                                        full_tool_calls[idx] = {"id": tc.get("id"), "type": "function", "function": {"name": "", "arguments": ""}}
                                     f_delta = tc.get("function", {})
                                     if f_delta.get("name"):
                                         full_tool_calls[idx]["function"]["name"] += f_delta["name"]
@@ -578,7 +570,6 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
             if key_failed:
                 continue
 
-            # Final Yield of the complete message
             final_msg = {"role": "assistant", "content": full_content}
             if full_tool_calls:
                 final_msg["tool_calls"] = [tc for i, tc in sorted(full_tool_calls.items())]
@@ -587,7 +578,7 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
 
         except Exception as e:
             last_error = f"Streaming exception: {e}"
+            logger.warning(f"Streaming attempt failed: {e}")
             continue
 
-    # All keys exhausted
     yield {"role": "assistant", "content": f"Streaming failed after trying all {len(keys_to_try)} key(s). Last error: {last_error}"}
