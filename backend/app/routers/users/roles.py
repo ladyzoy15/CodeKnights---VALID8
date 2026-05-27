@@ -1,4 +1,4 @@
-"""Role-management routes for the user router package."""
+﻿"""Role-management routes for the user router package."""
 
 from .shared import *  # noqa: F403
 

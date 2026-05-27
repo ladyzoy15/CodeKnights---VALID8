@@ -1,4 +1,4 @@
-"""Shared helpers for the event router package."""
+﻿"""Shared helpers for the event router package."""
 
 from datetime import datetime, timedelta
 import logging

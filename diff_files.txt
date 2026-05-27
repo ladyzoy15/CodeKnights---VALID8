@@ -1,0 +1,8 @@
+﻿backend/app/routers/users/students.py
+backend/app/schemas/user.py
+backend/app/services/email_service/rendering.py
+backend/app/services/notification_center_service.py
+frontend-web/src/components/auth/GoogleSignInButton.vue
+frontend-web/src/views/dashboard/SchoolItProgramStudentsView.vue
+frontend-web/src/views/desktop/auth/LoginView.vue
+frontend-web/src/views/mobile/auth/LoginView.vue

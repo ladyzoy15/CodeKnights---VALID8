@@ -1,0 +1,10 @@
+total 84
+drwxr-xr-x 1 appuser appuser  4096 May 27 05:11 .
+drwxr-xr-x 1 appuser appuser  4096 May 26 06:39 ..
+-rwxr-xr-x 1 appuser appuser   630 May 26 00:34 0001_baseline_normalized_schema.py
+-rwxr-xr-x 1 appuser appuser  4534 May 26 00:34 0002_reports_user_demographics.py
+-rwxr-xr-x 1 appuser appuser   798 May 26 06:39 0003_add_student_status_to_student_profiles.py
+-rwxr-xr-x 1 appuser appuser  2402 May 26 06:39 0005_excuse_letters.py
+-rwxr-xr-x 1 appuser appuser   840 May 27 05:07 806c544d962a_add_missing_privileged_face_.py
+-rwxr-xr-x 1 appuser appuser  2311 May 26 06:39 b033a6f7e275_create_event_targets_table.py
+-rw-r--r-- 1 appuser appuser 42527 May 27 05:11 e7ac69b18cd1_add_remaining_face_recognition_columns.py

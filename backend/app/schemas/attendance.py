@@ -1,4 +1,4 @@
-"""Use: Defines request and response data shapes for attendance API data.
+﻿"""Use: Defines request and response data shapes for attendance API data.
 Where to use: Use this in routers and services when validating or returning attendance API data.
 Role: Schema layer. It keeps API payloads clear and typed.
 """

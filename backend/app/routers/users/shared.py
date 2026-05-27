@@ -1,4 +1,4 @@
-"""Shared helpers for the user router package."""
+﻿"""Shared helpers for the user router package."""
 
 import logging
 from typing import Any, List

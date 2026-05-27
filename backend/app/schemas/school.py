@@ -29,6 +29,7 @@ class SchoolBrandingResponse(BaseModel):
     logo_url: Optional[str] = None
     primary_color: str = "#162F65"
     secondary_color: Optional[str] = None
+    accent_color: Optional[str] = None
     event_default_early_check_in_minutes: int = 30
     event_default_late_threshold_minutes: int = 10
     event_default_sign_out_grace_minutes: int = 15
@@ -56,6 +57,7 @@ class SchoolBrandingResponse(BaseModel):
             logo_url=branding.logo_url if branding else None,
             primary_color=branding.primary_color if branding else "#162F65",
             secondary_color=branding.secondary_color if branding else None,
+            accent_color=branding.accent_color if branding else None,
             event_default_early_check_in_minutes=policies.default_early_check_in_minutes if policies else 30,
             event_default_late_threshold_minutes=policies.default_late_threshold_minutes if policies else 10,
             event_default_sign_out_grace_minutes=policies.default_sign_out_grace_minutes if policies else 15,
@@ -68,7 +70,7 @@ class SchoolBrandingResponse(BaseModel):
 
 class SchoolCreateForm(BaseModel):
     school_name: str = Field(min_length=2, max_length=255)
-    primary_color: str = Field(pattern=HEX_COLOR_PATTERN)
+    primary_color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
     secondary_color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
     school_code: Optional[str] = Field(default=None, min_length=2, max_length=50)
 

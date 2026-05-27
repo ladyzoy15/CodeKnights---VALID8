@@ -1,4 +1,4 @@
-"""Student-management routes for the user router package."""
+﻿"""Student-management routes for the user router package."""
 
 from .shared import *  # noqa: F403
 from app.models.user import StudentProfile
@@ -90,14 +90,19 @@ def create_student_account(
                 exc,
             )
         except Exception as exc:
-            logger.error(
-                "Failed to send welcome email to %s: %s",
-                db_user.email,
-                exc,
-                exc_info=True
-            )
-            # We don't raise here anymore to let the account creation succeed
-            # even if email transport has issues.
+            if "EmailConfigurationError" in str(type(exc)) or "EMAIL_TRANSPORT is disabled" in str(exc):
+                 logger.warning(
+                    "Email transport is disabled (caught via generic exception). Student account created without sending welcome email: %s",
+                    exc,
+                )
+            else:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Student account was not created because the welcome email could not be delivered. "
+                        f"Email delivery error: {exc}"
+                    ),
+                ) from exc
 
         db.commit()
         created_user = (

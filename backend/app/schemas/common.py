@@ -1,4 +1,4 @@
-"""Use: Defines small shared API schemas used across routers.
+﻿"""Use: Defines small shared API schemas used across routers.
 Where to use: Import these for simple message and error responses.
 Role: Schema layer. It keeps common response shapes explicit and reusable.
 """

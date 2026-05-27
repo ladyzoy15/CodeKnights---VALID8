@@ -1,4 +1,4 @@
-"""Per-user app preference routes for the user router package."""
+﻿"""Per-user app preference routes for the user router package."""
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session

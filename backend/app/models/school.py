@@ -1,9 +1,8 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, synonym
-from sqlalchemy.ext.hybrid import hybrid_property
 
 from app.core.event_defaults import (
     DEFAULT_EVENT_EARLY_CHECK_IN_MINUTES,
@@ -134,6 +133,9 @@ class SchoolEventPolicy(Base):
     default_early_check_in_minutes = Column(Integer, nullable=False, default=DEFAULT_EVENT_EARLY_CHECK_IN_MINUTES)
     default_late_threshold_minutes = Column(Integer, nullable=False, default=DEFAULT_EVENT_LATE_THRESHOLD_MINUTES)
     default_sign_out_grace_minutes = Column(Integer, nullable=False, default=DEFAULT_EVENT_SIGN_OUT_GRACE_MINUTES)
+    privileged_face_verification_enabled = Column(Boolean, nullable=False, default=True)
+    attendance_face_recognition_enabled = Column(Boolean, nullable=False, default=True)
+    first_time_face_registration_required = Column(Boolean, nullable=False, default=True)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
     updated_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
@@ -144,13 +146,25 @@ class SchoolEventPolicy(Base):
     def event_default_early_check_in_minutes(self) -> int:
         return self.default_early_check_in_minutes
 
+    @event_default_early_check_in_minutes.setter
+    def event_default_early_check_in_minutes(self, value: int) -> None:
+        self.default_early_check_in_minutes = value
+
     @hybrid_property
     def event_default_late_threshold_minutes(self) -> int:
         return self.default_late_threshold_minutes
 
+    @event_default_late_threshold_minutes.setter
+    def event_default_late_threshold_minutes(self, value: int) -> None:
+        self.default_late_threshold_minutes = value
+
     @hybrid_property
     def event_default_sign_out_grace_minutes(self) -> int:
         return self.default_sign_out_grace_minutes
+
+    @event_default_sign_out_grace_minutes.setter
+    def event_default_sign_out_grace_minutes(self, value: int) -> None:
+        self.default_sign_out_grace_minutes = value
 
 
 
@@ -168,5 +182,5 @@ class SchoolAuditLog(Base):
     school = relationship("School", back_populates="audit_logs")
 
 
-# Compatibility alias — old code imported SchoolSetting
+# Compatibility alias ΓÇö old code imported SchoolSetting
 SchoolSetting = SchoolEventPolicy

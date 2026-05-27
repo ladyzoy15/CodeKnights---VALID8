@@ -1,4 +1,4 @@
-"""Shared helpers for the attendance router package."""
+﻿"""Shared helpers for the attendance router package."""
 
 import logging
 from datetime import date, datetime, timezone
@@ -197,7 +197,7 @@ def _log_rejected_scan_attempt(
 ) -> None:
     """Write a rejected scan attempt to the school audit log.
 
-    Uses the existing SchoolAuditLog table — no new table or migration needed.
+    Uses the existing SchoolAuditLog table ΓÇö no new table or migration needed.
     These rows are completely separate from attendance_records and never affect
     attendance counts or reports.
     """
@@ -257,7 +257,7 @@ def _ensure_student_is_event_participant_with_audit(
 ) -> None:
     """Check eligibility and write a SchoolAuditLog row on rejection.
 
-    Accepted scans are not logged here — only rejections are recorded for audit.
+    Accepted scans are not logged here ΓÇö only rejections are recorded for audit.
     The HTTP 403 is always re-raised so the caller's response is unchanged.
     """
     eligible, code, message = is_student_eligible_for_event(student, event)

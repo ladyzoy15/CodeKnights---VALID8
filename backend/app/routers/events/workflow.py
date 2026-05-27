@@ -1,4 +1,4 @@
-"""Workflow/status routes for the event router package."""
+﻿"""Workflow/status routes for the event router package."""
 
 from .shared import *  # noqa: F403
 

@@ -1,4 +1,4 @@
-"""Reporting routes for the attendance router package."""
+﻿"""Reporting routes for the attendance router package."""
 
 from fastapi import APIRouter
 

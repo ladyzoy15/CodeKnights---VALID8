@@ -861,6 +861,9 @@ export async function createSchoolWithSchoolIt(baseUrl, token, payload) {
     const formData = new FormData()
 
     appendFormValue(formData, 'school_name', payload.school_name)
+    appendFormValue(formData, 'name', payload.school_name)
+    appendFormValue(formData, 'display_name', payload.school_name)
+    appendFormValue(formData, 'legal_name', payload.school_name)
     appendFormValue(formData, 'primary_color', payload.primary_color)
     appendFormValue(formData, 'secondary_color', payload.secondary_color)
     appendFormValue(formData, 'school_code', payload.school_code)

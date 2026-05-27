@@ -1,4 +1,4 @@
-"""Password-management routes for the user router package."""
+﻿"""Password-management routes for the user router package."""
 
 from .shared import *  # noqa: F403
 

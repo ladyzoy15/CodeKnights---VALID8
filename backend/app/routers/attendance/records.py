@@ -1,4 +1,4 @@
-"""Legacy attendance records router.
+﻿"""Legacy attendance records router.
 
 Record/report endpoints were consolidated under `app.reports.*` and are
 included by `attendance/reports.py`. This module remains as an empty router to

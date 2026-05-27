@@ -770,7 +770,11 @@ async function submitCreateSchool() {
   try {
     const created = await createAdminSchool({
       ...createForm,
-      school_code: createForm.school_code || undefined,
+      school_it_email: createForm.school_it_email.trim(),
+      school_code: (createForm.school_code || '').trim() || undefined,
+      legal_name: createForm.school_name,
+      display_name: createForm.school_name,
+      address: 'N/A', // Temporary placeholder for required field
       school_it_middle_name: createForm.school_it_middle_name || undefined,
       school_it_password: createForm.school_it_password || undefined,
     })

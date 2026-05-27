@@ -1,4 +1,4 @@
-"""Check-in and check-out routes for the attendance router package."""
+﻿"""Check-in and check-out routes for the attendance router package."""
 
 from app.core.timezones import utc_now
 

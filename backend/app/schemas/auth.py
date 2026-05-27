@@ -1,4 +1,4 @@
-"""Use: Defines request and response data shapes for authentication API data.
+﻿"""Use: Defines request and response data shapes for authentication API data.
 Where to use: Use this in routers and services when validating or returning authentication API data.
 Role: Schema layer. It keeps API payloads clear and typed.
 """
@@ -45,6 +45,7 @@ class LoginRequest(BaseModel):
     email: EmailStr  # More strict validation
     password: str
     remember_me: bool = False
+    platform: str = "web"
 
 
 class ChangePasswordRequest(BaseModel):

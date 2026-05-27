@@ -1,4 +1,4 @@
-"""Use: Defines request and response data shapes for user and student API data.
+﻿"""Use: Defines request and response data shapes for user and student API data.
 Where to use: Use this in routers and services when validating or returning user and student API data.
 Role: Schema layer. It keeps API payloads clear and typed.
 """
@@ -51,6 +51,10 @@ def _normalize_student_id_or_raise(value: str | None) -> str | None:
     normalized_value = value.strip().upper()
     if not normalized_value:
         return None
+    if not any(char.isalpha() for char in normalized_value):
+        raise ValueError("Student ID must contain at least one letter")
+    if not any(char.isdigit() for char in normalized_value):
+        raise ValueError("Student ID must contain at least one number")
     return normalized_value
 
 

@@ -1,4 +1,4 @@
-"""Override routes for the attendance router package."""
+﻿"""Override routes for the attendance router package."""
 
 from .shared import *  # noqa: F403
 

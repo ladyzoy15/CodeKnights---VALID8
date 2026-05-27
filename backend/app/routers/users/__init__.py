@@ -1,4 +1,4 @@
-"""Use: Handles user and account management API endpoints.
+﻿"""Use: Handles user and account management API endpoints.
 Where to use: Use this through the FastAPI app when the frontend or an API client needs user and account management features.
 Role: Router package. It groups user routes by domain while preserving the public router import path.
 """

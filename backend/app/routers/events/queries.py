@@ -1,4 +1,4 @@
-"""Read/query routes for the event router package."""
+﻿"""Read/query routes for the event router package."""
 
 from .shared import *  # noqa: F403
 

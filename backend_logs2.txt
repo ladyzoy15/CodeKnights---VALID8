@@ -1,0 +1,30 @@
+backend-1  |            ^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+backend-1  |     return connection._execute_clauseelement(
+backend-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+backend-1  |     ret = self._execute_context(
+backend-1  |           ^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+backend-1  |     return self._exec_single_context(
+backend-1  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+backend-1  |     self._handle_dbapi_exception(
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+backend-1  |     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+backend-1  |     self.dialect.do_execute(
+backend-1  |   File "/usr/local/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+backend-1  |     cursor.execute(statement, parameters)
+backend-1  | sqlalchemy.exc.InternalError: (psycopg2.errors.InFailedSqlTransaction) current transaction is aborted, commands ignored until end of transaction block
+backend-1  | 
+backend-1  | [SQL: INSERT INTO user_sessions (id, user_id, token_jti, ip_address, user_agent, created_at, last_seen_at, revoked_at, expires_at) VALUES (%(id)s::UUID, %(user_id)s, %(token_jti)s, %(ip_address)s, %(user_agent)s, %(created_at)s, %(last_seen_at)s, %(revoked_at)s, %(expires_at)s)]
+backend-1  | [parameters: {'id': UUID('5283203c-b6c5-4c25-a59c-5988a569553a'), 'user_id': 2, 'token_jti': '1896fb06-f5db-471c-88ba-4c85fa127463', 'ip_address': '172.18.0.8', 'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0', 'created_at': datetime.datetime(2026, 5, 27, 9, 5, 22, 407692, tzinfo=datetime.timezone.utc), 'last_seen_at': datetime.datetime(2026, 5, 27, 9, 5, 22, 407692, tzinfo=datetime.timezone.utc), 'revoked_at': None, 'expires_at': datetime.datetime(2026, 5, 27, 9, 35, 22, 407692, tzinfo=datetime.timezone.utc)}]
+backend-1  | (Background on this error at: https://sqlalche.me/e/20/2j85)
+backend-1  | INFO:     127.0.0.1:60354 - "GET /health HTTP/1.1" 200 OK
+backend-1  | INFO:     127.0.0.1:53786 - "GET /health HTTP/1.1" 200 OK
+backend-1  | download_path: /home/appuser/.insightface/models/buffalo_l
+backend-1  | Downloading /home/appuser/.insightface/models/buffalo_l.zip from https://github.com/deepinsight/insightface/releases/download/v0.7/buffalo_l.zip...
+backend-1  | INFO:     127.0.0.1:33722 - "GET /health HTTP/1.1" 200 OK
+backend-1  | INFO:     127.0.0.1:57394 - "GET /health HTTP/1.1" 200 OK
+backend-1  | INFO:     127.0.0.1:34790 - "GET /health HTTP/1.1" 200 OK

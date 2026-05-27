@@ -1,4 +1,4 @@
-"""Use: Handles event management and event timing actions API endpoints.
+﻿"""Use: Handles event management and event timing actions API endpoints.
 Where to use: Use this through the FastAPI app when the frontend or an API client needs event management and event timing actions features.
 Role: Router package. It groups event routes by domain while preserving the public router import path.
 """

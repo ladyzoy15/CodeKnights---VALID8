@@ -173,7 +173,7 @@ services:
     environment:
       - NEXUS_API_BASE_URL=${AURA_API_BASE_URL:-/__backend__}
       - NEXUS_API_TIMEOUT_MS=${AURA_API_TIMEOUT_MS:-15000}
-      - NEXUS_ASSISTANT_BASE_URL=${AURA_ASSISTANT_BASE_URL:-/__assistant__}
+      - NEXUS_ASSISTANT_BASE_URL=${AURA_ASSISTANT_BASE_URL:-http://18.142.190.113:8500}
       - NEXUS_GOOGLE_WEB_CLIENT_ID=${GOOGLE_WEB_CLIENT_ID:-1059104622372-jn3avucjr34lht8o6r99i9t57npbv0tt.apps.googleusercontent.com}
     depends_on:
       backend:

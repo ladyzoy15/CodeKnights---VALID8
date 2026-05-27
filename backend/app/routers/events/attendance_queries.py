@@ -1,4 +1,4 @@
-"""Attendance-facing event query routes for the event router package."""
+﻿"""Attendance-facing event query routes for the event router package."""
 
 from .shared import *  # noqa: F403
 from app.services.attendance_status import resolve_attendance_display_status, is_completed_attended_status

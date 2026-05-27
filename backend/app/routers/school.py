@@ -46,12 +46,7 @@ from app.services.password_change_policy import (
     should_prompt_password_change_for_new_account,
     should_prompt_password_change_for_temporary_reset,
 )
-from app.services.logo_storage_service import (
-    delete_managed_school_logo,
-    extract_dominant_colors_from_bytes,
-    store_school_logo,
-    store_school_logo_bytes,
-)
+from app.services.logo_storage_service import delete_managed_school_logo, store_school_logo
 from app.utils.passwords import generate_secure_password
 
 router = APIRouter(prefix="/api/school", tags=["school"])
@@ -98,8 +93,9 @@ def _school_to_response(school: School) -> SchoolBrandingResponse:
         school_name=getattr(school, 'school_name', None) or getattr(school, 'display_name', None) or getattr(school, 'legal_name', None),
         school_code=school.school_code,
         logo_url=getattr(school, 'logo_url', None) or getattr(branding, 'logo_url', None),
-        primary_color=(getattr(school, 'primary_color', None) or getattr(branding, 'primary_color', None) or "#162F65"),
-        secondary_color=(getattr(school, 'secondary_color', None) or getattr(branding, 'secondary_color', None)),
+        primary_color=(getattr(branding, 'primary_color', None) or "#162F65"),
+        secondary_color=(getattr(branding, 'secondary_color', None)),
+        accent_color=(getattr(branding, 'accent_color', None)),
         event_default_early_check_in_minutes=event_default_early_check_in_minutes,
         event_default_late_threshold_minutes=event_default_late_threshold_minutes,
         event_default_sign_out_grace_minutes=event_default_sign_out_grace_minutes,
@@ -116,9 +112,6 @@ def _sync_school_settings(db: Session, school: School, updated_by_user_id: int) 
         settings = SchoolSetting(school_id=school.id)
         db.add(settings)
 
-    settings.primary_color = school.primary_color
-    settings.secondary_color = school.secondary_color or "#2C5F9E"
-    settings.accent_color = school.secondary_color or school.primary_color
     settings.updated_by_user_id = updated_by_user_id
     school.settings = settings
 
@@ -213,7 +206,7 @@ def _get_school_for_current_user_or_404(db: Session, current_user: User) -> Scho
 @router.post("/create", response_model=SchoolBrandingResponse)
 async def create_school(
     school_name: str = Form(...),
-    primary_color: str = Form(...),
+    primary_color: Optional[str] = Form(default=None),
     secondary_color: Optional[str] = Form(default=None),
     school_code: Optional[str] = Form(default=None),
     logo: Optional[UploadFile] = File(default=None),
@@ -223,7 +216,7 @@ async def create_school(
     try:
         payload = SchoolCreateForm(
             school_name=school_name,
-            primary_color=primary_color,
+            primary_color=primary_color or "#162F65",
             secondary_color=_normalize_optional(secondary_color),
             school_code=_normalize_optional(school_code),
         )
@@ -232,8 +225,14 @@ async def create_school(
     _ensure_unique_school(db, school_name=payload.school_name, school_code=payload.school_code)
 
     logo_url = None
+    extracted_primary = None
+    extracted_secondary = None
     if logo is not None:
-        logo_url = await store_school_logo(logo)
+        content = await logo.read()
+        await logo.seek(0)
+        from app.services.logo_storage_service import extract_dominant_colors_from_bytes, store_school_logo_bytes
+        extracted_primary, extracted_secondary = extract_dominant_colors_from_bytes(content)
+        logo_url = store_school_logo_bytes(content, logo.filename)
 
     school = School(
         name=payload.school_name,
@@ -241,8 +240,8 @@ async def create_school(
         school_code=payload.school_code,
         address=f"{payload.school_name} Address",
         logo_url=logo_url,
-        primary_color=payload.primary_color,
-        secondary_color=payload.secondary_color,
+        primary_color=primary_color or extracted_primary or "#162F65",
+        secondary_color=payload.secondary_color or extracted_secondary,
         subscription_status="trial",
         active_status=True,
         subscription_plan="free",
@@ -291,29 +290,11 @@ async def admin_create_school_with_school_it(
     current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    logo_bytes: bytes | None = None
-    logo_filename: str | None = None
-
-    if logo is not None:
-        logo_bytes = await logo.read()
-        logo_filename = (logo.filename or "").strip()
-
-    extracted_primary: str | None = None
-    extracted_secondary: str | None = None
-    if logo_bytes:
-        is_svg = logo_filename and logo_filename.lower().endswith(".svg")
-        extracted_primary, extracted_secondary = extract_dominant_colors_from_bytes(
-            logo_bytes, is_svg=is_svg
-        )
-
-    used_primary = primary_color or extracted_primary
-    used_secondary = secondary_color or extracted_secondary
-
     try:
         payload = AdminSchoolItCreateForm(
             school_name=school_name,
-            primary_color=used_primary,
-            secondary_color=used_secondary,
+            primary_color=primary_color,
+            secondary_color=_normalize_optional(secondary_color),
             school_code=_normalize_optional(school_code),
             school_it_email=school_it_email.strip().lower(),
             school_it_first_name=school_it_first_name,
@@ -345,8 +326,14 @@ async def admin_create_school_with_school_it(
         issued_password = generated_temporary_password
 
     logo_url = None
-    if logo_bytes:
-        logo_url = store_school_logo_bytes(logo_bytes, logo_filename)
+    extracted_primary = None
+    extracted_secondary = None
+    if logo is not None:
+        content = await logo.read()
+        await logo.seek(0)
+        from app.services.logo_storage_service import extract_dominant_colors_from_bytes, store_school_logo_bytes
+        extracted_primary, extracted_secondary = extract_dominant_colors_from_bytes(content)
+        logo_url = store_school_logo_bytes(content, logo.filename)
 
     school = School(
         name=payload.school_name,
@@ -354,8 +341,8 @@ async def admin_create_school_with_school_it(
         school_code=payload.school_code,
         address=f"{payload.school_name} Address",
         logo_url=logo_url,
-        primary_color=payload.primary_color,
-        secondary_color=payload.secondary_color or payload.primary_color,
+        primary_color=primary_color or extracted_primary or "#162F65",
+        secondary_color=payload.secondary_color or extracted_secondary,
         subscription_status="trial",
         active_status=True,
         subscription_plan="free",
@@ -731,16 +718,29 @@ async def update_school(
 
     old_logo_url = school.logo_url
     new_logo_url = old_logo_url
+    extracted_primary = None
+    extracted_secondary = None
     if logo is not None:
-        new_logo_url = await store_school_logo(logo)
+        content = await logo.read()
+        await logo.seek(0)
+        from app.services.logo_storage_service import extract_dominant_colors_from_bytes, store_school_logo_bytes
+        extracted_primary, extracted_secondary = extract_dominant_colors_from_bytes(content)
+        new_logo_url = store_school_logo_bytes(content, logo.filename)
 
     if payload.school_name is not None:
         school.school_name = payload.school_name
         school.name = payload.school_name
+    
     if payload.primary_color is not None:
         school.primary_color = payload.primary_color
-    if secondary_color is not None:
+    elif extracted_primary is not None:
+        school.primary_color = extracted_primary
+        
+    if payload.secondary_color is not None:
         school.secondary_color = payload.secondary_color
+    elif extracted_secondary is not None:
+        school.secondary_color = extracted_secondary
+
     if school_code is not None:
         school.school_code = payload.school_code
 
@@ -751,11 +751,11 @@ async def update_school(
         settings = db.query(SchoolSetting).filter(SchoolSetting.school_id == school.id).first()
     if settings is not None:
         if payload.event_default_early_check_in_minutes is not None:
-            settings.event_default_early_check_in_minutes = payload.event_default_early_check_in_minutes
+            settings.default_early_check_in_minutes = payload.event_default_early_check_in_minutes
         if payload.event_default_late_threshold_minutes is not None:
-            settings.event_default_late_threshold_minutes = payload.event_default_late_threshold_minutes
+            settings.default_late_threshold_minutes = payload.event_default_late_threshold_minutes
         if payload.event_default_sign_out_grace_minutes is not None:
-            settings.event_default_sign_out_grace_minutes = payload.event_default_sign_out_grace_minutes
+            settings.default_sign_out_grace_minutes = payload.event_default_sign_out_grace_minutes
         school.settings = settings
     _write_audit(
         db,
