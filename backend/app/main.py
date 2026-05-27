@@ -39,6 +39,8 @@ from app.routers import (
     public_attendance,
     health,
     sanctions,
+    excuse_letters,
+    centralized_ai,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,7 +53,7 @@ async def lifespan(_: FastAPI):
         validate_email_delivery_on_startup()
     except Exception as exc:
         logger.warning(
-            "Email delivery startup check failed ΓÇö continuing without email: %s", exc
+            "Email delivery startup check failed — continuing without email: %s", exc
         )
     if not settings.face_warmup_on_startup:
         logger.info("InsightFace startup warm-up is disabled by configuration.")
@@ -89,7 +91,7 @@ app.add_middleware(MaxRequestBodySizeMiddleware)
 app.add_middleware(MutationRateLimitMiddleware)
 
 
-# TEMPORARY DIAGNOSTIC ΓÇö surface the real cause of uncaught 500s in the
+# TEMPORARY DIAGNOSTIC — surface the real cause of uncaught 500s in the
 # response body so the failing /token call can be diagnosed from the client
 # without server SSH access. HTTPException, 4xx, and rate-limit responses
 # run their own handlers first and are untouched. Remove this block once the
@@ -186,6 +188,12 @@ app.include_router(health.router)
 app.include_router(health.router, prefix="/api/v1")
 
 include_api_router(sanctions.router)
+
+include_api_router(centralized_ai.router)
+
+app.include_router(excuse_letters.router)
+app.include_router(excuse_letters.router, prefix="/api/v1")
+app.include_router(excuse_letters.router, prefix="/api")
 
 logo_storage_dir = Path(settings.school_logo_storage_dir)
 logo_storage_dir.mkdir(parents=True, exist_ok=True)

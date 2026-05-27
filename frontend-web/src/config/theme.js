@@ -73,11 +73,11 @@ function syncNativeStatusBar(color) {
  */
 export const defaultTheme = {
     // Customizable by School IT
-    primaryColor: '#ffffffff',       // Lime green - the accent/brand color
-    primaryDark: '#88CC00',        // Slightly darker for hover states
-    primaryText: '#0A0A0A',        // Text on primary colored backgrounds
-    secondaryColor: '#AAFF00',
-    secondaryText: '#0A0A0A',
+    primaryColor: '#162F65',       // Navy Blue - the accent/brand color
+    primaryDark: '#0E1E41',        // Darker for hover
+    primaryText: '#FFFFFF',        // White text on Navy
+    secondaryColor: '#2C5F9E',
+    secondaryText: '#FFFFFF',
     schoolName: 'University Name',
     schoolSlogan: 'Slogan Goes Here',
     schoolLogo: defaultSchoolLogo,
@@ -86,7 +86,7 @@ export const defaultTheme = {
     background: '#EBEBEB',
     surfaceColor: '#FFFFFF',
     navColor: '#0A0A0A',
-    navActiveColor: '#AAFF00',
+    navActiveColor: '#162F65',
     textPrimary: '#0A0A0A',
     textSecondary: '#555555',
     textMuted: '#999999',
@@ -94,10 +94,10 @@ export const defaultTheme = {
 
 export const unbrandedTheme = {
     ...defaultTheme,
-    primaryColor: '#0A0A0A',
-    primaryDark: '#000000',
+    primaryColor: '#162F65',
+    primaryDark: '#0E1E41',
     primaryText: '#FFFFFF',
-    secondaryColor: '#0A0A0A',
+    secondaryColor: '#162F65',
     secondaryText: '#FFFFFF',
     navActiveColor: '#FFFFFF',
 }

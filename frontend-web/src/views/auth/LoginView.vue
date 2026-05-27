@@ -229,13 +229,6 @@ onMounted(() => {
 async function handleLogin() {
   if (isLoading.value || googleLoading.value) return
 
-  // TEMPORARY TESTING BYPASS: If you type "test" in both fields, it will skip the backend
-  if (email.value === 'test' && password.value === 'test') {
-    nextRoute.value = { name: 'PreviewHome' }
-    showTermsModal.value = true
-    return
-  }
-
   const route = await login(email.value, password.value, { preventRedirect: true })
   
   if (route) {
@@ -282,8 +275,8 @@ function goToForgotPassword() {
 /* Logo style updated to preserve texture */
 
 .login-page {
-  --color-primary: #AAFF00;
-  --color-primary-glow: rgba(170, 255, 0, 0.4);
+  --color-primary: #162F65;
+  --color-primary-glow: rgba(22, 47, 101, 0.4);
 }
 
 /* Background Blobs */
@@ -327,7 +320,7 @@ function goToForgotPassword() {
 
 .premium-login-btn {
   background: var(--color-primary) !important;
-  color: #050505 !important;
+  color: white !important;
   height: 56px !important;
   border-radius: 16px !important;
   box-shadow: 0 10px 30px -10px var(--color-primary-glow) !important;
