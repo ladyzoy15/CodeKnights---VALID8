@@ -17,7 +17,7 @@
       v-if="type === 'password'"
       type="button"
       tabindex="-1"
-      class="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-surface-text-muted)] hover:text-[var(--color-surface-text)] transition-colors p-1"
+      class="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-surface-text-muted)] hover:text-[var(--color-surface-text)] transition-colors p-1 z-20 pointer-events-auto"
       @click="togglePasswordVisibility"
       aria-label="Toggle password visibility"
     >
