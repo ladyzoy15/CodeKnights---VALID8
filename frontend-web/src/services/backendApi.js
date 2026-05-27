@@ -536,6 +536,15 @@ export async function updateSchoolBranding(baseUrl, token, payload = {}, logoFil
     if (payload.event_default_sign_out_grace_minutes !== undefined) {
         formData.append('event_default_sign_out_grace_minutes', String(payload.event_default_sign_out_grace_minutes))
     }
+    if (payload.privileged_face_verification_enabled !== undefined) {
+        formData.append('privileged_face_verification_enabled', String(Boolean(payload.privileged_face_verification_enabled)))
+    }
+    if (payload.attendance_face_recognition_enabled !== undefined) {
+        formData.append('attendance_face_recognition_enabled', String(Boolean(payload.attendance_face_recognition_enabled)))
+    }
+    if (payload.first_time_face_registration_required !== undefined) {
+        formData.append('first_time_face_registration_required', String(Boolean(payload.first_time_face_registration_required)))
+    }
     if (logoFile) {
         formData.append('logo', logoFile)
     }

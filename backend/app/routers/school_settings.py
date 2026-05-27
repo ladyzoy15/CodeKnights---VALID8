@@ -79,7 +79,7 @@ def _build_settings_response(school: School, settings: SchoolSetting) -> SchoolS
     )
     return SchoolSettingsResponse(
         school_id=school.id,
-        school_name=getattr(school, 'school_name', None) or getattr(school, 'display_name', None) or getattr(school, 'legal_name', None),
+        school_name=getattr(school, 'school_name', None) or getattr(school, 'display_name', None) or getattr(school, 'legal_name', None),        
         logo_url=getattr(school, 'logo_url', None),
         primary_color=primary_color,
         secondary_color=secondary_color,
@@ -87,6 +87,9 @@ def _build_settings_response(school: School, settings: SchoolSetting) -> SchoolS
         event_default_early_check_in_minutes=event_default_early_check_in_minutes,
         event_default_late_threshold_minutes=event_default_late_threshold_minutes,
         event_default_sign_out_grace_minutes=event_default_sign_out_grace_minutes,
+        privileged_face_verification_enabled=getattr(settings, 'privileged_face_verification_enabled', True),
+        attendance_face_recognition_enabled=getattr(settings, 'attendance_face_recognition_enabled', True),
+        first_time_face_registration_required=getattr(settings, 'first_time_face_registration_required', True),
     )
 
 
@@ -188,6 +191,29 @@ def update_my_school_settings(
             }
         settings.event_default_sign_out_grace_minutes = payload.event_default_sign_out_grace_minutes
 
+    if payload.privileged_face_verification_enabled is not None:
+        if payload.privileged_face_verification_enabled != settings.privileged_face_verification_enabled:
+            changes["privileged_face_verification_enabled"] = {
+                "from": settings.privileged_face_verification_enabled,
+                "to": payload.privileged_face_verification_enabled,
+            }
+        settings.privileged_face_verification_enabled = payload.privileged_face_verification_enabled
+
+    if payload.attendance_face_recognition_enabled is not None:
+        if payload.attendance_face_recognition_enabled != settings.attendance_face_recognition_enabled:
+            changes["attendance_face_recognition_enabled"] = {
+                "from": settings.attendance_face_recognition_enabled,
+                "to": payload.attendance_face_recognition_enabled,
+            }
+        settings.attendance_face_recognition_enabled = payload.attendance_face_recognition_enabled
+
+    if payload.first_time_face_registration_required is not None:
+        if payload.first_time_face_registration_required != settings.first_time_face_registration_required:
+            changes["first_time_face_registration_required"] = {
+                "from": settings.first_time_face_registration_required,
+                "to": payload.first_time_face_registration_required,
+            }
+        settings.first_time_face_registration_required = payload.first_time_face_registration_required
     settings.updated_by_user_id = current_user.id
 
     _write_audit_log(

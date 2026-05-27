@@ -153,6 +153,9 @@ export function normalizeSchoolSettings(settings = null) {
         event_default_late_threshold_minutes: toOptionalNumber(settings.event_default_late_threshold_minutes, 10),
         event_default_sign_out_grace_minutes: toOptionalNumber(settings.event_default_sign_out_grace_minutes, 15),
         event_default_sign_out_open_delay_minutes: toOptionalNumber(settings.event_default_sign_out_open_delay_minutes, 0),
+        privileged_face_verification_enabled: settings.privileged_face_verification_enabled !== false,
+        attendance_face_recognition_enabled: settings.attendance_face_recognition_enabled !== false,
+        first_time_face_registration_required: settings.first_time_face_registration_required !== false,
     }
 }
 

@@ -22,6 +22,9 @@ class SchoolSettingsResponse(BaseModel):
     event_default_early_check_in_minutes: int
     event_default_late_threshold_minutes: int
     event_default_sign_out_grace_minutes: int
+    privileged_face_verification_enabled: bool = True
+    attendance_face_recognition_enabled: bool = True
+    first_time_face_registration_required: bool = True
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -35,6 +38,9 @@ class SchoolSettingsUpdate(BaseModel):
     event_default_early_check_in_minutes: Optional[int] = Field(default=None, ge=0, le=1440)
     event_default_late_threshold_minutes: Optional[int] = Field(default=None, ge=0, le=1440)
     event_default_sign_out_grace_minutes: Optional[int] = Field(default=None, ge=0, le=1440)
+    privileged_face_verification_enabled: Optional[bool] = None
+    attendance_face_recognition_enabled: Optional[bool] = None
+    first_time_face_registration_required: Optional[bool] = None
 
 
 class SchoolAuditLogResponse(BaseModel):

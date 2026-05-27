@@ -39,6 +39,7 @@ from app.routers import (
     health,
     sanctions,
     excuse_letters,
+    centralized_ai,
 )
 
 logger = logging.getLogger(__name__)
@@ -164,6 +165,8 @@ app.include_router(health.router)
 app.include_router(health.router, prefix="/api/v1")
 
 include_api_router(sanctions.router)
+
+include_api_router(centralized_ai.router)
 
 app.include_router(excuse_letters.router)
 app.include_router(excuse_letters.router, prefix="/api/v1")
