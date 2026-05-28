@@ -334,7 +334,7 @@ class FaceRecognitionService:
             return self._normalize_embedding(array)
         return np.asarray(array, dtype=np.float32)
 
-    def _evaluate_liveness(self, face_crop: FaceCrop, *, threshold_override: float | None = None) -> LivenessResult:
+    def _evaluate_liveness(self, face_crop: FaceCrop) -> LivenessResult:
         ready, reason = self.anti_spoof_status()
         if not ready and self.settings.allow_liveness_bypass_when_model_missing:
             return LivenessResult(
@@ -347,8 +347,7 @@ class FaceRecognitionService:
             frame_rgb=face_crop.frame_rgb,
             location=face_crop.location,
         )
-        effective_threshold = threshold_override if threshold_override is not None else self.settings.liveness_threshold
-        label = "Real" if float(score) >= effective_threshold else "Fake"
+        label = "Real" if self.liveness_checker.is_real(score) else "Fake"
         return LivenessResult(label=label, score=score, reason=reason if label == "Bypassed" else None)
 
     def check_liveness(self, rgb_image: np.ndarray, *, mode: str = "single") -> LivenessResult:
@@ -373,7 +372,6 @@ class FaceRecognitionService:
         image_bytes: bytes,
         *,
         enforce_liveness: bool = False,
-        liveness_threshold_override: float | None = None,
         max_faces: int | None = None,
         mode: str = "single",
     ) -> list[DetectedFaceProbe]:
@@ -396,7 +394,7 @@ class FaceRecognitionService:
         probes: list[DetectedFaceProbe] = []
         for index, face_crop in enumerate(face_crops):
             if enforce_liveness:
-                liveness = self._evaluate_liveness(face_crop, threshold_override=liveness_threshold_override)
+                liveness = self._evaluate_liveness(face_crop)
             else:
                 liveness = LivenessResult(
                     label="Bypassed",
@@ -579,25 +577,31 @@ class FaceRecognitionService:
 
 
 def resolve_face_verification_error_message(detail: Any) -> tuple[int, str] | None:
-    """Map low-level verification failures into stable user-facing messages."""
-    normalized_detail = str(detail or "").strip().lower()
-    if not normalized_detail:
+    """Map low-level face extraction failures to stable user-facing messages."""
+    message = ""
+    if isinstance(detail, str):
+        message = detail
+    elif isinstance(detail, dict):
+        raw_message = detail.get("message") or detail.get("detail") or detail.get("reason")
+        message = str(raw_message or "")
+    elif detail is not None:
+        message = str(detail)
+
+    normalized = message.strip().lower()
+    if not normalized:
         return None
 
-    if (
-        "no face detected" in normalized_detail
-        or "exactly one face" in normalized_detail
-        or "unable to compute a face encoding" in normalized_detail
-        or "spoof detected" in normalized_detail
-    ):
+    not_found_markers = (
+        "no face detected",
+        "exactly one face",
+        "must contain exactly one face",
+        "unable to compute a face encoding",
+        "spoof detected",
+        "liveness",
+        "invalid face crop",
+    )
+    if any(marker in normalized for marker in not_found_markers):
         return status.HTTP_400_BAD_REQUEST, "Face not found."
-
-    if (
-        "does not match" in normalized_detail
-        or "face not match" in normalized_detail
-        or "face not matched" in normalized_detail
-    ):
-        return status.HTTP_403_FORBIDDEN, "Face not match."
 
     return None
 

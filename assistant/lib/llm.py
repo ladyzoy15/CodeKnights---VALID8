@@ -55,7 +55,7 @@ AI_API_KEY = AI_API_KEYS[0] if AI_API_KEYS else ""
 
 def _infer_ai_provider() -> str:
     explicit = AI_PROVIDER.strip().lower()
-    if explicit in {"openai", "openai_compatible", "openai-compatible", "compatible"}:
+    if explicit in {"openai", "openai_compatible", "openai-compatible", "compatible", "groq"}:
         return "openai"
     if explicit in {"anthropic", "claude"}:
         return "anthropic"
@@ -64,6 +64,8 @@ def _infer_ai_provider() -> str:
 
     base_url = AI_API_BASE.lower()
     model_name = AI_MODEL.lower()
+    if "groq" in base_url:
+        return "openai"
     if "anthropic" in base_url or model_name.startswith("claude"):
         return "anthropic"
     if "generativelanguage.googleapis.com" in base_url or model_name.startswith("gemini"):
@@ -412,7 +414,10 @@ async def call_openai(messages: List[Dict[str, Any]], tools: Optional[List[Dict[
                 resp = await client.post(endpoint, headers=headers, json=payload)
                 if resp.status_code == 429:
                     last_error = f"429: {resp.text}"
-                    logger.warning(f"OpenAI API key quota exceeded, rotating to next key...")
+                    if "groq" in endpoint.lower():
+                        logger.warning(f"Groq API rate limit exceeded.")
+                    else:
+                        logger.warning(f"OpenAI API key quota exceeded, rotating to next key...")
                     continue
                 if resp.status_code >= 400:
                     retry_max_tokens = _suggest_retry_max_tokens(resp.text, AI_MAX_TOKENS)
@@ -521,7 +526,10 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
                                         break
                                     try:
                                         chunk = json.loads(data_str)
-                                        delta = chunk["choices"][0].get("delta", {})
+                                        choices = chunk.get("choices") or []
+                                        if not choices:
+                                            continue
+                                        delta = choices[0].get("delta", {})
                                         content = delta.get("content")
                                         if content:
                                             full_content += content
@@ -550,7 +558,10 @@ async def call_llm_stream(messages: List[Dict[str, Any]], tools: Optional[List[D
                                 break
                             try:
                                 chunk = json.loads(data_str)
-                                delta = chunk["choices"][0].get("delta", {})
+                                choices = chunk.get("choices") or []
+                                if not choices:
+                                    continue
+                                delta = choices[0].get("delta", {})
                                 content = delta.get("content")
                                 if content:
                                     full_content += content

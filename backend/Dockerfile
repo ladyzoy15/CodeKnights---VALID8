@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV INSIGHTFACE_HOME=/app/.insightface
 
 WORKDIR /app
 
@@ -20,6 +21,7 @@ COPY requirements.txt .
 RUN pip install --default-timeout=100 --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN mkdir -p /app/.insightface/models
 
 RUN useradd --create-home --no-log-init appuser && chown -R appuser:appuser /app
 USER appuser

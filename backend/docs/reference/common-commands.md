@@ -123,7 +123,7 @@ npm run build   # production build
 Create databases (first time only):
 
 ```bash
-psql -U postgres -c "CREATE DATABASE fastapi_db;"
+psql -U postgres -c "CREATE DATABASE codeknightsdb;"
 psql -U postgres -c "CREATE DATABASE ai_assistant;"
 ```
 

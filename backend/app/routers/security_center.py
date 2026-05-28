@@ -54,6 +54,10 @@ from app.services.user_preference_service import get_or_create_user_security_set
 from app.services.face_recognition import FaceRecognitionService
 from app.services.face_recognition import resolve_face_verification_error_message
 
+from app.services.school_feature_flags import (
+    privileged_face_verification_enabled_for_school,
+)
+
 router = APIRouter(prefix="/auth/security", tags=["security"])
 face_service = FaceRecognitionService()
 FACE_STATUS_TIMEOUT_SECONDS = 1.5
@@ -271,6 +275,7 @@ def get_face_status(
 ):
     privileged_face_verification_enabled = (
         get_settings().privileged_face_verification_enabled
+        and privileged_face_verification_enabled_for_school(db, school_id=getattr(current_user, "school_id", None))
     )
     security_setting = get_or_create_user_security_setting(db, user=current_user)
     try:

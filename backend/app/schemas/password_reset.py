@@ -33,3 +33,8 @@ class PasswordResetApprovalResponse(BaseModel):
     status: str
     resolved_at: datetime
     message: str
+
+
+class ResetPasswordConfirm(BaseModel):
+    token: str
+    new_password: str

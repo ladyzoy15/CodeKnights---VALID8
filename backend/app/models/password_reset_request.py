@@ -15,6 +15,8 @@ class PasswordResetRequest(Base):
     school_id = Column(BigInteger, ForeignKey("schools.id", ondelete="CASCADE"), nullable=False, index=True)
     requested_email = Column(Text, nullable=False, index=True)
     status = Column(Text, nullable=False, default="pending", index=True)
+    token_hash = Column(Text, nullable=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
     requested_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, index=True)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     reviewed_by_user_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)

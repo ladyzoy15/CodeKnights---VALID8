@@ -32,13 +32,13 @@ pytest tests/test_import_lifecycle.py -v
 
 ### Prerequisites
 
-- PostgreSQL running locally with `fastapi_db` database created
+- PostgreSQL running locally with `codeknightsdb` database created
 - All migrations applied: `alembic upgrade heads`
 - Redis running locally (used by Celery in production; not required for tests since eager mode is enabled)
 - `backend/.env` with at minimum:
 
 ```env
-DATABASE_URL=postgresql://postgres:<password>@127.0.0.1:5432/fastapi_db
+DATABASE_URL=postgresql://postgres:<password>@127.0.0.1:5432/codeknightsdb
 SECRET_KEY=any-string-for-local-testing
 RATE_LIMIT_ENABLED=false
 FACE_SCAN_BYPASS_ALL=true
@@ -47,13 +47,13 @@ EMAIL_TRANSPORT=disabled
 CELERY_TASK_ALWAYS_EAGER=true
 ```
 
-The test suite seeds its own test data (school, users, roles) on startup and cleans it up after the session. Your existing data is not affected as long as you use a dedicated `fastapi_db` database for testing.
+The test suite seeds its own test data (school, users, roles) on startup and cleans it up after the session. Your existing data is not affected as long as you use a dedicated `codeknightsdb` database for testing.
 
 If tests fail due to leftover data from a previous run, reset the database:
 
 ```powershell
-psql -U postgres -c "DROP DATABASE fastapi_db;"
-psql -U postgres -c "CREATE DATABASE fastapi_db;"
+psql -U postgres -c "DROP DATABASE codeknightsdb;"
+psql -U postgres -c "CREATE DATABASE codeknightsdb;"
 alembic upgrade heads
 ```
 
@@ -122,7 +122,7 @@ GitHub Actions runs the suite on every push and PR to `integrate/pilot-merge` us
 
 The CI job:
 1. Spins up Postgres (`pgvector`) and Redis
-2. Creates `fastapi_db` and `ai_assistant` databases
+2. Creates `codeknightsdb` and `ai_assistant` databases
 3. Runs `alembic upgrade heads`
 4. Runs `pytest` with `CELERY_TASK_ALWAYS_EAGER=true`
 
@@ -134,5 +134,5 @@ No real credentials are used. The AI API key is never called during backend test
 - **No mocking** â€” tests hit the real FastAPI app through Starlette's `TestClient` (in-process ASGI, no network). This catches schema mismatches, missing columns, and broken queries that unit tests would miss.
 - **Auth** â€” tokens are obtained via the real `/login` endpoint using seeded credentials. No JWT is manually crafted.
 - **Shared session** â€” the `db_session` fixture is `scope="session"` and shared across all tests. Tests that need to see rows committed by internal service sessions (e.g. import) must use a fresh `SessionLocal()` context, not `db_session`.
-- **Persistent local DB** â€” unlike CI (which starts fresh every run), your local `fastapi_db` persists between runs. Tests that insert rows with fixed identifiers (e.g. session JTIs) use `uuid4()` to avoid unique constraint violations on re-runs.
+- **Persistent local DB** â€” unlike CI (which starts fresh every run), your local `codeknightsdb` persists between runs. Tests that insert rows with fixed identifiers (e.g. session JTIs) use `uuid4()` to avoid unique constraint violations on re-runs.
 

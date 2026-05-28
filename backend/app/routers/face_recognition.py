@@ -8,21 +8,19 @@ from __future__ import annotations
 from datetime import datetime
 import math
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
-from app.core.rate_limit import build_face_rule, enforce_rate_limit, user_identity
 from app.core.security import (
     get_current_application_user,
     get_current_student_user,
     get_school_id_or_403,
     has_any_role,
 )
-from app.core.timezones import utc_now
 from app.core.dependencies import get_db
 from app.models.attendance import Attendance as AttendanceModel
 from app.models.event import Event as EventModel, EventStatus as ModelEventStatus
+from app.models.governance_hierarchy import PermissionCode
 from app.models.user import StudentProfile, User as UserModel
 from app.schemas.event import EventLocationVerificationResponse
 from app.schemas.face_recognition import (
@@ -33,17 +31,15 @@ from app.schemas.face_recognition import (
     FaceVerificationResponse,
 )
 from app.services.attendance_face_scan import (
+    get_registered_face_candidates_for_event,
     get_registered_face_candidates_for_school,
-    resolve_school_face_match_with_pgvector,
     student_display_name,
-    sync_student_face_embedding_index,
 )
 from app.services.event_attendance_service import get_event_participant_student_ids
 from app.services.face_recognition import (
     FaceRecognitionService,
     LivenessResult,
     is_face_scan_bypass_enabled_for_user,
-    resolve_face_verification_error_message,
 )
 from app.services.attendance_status import (
     finalize_completed_attendance_status,
@@ -55,32 +51,15 @@ from app.services.event_geolocation import (
 from app.services.notification_center_service import send_attendance_notification
 from app.services.event_time_status import get_attendance_decision, get_sign_out_decision
 from app.services.event_workflow_status import sync_event_workflow_status
+from app.services import governance_hierarchy_service
 
+
+from app.services.school_feature_flags import (
+    attendance_face_recognition_enabled_for_school,
+)
 
 router = APIRouter(prefix="/face", tags=["face-recognition"])
 face_service = FaceRecognitionService()
-
-
-def _enforce_face_endpoint_rate_limit(request: Request, current_user: UserModel, action: str) -> None:
-    enforce_rate_limit(build_face_rule(), f"{user_identity(current_user)}:{action}", request=request)
-
-
-def _validate_face_upload(file: UploadFile, image_bytes: bytes) -> None:
-    settings = get_settings()
-    content_type = (file.content_type or "").strip().lower()
-    if content_type and not content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Face uploads must use an image content type.",
-        )
-    max_size_bytes = settings.face_image_max_size_mb * 1024 * 1024
-    if len(image_bytes) <= 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded image is empty.")
-    if len(image_bytes) > max_size_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Face image exceeds {settings.face_image_max_size_mb} MB.",
-        )
 
 
 def _require_student_profile(current_user: UserModel) -> StudentProfile:
@@ -184,12 +163,10 @@ def _ensure_face_runtime_ready(mode: str, *, context: str) -> None:
 @router.post("/register", response_model=FaceRegistrationResponse)
 def register_face_from_base64(
     payload: Base64ImageRequest,
-    request: Request,
     current_user: UserModel = Depends(get_current_student_user),
     db: Session = Depends(get_db),
 ):
     """Register a student's reference face from a base64 camera capture."""
-    _enforce_face_endpoint_rate_limit(request, current_user, "face-register")
     _ensure_face_runtime_ready(mode="single", context="face_register_base64")
     profile = _require_student_profile(current_user)
     image_bytes = face_service.decode_base64_image(payload.image_base64)
@@ -206,8 +183,6 @@ def register_face_from_base64(
     )
     profile.registration_complete = True
     db.commit()
-    sync_student_face_embedding_index(db, profile)
-    db.commit()
     db.refresh(profile)
 
     return FaceRegistrationResponse(
@@ -219,17 +194,14 @@ def register_face_from_base64(
 
 @router.post("/register-upload", response_model=FaceRegistrationResponse)
 async def register_face_from_upload(
-    request: Request,
     file: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_student_user),
     db: Session = Depends(get_db),
 ):
     """Register a student's reference face from an uploaded image file."""
-    _enforce_face_endpoint_rate_limit(request, current_user, "face-register-upload")
+    _ensure_face_runtime_ready(mode="single", context="face_register_upload")
     profile = _require_student_profile(current_user)
     image_bytes = await file.read()
-    _validate_face_upload(file, image_bytes)
-    _ensure_face_runtime_ready(mode="single", context="face_register_upload")
     encoding, liveness = face_service.extract_encoding_from_bytes(
         image_bytes,
         require_single_face=True,
@@ -243,8 +215,6 @@ async def register_face_from_upload(
     )
     profile.registration_complete = True
     db.commit()
-    sync_student_face_embedding_index(db, profile)
-    db.commit()
     db.refresh(profile)
 
     return FaceRegistrationResponse(
@@ -257,12 +227,10 @@ async def register_face_from_upload(
 @router.post("/verify", response_model=FaceVerificationResponse)
 def verify_face_against_registered_students(
     payload: Base64ImageRequest,
-    request: Request,
     current_user: UserModel = Depends(get_current_application_user),
     db: Session = Depends(get_db),
 ):
     """Match one probe image against all registered student faces in the school."""
-    _enforce_face_endpoint_rate_limit(request, current_user, "face-verify")
     _ensure_face_runtime_ready(mode="single", context="face_verify")
     school_id = get_school_id_or_403(current_user)
     image_bytes = face_service.decode_base64_image(payload.image_base64)
@@ -273,30 +241,18 @@ def verify_face_against_registered_students(
         mode="single",
     )
 
-    vector_match = resolve_school_face_match_with_pgvector(
-        db,
-        face_service=face_service,
-        encoding=encoding,
-        school_id=school_id,
+    candidates = get_registered_face_candidates_for_school(db, school_id)
+    if not candidates:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No registered student faces found in this school.",
+        )
+
+    match = face_service.find_best_match(
+        encoding,
+        [scoped_candidate.candidate for scoped_candidate in candidates],
         mode="single",
     )
-    candidates = None
-    student = None
-    if vector_match is not None:
-        student, match = vector_match
-    else:
-        candidates = get_registered_face_candidates_for_school(db, school_id)
-        if not candidates:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No registered student faces found in this school.",
-            )
-
-        match = face_service.find_best_match(
-            encoding,
-            [scoped_candidate.candidate for scoped_candidate in candidates],
-            mode="single",
-        )
     if not match.matched or match.candidate is None:
         return FaceVerificationResponse(
             match_found=False,
@@ -306,12 +262,11 @@ def verify_face_against_registered_students(
             liveness=liveness.to_dict(),
         )
 
-    if student is None:
-        student_lookup = {
-            scoped_candidate.candidate.identifier: scoped_candidate.student
-            for scoped_candidate in candidates or []
-        }
-        student = student_lookup.get(match.candidate.identifier)
+    student_lookup = {
+        scoped_candidate.candidate.identifier: scoped_candidate.student
+        for scoped_candidate in candidates
+    }
+    student = student_lookup.get(match.candidate.identifier)
     if student is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -332,36 +287,54 @@ def verify_face_against_registered_students(
 @router.post("/face-scan-with-recognition", response_model=FaceAttendanceScanResponse)
 def record_attendance_from_face_scan(
     payload: FaceAttendanceScanRequest,
-    request: Request,
     current_user: UserModel = Depends(get_current_application_user),
     db: Session = Depends(get_db),
 ):
-    """Run a student self-scan attendance flow, bound to the signed-in student account."""
-    _enforce_face_endpoint_rate_limit(request, current_user, "face-attendance")
-    actor_is_student_self_scan = has_any_role(current_user, ["student"])
-    if not actor_is_student_self_scan:
+    """Run the full face-scan attendance flow, including scope, location, and sign-in/out rules."""
+    actor_is_staff_scan = has_any_role(
+        current_user,
+        ["admin", "campus_admin"],
+    )
+    if not actor_is_staff_scan and governance_hierarchy_service.get_user_governance_unit_types(
+        db,
+        current_user=current_user,
+    ):
+        governance_hierarchy_service.ensure_governance_permission(
+            db,
+            current_user=current_user,
+            permission_code=PermissionCode.MANAGE_ATTENDANCE,
+            detail=(
+                "This governance account has no attendance features yet. "
+                "Campus Admin must assign manage_attendance to the governance member."
+            ),
+        )
+        actor_is_staff_scan = True
+    actor_is_student_self_scan = (
+        not actor_is_staff_scan and has_any_role(current_user, ["student"])
+    )
+
+    if not actor_is_staff_scan and not actor_is_student_self_scan:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Student self-scan access is required for this endpoint. "
-                "Use Gather public attendance endpoints for multi-person scans."
-            ),
+            detail="Student, governance attendance operator, or admin access is required for face attendance scans.",
         )
 
     school_id = get_school_id_or_403(current_user)
+    if not attendance_face_recognition_enabled_for_school(db, school_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Face recognition for attendance is disabled for this school.",
+        )
+
     event = _get_school_event_or_404(db, payload.event_id, school_id)
-    current_student_profile = _require_student_profile(current_user)
+    current_student_profile = (
+        _require_student_profile(current_user) if actor_is_student_self_scan else None
+    )
     bypass_face_scan = (
         actor_is_student_self_scan
         and current_student_profile is not None
         and is_face_scan_bypass_enabled_for_user(current_user)
     )
-    if actor_is_student_self_scan and current_student_profile is not None:
-        if current_student_profile.id not in set(get_event_participant_student_ids(db, event)):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="The signed-in student is outside this event scope.",
-            )
     if (
         actor_is_student_self_scan
         and current_student_profile is not None
@@ -388,6 +361,13 @@ def record_attendance_from_face_scan(
         )
 
     if bypass_face_scan:
+        participant_ids = set(get_event_participant_student_ids(db, event))
+        if current_student_profile.id not in participant_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="The signed-in student is outside this event scope.",
+            )
+
         student = current_student_profile
         liveness = LivenessResult(
             label="Bypassed",
@@ -410,51 +390,56 @@ def record_attendance_from_face_scan(
 
         _ensure_face_runtime_ready(mode="single", context="face_attendance_scan")
         image_bytes = face_service.decode_base64_image(payload.image_base64)
-        try:
-            encoding, liveness = face_service.extract_encoding_from_bytes(
-                image_bytes,
-                require_single_face=True,
-                enforce_liveness=True,
-                mode="single",
-            )
-        except HTTPException as exc:
-            normalized_error = resolve_face_verification_error_message(exc.detail)
-            if normalized_error is None:
-                raise
-            status_code, message = normalized_error
-            raise HTTPException(status_code=status_code, detail=message) from exc
-        try:
-            reference_encoding = face_service.encoding_from_bytes(
-                bytes(current_student_profile.face_encoding),
-                dtype=current_student_profile.embedding_dtype,
-                dimension=current_student_profile.embedding_dimension,
-                normalized=bool(current_student_profile.embedding_normalized),
-            )
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=(
-                    "Re-register your student face with the current ArcFace enrollment "
-                    "before using face attendance."
-                ),
-            ) from exc
+        encoding, liveness = face_service.extract_encoding_from_bytes(
+            image_bytes,
+            require_single_face=True,
+            enforce_liveness=True,
+            mode="single",
+        )
 
-        match = face_service.compare_encodings(
+        candidates = get_registered_face_candidates_for_event(db, event)
+        if not candidates:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No registered student faces found in this event scope.",
+            )
+
+        match = face_service.find_best_match(
             encoding,
-            reference_encoding,
+            [scoped_candidate.candidate for scoped_candidate in candidates],
             threshold=payload.threshold,
             mode="single",
         )
-        if not match.matched:
+        if not match.matched or match.candidate is None:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Face not match.",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No matching student found.",
             )
 
-        student = current_student_profile
+        student_lookup = {
+            scoped_candidate.candidate.identifier: scoped_candidate.student
+            for scoped_candidate in candidates
+        }
+        student = student_lookup.get(match.candidate.identifier)
+        if student is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Matched student could not be resolved.",
+            )
+
         match_distance = round(match.distance, 6)
         match_confidence = round(match.confidence, 6)
         match_threshold = round(match.threshold, 6)
+
+    if (
+        actor_is_student_self_scan
+        and current_student_profile is not None
+        and student.id != current_student_profile.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The live face does not match the currently signed-in student account.",
+        )
 
     geo_response = verify_event_geolocation_for_attendance(
         event,
@@ -463,7 +448,7 @@ def record_attendance_from_face_scan(
         accuracy_m=payload.accuracy_m,
     )
 
-    scanned_at = utc_now()
+    scanned_at = datetime.utcnow()
     if (
         geo_response is not None
         and payload.latitude is not None

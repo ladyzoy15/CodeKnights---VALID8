@@ -38,6 +38,7 @@ from app.schemas.password_reset import (
     ForgotPasswordRequestResponse,
     PasswordResetApprovalResponse,
     PasswordResetRequestItem,
+    ResetPasswordConfirm,
 )
 from app.models.password_reset_request import PasswordResetRequest
 from app.models.school import School
@@ -53,6 +54,7 @@ from app.services.security_service import (
     record_login_history,
 )
 from app.utils.passwords import generate_secure_password
+from app.utils.security_utils import generate_reset_token, hash_token, get_token_expiry
 
 router = APIRouter(tags=["authentication"])
 FORGOT_PASSWORD_GENERIC_MESSAGE = (
@@ -353,6 +355,49 @@ def request_forgot_password(
     if not _can_submit_public_password_reset_request(target_user):
         return ForgotPasswordRequestResponse(message=FORGOT_PASSWORD_GENERIC_MESSAGE)
 
+    # 1. Determine if this user requires manual administrative approval.
+    requires_approval = _requires_platform_admin_password_reset_approval(target_user)
+
+    if not requires_approval:
+        # AUTOMATIC RESET FLOW for Students
+        reset_token = generate_reset_token()
+        token_hash = hash_token(reset_token)
+        expires_at = get_token_expiry(hours=2)
+
+        # Record as an auto-approved request
+        db.add(
+            PasswordResetRequest(
+                user_id=target_user.id,
+                school_id=target_user.school_id,
+                requested_email=target_user.email.lower(),
+                status="approved",
+                token_hash=token_hash,
+                expires_at=expires_at,
+                resolved_at=utc_now(),
+                reviewed_by_user_id=None,  # System auto-approved
+            )
+        )
+
+        school = db.query(School).filter(School.id == target_user.school_id).first()
+        system_name = (school.school_name or school.name) if school else None
+
+        try:
+            send_password_reset_email(
+                recipient_email=target_user.email,
+                reset_token=reset_token,
+                first_name=target_user.first_name,
+                system_name=system_name,
+            )
+        except EmailDeliveryError as exc:
+            db.rollback()
+            raise HTTPException(status_code=502, detail=f"Failed to send password reset email: {exc}") from exc
+
+        db.commit()
+        return ForgotPasswordRequestResponse(
+            message="Your password reset has been processed. Please check your email for instructions to reset your password."
+        )
+
+    # MANUAL APPROVAL FLOW for Admins/Campus Admins
     existing_pending = (
         db.query(PasswordResetRequest)
         .filter(
@@ -375,6 +420,42 @@ def request_forgot_password(
     db.commit()
 
     return ForgotPasswordRequestResponse(message=FORGOT_PASSWORD_GENERIC_MESSAGE)
+
+
+@router.post("/auth/reset-password", status_code=204)
+def confirm_password_reset(
+    payload: ResetPasswordConfirm,
+    db: Session = Depends(get_db),
+):
+    token_hash = hash_token(payload.token)
+    
+    request_item = (
+        db.query(PasswordResetRequest)
+        .filter(
+            PasswordResetRequest.token_hash == token_hash,
+            PasswordResetRequest.status == "approved",
+            PasswordResetRequest.expires_at > utc_now(),
+        )
+        .first()
+    )
+    
+    if not request_item:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    target_user = db.query(User).filter(User.id == request_item.user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    target_user.set_password(payload.new_password)
+    target_user.must_change_password = False
+    target_user.should_prompt_password_change = False
+    
+    request_item.status = "completed"
+    request_item.token_hash = None
+    request_item.resolved_at = utc_now()
+    
+    db.commit()
+    return None
 
 
 @router.get("/auth/password-reset-requests", response_model=list[PasswordResetRequestItem])
@@ -460,12 +541,13 @@ def approve_password_reset_request(
         if current_user.id == target_user.id:
             raise HTTPException(status_code=403, detail="Campus Admin cannot approve their own reset request.")
 
-    temporary_password = generate_secure_password(min_length=10, max_length=14)
-    target_user.set_password(temporary_password)
-    target_user.must_change_password = must_change_password_for_temporary_reset()
-    target_user.should_prompt_password_change = False
+    reset_token = generate_reset_token()
+    token_hash = hash_token(reset_token)
+    expires_at = get_token_expiry(hours=2)
 
     request_item.status = "approved"
+    request_item.token_hash = token_hash
+    request_item.expires_at = expires_at
     request_item.resolved_at = utc_now()
     request_item.reviewed_by_user_id = current_user.id
 
@@ -475,7 +557,7 @@ def approve_password_reset_request(
     try:
         send_password_reset_email(
             recipient_email=target_user.email,
-            temporary_password=temporary_password,
+            reset_token=reset_token,
             first_name=target_user.first_name,
             system_name=system_name,
         )
@@ -484,7 +566,7 @@ def approve_password_reset_request(
                 db,
                 user=target_user,
                 subject="Password Reset Approved",
-                message="Your password reset request was approved. Use your temporary password to log in.",
+                message="Your password reset request was approved. Please check your email for the reset link.",
                 metadata_json={"event": "password_reset_approved", "request_id": request_item.id},
             )
         except Exception:
@@ -500,6 +582,6 @@ def approve_password_reset_request(
         user_id=target_user.id,
         status=request_item.status,
         resolved_at=request_item.resolved_at or utc_now(),
-        message="Password reset approved and temporary password emailed.",
+        message="Password reset approved and reset link emailed.",
     )
 

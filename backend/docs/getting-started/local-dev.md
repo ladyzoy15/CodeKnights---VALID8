@@ -27,19 +27,19 @@ This runs each service directly on your machine without Docker. Useful for faste
 Connect to your local Postgres and run:
 
 ```sql
-CREATE DATABASE fastapi_db;
+CREATE DATABASE codeknightsdb;
 CREATE DATABASE ai_assistant;
 ```
 
 **Linux:**
 ```bash
-psql -U postgres -c "CREATE DATABASE fastapi_db;"
+psql -U postgres -c "CREATE DATABASE codeknightsdb;"
 psql -U postgres -c "CREATE DATABASE ai_assistant;"
 ```
 
 **Windows (PowerShell):**
 ```powershell
-psql -U postgres -c "CREATE DATABASE fastapi_db;"
+psql -U postgres -c "CREATE DATABASE codeknightsdb;"
 psql -U postgres -c "CREATE DATABASE ai_assistant;"
 ```
 
@@ -65,7 +65,7 @@ AI_API_KEY=your-api-key
 AI_API_BASE=https://api.openai.com/v1
 AI_MODEL=gpt-4o
 
-DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/fastapi_db
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/codeknightsdb
 ASSISTANT_DB_URL=postgresql://postgres:postgres@127.0.0.1:5432/ai_assistant
 CELERY_BROKER_URL=redis://127.0.0.1:6379/0
 CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0

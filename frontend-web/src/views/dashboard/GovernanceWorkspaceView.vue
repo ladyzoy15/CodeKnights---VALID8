@@ -1218,6 +1218,59 @@
 
     <Transition name="governance-sheet">
       <div
+        v-if="isAnnouncementSuccessSheetOpen"
+        class="governance-sheet__backdrop"
+        @click.self="closeAnnouncementSuccessSheet"
+      >
+        <section
+          class="governance-sheet"
+          role="dialog"
+          aria-modal="true"
+        >
+          <header class="governance-sheet__header">
+            <div class="governance-sheet__copy">
+              <p class="governance-sheet__eyebrow">Success</p>
+              <h2 class="governance-sheet__title">Announcement Published</h2>
+            </div>
+            <button
+              type="button"
+              class="governance-sheet__close"
+              @click="closeAnnouncementSuccessSheet"
+            >
+              <Plus :size="18" :stroke-width="2.1" style="transform: rotate(45deg);" />
+            </button>
+          </header>
+
+          <div class="governance-sheet__body">
+            <div style="text-align: center; padding: 20px 0;">
+              <div style="width: 64px; height: 64px; border-radius: 50%; background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-primary); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                <Megaphone :size="32" />
+              </div>
+              <p style="font-size: 16px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 8px;">
+                {{ publishedAnnouncementSummary?.title }}
+              </p>
+              <p style="font-size: 14px; color: var(--color-text-muted);">
+                Your announcement has been successfully published to the {{ activeUnitName }} feed.
+              </p>
+            </div>
+          </div>
+
+          <div class="governance-sheet__actions">
+            <button
+              type="button"
+              class="governance-sheet__primary"
+              style="width: 100%;"
+              @click="closeAnnouncementSuccessSheet"
+            >
+              Done
+            </button>
+          </div>
+        </section>
+      </div>
+    </Transition>
+
+    <Transition name="governance-sheet">
+      <div
         v-if="selectedAnnouncement"
         class="governance-sheet__backdrop"
         @click.self="closeAnnouncementDetail"
@@ -1449,6 +1502,8 @@ const campusFeedError = ref('')
 const selectedAnnouncement = ref(null)
 const isAnnouncementComposerOpen = ref(false)
 const isAnnouncementComposerSaving = ref(false)
+const isAnnouncementSuccessSheetOpen = ref(false)
+const publishedAnnouncementSummary = ref(null)
 const announcementComposerError = ref('')
 const announcementDraft = ref(createAnnouncementDraft())
 const isEventEditorOpen = ref(false)
@@ -2840,6 +2895,11 @@ function closeAnnouncementComposer() {
   announcementComposerError.value = ''
 }
 
+function closeAnnouncementSuccessSheet() {
+  isAnnouncementSuccessSheetOpen.value = false
+  publishedAnnouncementSummary.value = null
+}
+
 function openEventEditor() {
   eventEditorError.value = ''
   editingEvent.value = null
@@ -2865,18 +2925,22 @@ function editManagedEvent(event = null) {
 function handleSheetActionSelect(action = null) {
   if (!action || action.disabled) return
 
-  if (isEventsSection.value) {
+  if (action.key === 'event') {
     closeCreateSheet()
-
-    if (action.key === 'event') {
-      openEventEditor()
-      return
+    if (!isEventsSection.value) {
+      openSection('events')
     }
+    openEventEditor()
+    return
+  }
 
-    if (action.key === 'announcement') {
-      openAnnouncementComposer()
-      return
+  if (action.key === 'announcement') {
+    closeCreateSheet()
+    if (!isEventsSection.value) {
+      openSection('events')
     }
+    openAnnouncementComposer()
+    return
   }
 
   handleCreateAction(action)
@@ -3028,8 +3092,8 @@ async function handleAnnouncementComposerSave() {
   }
 
   const activeGovernanceUnitId = Number(activeUnit.value?.id || activeUnit.value?.governance_unit_id)
-  if (!Number.isFinite(activeGovernanceUnitId)) {
-    announcementComposerError.value = 'The active governance unit is unavailable.'
+  if (!Number.isFinite(activeGovernanceUnitId) || activeGovernanceUnitId === 0) {
+    announcementComposerError.value = 'Please select a specific governance unit (e.g. SSG) to publish an announcement.'
     return
   }
 
@@ -3044,15 +3108,20 @@ async function handleAnnouncementComposerSave() {
       payload,
     )
 
+    const result = createdAnnouncement || {
+      id: resolveNextLocalId(announcements.value),
+      ...payload,
+      created_at: new Date().toISOString(),
+    }
+
     announcements.value = sortAnnouncementFeed([
-      createdAnnouncement || {
-        id: resolveNextLocalId(announcements.value),
-        ...payload,
-        created_at: new Date().toISOString(),
-      },
+      result,
       ...announcements.value,
     ])
+    
+    publishedAnnouncementSummary.value = result
     closeAnnouncementComposer()
+    isAnnouncementSuccessSheetOpen.value = true
   } catch (error) {
     announcementComposerError.value = error?.message || 'Unable to publish the announcement.'
   } finally {

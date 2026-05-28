@@ -12,10 +12,10 @@ from pathlib import Path
 logger = logging.getLogger("assistant.db")
 
 # Load environment variables
-assistant_root = Path(__file__).resolve().parent.parent
-project_root = assistant_root.parent
-load_dotenv(assistant_root / ".env")
-load_dotenv(project_root / ".env")
+# assistant_root = Path(__file__).resolve().parent.parent
+# project_root = assistant_root.parent
+# load_dotenv(assistant_root / ".env")
+# load_dotenv(project_root / ".env")
 
 # Database URLs
 APP_DATABASE_URL = os.getenv("APP_DATABASE_URL") or os.getenv("TENANT_DATABASE_URL") or os.getenv("DATABASE_URL")
@@ -69,7 +69,7 @@ class DailyUsage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
-# Tenant application engine (The data Aura actually queries)
+# Tenant application engine (The data NEXUS actually queries)
 app_engine = None
 AppSessionLocal = None
 if APP_DATABASE_URL:

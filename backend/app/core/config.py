@@ -68,6 +68,15 @@ def _as_bool(value: str | None, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _as_float(value: str | None, default: float) -> float:
+    if value is None or not value.strip():
+        return default
+    try:
+        return float(value.strip())
+    except ValueError:
+        return default
+
+
 def _as_int(value: str | None, default: int, field_name: str) -> int:
     if value is None or not value.strip():
         return default
@@ -218,6 +227,9 @@ def get_settings() -> Settings:
     email_delivery_mode = _resolve_email_delivery_mode()
     configured_email_transport = (os.getenv("EMAIL_TRANSPORT") or "disabled").strip().lower()
     local_dev_cors_origins = [
+        "https://nexus-test.coeofjrmsu.com",
+        "http://18.142.190.80",
+        "http://18.142.190.80:5173",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:4173",
@@ -267,7 +279,7 @@ def get_settings() -> Settings:
         rate_limit_enabled = False
 
     return Settings(
-        database_url=os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/fastapi_db"),
+        database_url=os.getenv("DATABASE_URL", "postgresql://postgres:postgres@db:5432/codeknightsdb"),
         db_pool_size=APP_SETTINGS.db_pool_size,
         db_max_overflow=APP_SETTINGS.db_max_overflow,
         db_pool_timeout_seconds=APP_SETTINGS.db_pool_timeout_seconds,
@@ -275,23 +287,53 @@ def get_settings() -> Settings:
         secret_key=os.getenv("SECRET_KEY", "change-this-secret-in-production"),
         jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
         access_token_expire_minutes=APP_SETTINGS.access_token_expire_minutes,
-        face_scan_bypass_all=APP_SETTINGS.face_scan_bypass_all,
+        face_scan_bypass_all=_as_bool(
+            os.getenv("FACE_SCAN_BYPASS_ALL"),
+            APP_SETTINGS.face_scan_bypass_all,
+        ),
         face_scan_bypass_emails=list(APP_SETTINGS.face_scan_bypass_emails),
-        face_threshold_single=APP_SETTINGS.face_threshold_single,
-        face_threshold_group=APP_SETTINGS.face_threshold_group,
-        face_threshold_mfa=APP_SETTINGS.face_threshold_mfa,
+        face_threshold_single=_as_float(
+            os.getenv("FACE_THRESHOLD_SINGLE"),
+            APP_SETTINGS.face_threshold_single,
+        ),
+        face_threshold_group=_as_float(
+            os.getenv("FACE_THRESHOLD_GROUP"),
+            APP_SETTINGS.face_threshold_group,
+        ),
+        face_threshold_mfa=_as_float(
+            os.getenv("FACE_THRESHOLD_MFA"),
+            APP_SETTINGS.face_threshold_mfa,
+        ),
         privileged_face_verification_enabled=_as_bool(
             os.getenv("PRIVILEGED_FACE_VERIFICATION_ENABLED"),
             APP_SETTINGS.privileged_face_verification_enabled,
         ),
-        face_warmup_on_startup=APP_SETTINGS.face_warmup_on_startup,
+        face_warmup_on_startup=_as_bool(
+            os.getenv("FACE_WARMUP_ON_STARTUP"),
+            APP_SETTINGS.face_warmup_on_startup,
+        ),
         face_embedding_dim=APP_SETTINGS.face_embedding_dim,
         face_embedding_dtype=APP_SETTINGS.face_embedding_dtype,
-        liveness_threshold=APP_SETTINGS.liveness_threshold,
-        public_attendance_liveness_threshold=APP_SETTINGS.public_attendance_liveness_threshold,
-        allow_liveness_bypass_when_model_missing=APP_SETTINGS.allow_liveness_bypass_when_model_missing,
-        anti_spoof_scale=APP_SETTINGS.anti_spoof_scale,
-        anti_spoof_model_path=APP_SETTINGS.anti_spoof_model_path,
+        liveness_threshold=_as_float(
+            os.getenv("LIVENESS_THRESHOLD"),
+            APP_SETTINGS.liveness_threshold,
+        ),
+        public_attendance_liveness_threshold=_as_float(
+            os.getenv("PUBLIC_ATTENDANCE_LIVENESS_THRESHOLD"),
+            APP_SETTINGS.public_attendance_liveness_threshold,
+        ),
+        allow_liveness_bypass_when_model_missing=_as_bool(
+            os.getenv("ALLOW_LIVENESS_BYPASS_WHEN_MODEL_MISSING"),
+            APP_SETTINGS.allow_liveness_bypass_when_model_missing,
+        ),
+        anti_spoof_scale=_as_float(
+            os.getenv("ANTI_SPOOF_SCALE"),
+            APP_SETTINGS.anti_spoof_scale,
+        ),
+        anti_spoof_model_path=os.getenv(
+            "ANTI_SPOOF_MODEL_PATH",
+            APP_SETTINGS.anti_spoof_model_path,
+        ).strip(),
         geo_max_allowed_accuracy_m=APP_SETTINGS.geo_max_allowed_accuracy_m,
         geo_max_travel_speed_mps=APP_SETTINGS.geo_max_travel_speed_mps,
         event_status_sync_enabled=APP_SETTINGS.event_status_sync_enabled,
@@ -402,7 +444,7 @@ def get_settings() -> Settings:
         mailjet_api_base_url=APP_SETTINGS.mailjet_api_base_url,
         email_transport=email_transport,
         email_verify_connection_on_startup=APP_SETTINGS.email_verify_connection_on_startup,
-        login_url=os.getenv("LOGIN_URL", "http://localhost:5173"),
+        login_url=os.getenv("LOGIN_URL", "https://nexus-test.coeofjrmsu.com"),
         school_logo_storage_dir=_normalize_storage_path(
             APP_SETTINGS.school_logo_storage_dir,
         ),

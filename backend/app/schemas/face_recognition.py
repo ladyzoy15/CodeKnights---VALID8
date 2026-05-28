@@ -5,25 +5,16 @@ Role: Schema layer. It keeps API payloads clear and typed.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from app.schemas.event import EventLocationVerificationResponse
 
 
 class Base64ImageRequest(BaseModel):
-    image_base64: str = Field(min_length=32, max_length=7_000_000)
-
-
-def _as_utc_datetime(value):
-    """Normalize naive datetimes as UTC so API responses include an explicit offset."""
-    if not isinstance(value, datetime):
-        return value
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+    image_base64: str = Field(min_length=32)
 
 
 class FaceRegistrationResponse(BaseModel):
@@ -66,11 +57,6 @@ class FaceAttendanceScanResponse(BaseModel):
     duration_minutes: Optional[int] = None
     message: Optional[str] = None
 
-    @field_validator("time_in", "time_out", mode="before")
-    @classmethod
-    def normalize_attendance_timestamps(cls, value):
-        return _as_utc_datetime(value)
-
 
 class SecurityFaceStatusResponse(BaseModel):
     user_id: int
@@ -97,18 +83,6 @@ class SecurityFaceStatusResponse(BaseModel):
     anti_spoof_reason: Optional[str] = None
     live_capture_required: bool
 
-    @field_validator(
-        "updated_at",
-        "last_verified_at",
-        "face_runtime_initialized_at",
-        "face_runtime_warmup_started_at",
-        "face_runtime_warmup_finished_at",
-        mode="before",
-    )
-    @classmethod
-    def normalize_status_timestamps(cls, value):
-        return _as_utc_datetime(value)
-
 
 class SecurityFaceReferenceResponse(BaseModel):
     user_id: int
@@ -116,11 +90,6 @@ class SecurityFaceReferenceResponse(BaseModel):
     provider: str
     updated_at: datetime
     liveness: dict[str, object]
-
-    @field_validator("updated_at", mode="before")
-    @classmethod
-    def normalize_reference_timestamp(cls, value):
-        return _as_utc_datetime(value)
 
 
 class SecurityFaceLivenessResponse(BaseModel):
@@ -144,11 +113,6 @@ class SecurityFaceVerificationResponse(BaseModel):
     token_type: Optional[str] = None
     session_id: Optional[str] = None
     face_verification_pending: Optional[bool] = None
-
-    @field_validator("verified_at", mode="before")
-    @classmethod
-    def normalize_verification_timestamp(cls, value):
-        return _as_utc_datetime(value)
 
 
 __all__ = [

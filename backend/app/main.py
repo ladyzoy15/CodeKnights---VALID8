@@ -55,6 +55,10 @@ async def lifespan(_: FastAPI):
         logger.warning(
             "Email delivery startup check failed — continuing without email: %s", exc
         )
+    if settings.face_scan_bypass_all:
+        logger.info("Face scan bypass is enabled; skipping InsightFace warmup.")
+        yield
+        return
     if not settings.face_warmup_on_startup:
         logger.info("InsightFace startup warm-up is disabled by configuration.")
         yield
@@ -117,6 +121,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allowed_origins
     or [
+        "https://nexus-test.coeofjrmsu.com",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:4173",

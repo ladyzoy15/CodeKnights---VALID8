@@ -169,7 +169,7 @@ def sanitize_tool_args(tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
             continue
         cleaned[k] = v
     
-    if tool_name == "mcp_query" or tool_name == "aura-query":
+    if tool_name == "mcp_query" or tool_name == "nexus-query":
         if "count_only" not in cleaned:
             cleaned["count_only"] = False
         if "limit" not in cleaned:

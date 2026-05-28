@@ -479,17 +479,12 @@ async function captureAndRegister() {
     statusMessage.value = 'Registering your face...'
 
     const imageDataUrl = captureVideoFrame()
-    const rawBase64 = imageDataUrl.includes(',') ? imageDataUrl.split(',')[1] : imageDataUrl
     capturedPreview.value = imageDataUrl
 
     stopCamera()
 
     const token = localStorage.getItem('nexus_token')
-    try {
-      await registerStudentFace(apiBaseUrl.value, token, imageDataUrl)
-    } catch {
-      await registerStudentFace(apiBaseUrl.value, token, rawBase64)
-    }
+    await registerStudentFace(apiBaseUrl.value, token, imageDataUrl)
 
     patchStoredAuthMeta({
       faceReferenceEnrolled: true,

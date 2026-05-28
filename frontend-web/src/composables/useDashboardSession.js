@@ -727,6 +727,11 @@ export function sessionNeedsFaceRegistration() {
     const isStudentSession = Boolean(state.user?.student_profile) || roleNames.includes('student')
     if (!isStudentSession) return false
 
+    // Check if the school actually requires face registration for students.
+    // Default to true (required) if settings are missing to maintain legacy security.
+    const isRegistrationRequired = state.schoolSettings?.first_time_face_registration_required !== false
+    if (!isRegistrationRequired) return false
+
     return !resolveStudentFaceRegistered(state.user, getStoredAuthMeta(), state.faceStatus)
 }
 

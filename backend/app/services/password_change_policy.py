@@ -31,20 +31,20 @@ def should_prompt_password_change_for_temporary_reset() -> bool:
 def get_welcome_email_password_notice(*, password_is_temporary: bool = True) -> str:
     if password_is_temporary and must_change_password_for_new_account():
         return (
-            "IMPORTANT:\n"
-            "For security reasons, this is a temporary password.\n"
-            "You are required to change your password immediately after your first login.\n\n"
+            "SECURITY NOTICE:\n"
+            "This account has been issued a temporary password for initial access.\n"
+            "For security purposes, you are required to change your password immediately upon your first login.\n\n"
         )
 
     if password_is_temporary:
         return (
-            "IMPORTANT:\n"
-            "For security reasons, this is a temporary password.\n"
-            "You can keep using it after login, but changing it from your account settings is recommended.\n\n"
+            "SECURITY NOTICE:\n"
+            "This account has been issued a temporary password.\n"
+            "While you may continue to use this password, we strongly recommend updating it via your account settings to ensure the continued security of your profile.\n\n"
         )
 
     return (
-        "IMPORTANT:\n"
-        "Keep this password private.\n"
-        "You can change it anytime from your account settings if you want a new one.\n\n"
+        "SECURITY NOTICE:\n"
+        "Please maintain the confidentiality of your login credentials.\n"
+        "You may update your password at any time through your account security settings.\n\n"
     )

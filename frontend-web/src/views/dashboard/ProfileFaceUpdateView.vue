@@ -1,113 +1,162 @@
 <template>
   <div class="face-update-page">
     <main class="face-update-shell">
+      <!-- ── Step 1: Password Confirmation ───────────────────────────── -->
       <section v-if="step === 'password'" class="face-update-auth dashboard-enter dashboard-enter--1">
-        <h1 class="face-update-auth__title">Update Face ID</h1>
-        <p class="face-update-auth__copy">
-          Confirm your password before scanning a new face reference for this account.
-        </p>
-
-        <form class="face-update-form" @submit.prevent="handlePasswordSubmit">
-          <label class="face-update-field">
-            <input
-              v-model="currentPassword"
-              class="face-update-input"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="Current Password"
-              autocomplete="current-password"
-              :disabled="isVerifyingPassword"
-            >
-            <button
-              type="button"
-              class="face-update-visibility"
-              :aria-label="showPassword ? 'Hide password' : 'Show password'"
-              @click="showPassword = !showPassword"
-            >
-              <component :is="showPassword ? EyeOff : Eye" :size="18" />
-            </button>
-          </label>
-
-          <p v-if="passwordError" class="face-update-feedback face-update-feedback--error">
-            {{ passwordError }}
+        <div class="auth-card">
+          <div class="auth-icon-wrap">
+            <ShieldCheck :size="48" stroke-width="1.5" />
+          </div>
+          <h1 class="face-update-auth__title">Security Check</h1>
+          <p class="face-update-auth__copy">
+            Please confirm your password to update your Face ID reference.
           </p>
 
-          <div class="face-update-actions">
-            <SecurityActionPill
-              :icon="ArrowRight"
-              label="Continue"
-              type="submit"
-              :loading="isVerifyingPassword"
-              :disabled="isVerifyingPassword"
-              :full-width="true"
-            />
+          <form class="face-update-form" @submit.prevent="handlePasswordSubmit">
+            <label class="face-update-field">
+              <input
+                v-model="currentPassword"
+                class="face-update-input"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="Enter current password"
+                autocomplete="current-password"
+                :disabled="isVerifyingPassword"
+              >
+            </label>
 
-            <SecurityActionPill
-              :icon="ArrowLeft"
-              label="Cancel"
-              type="button"
-              :disabled="isVerifyingPassword"
-              :full-width="true"
-              @click="handleCancel"
-            />
-          </div>
-        </form>
+            <p v-if="passwordError" class="face-update-feedback face-update-feedback--error">
+              {{ passwordError }}
+            </p>
+
+            <div class="face-update-actions">
+              <SecurityActionPill
+                :icon="ArrowRight"
+                label="Continue to Scan"
+                type="submit"
+                :loading="isVerifyingPassword"
+                :disabled="isVerifyingPassword"
+                :full-width="true"
+              />
+
+              <button
+                type="button"
+                class="face-update-cancel-btn"
+                :disabled="isVerifyingPassword"
+                @click="handleCancel"
+              >
+                Back to Security
+              </button>
+            </div>
+          </form>
+        </div>
       </section>
 
+      <!-- ── Step 2: Face Scan / Upload ──────────────────────────────── -->
       <section v-else class="face-update-scan dashboard-enter dashboard-enter--2">
-        <p class="face-update-scan__caption">{{ scanCaption }}</p>
+        <div class="scan-card">
+          <div class="scan-header">
+            <button class="scan-back-btn" @click="step = 'password'">
+              <ArrowLeft :size="20" />
+            </button>
+            <h2 class="scan-title">{{ scanTitle }}</h2>
+          </div>
 
-        <div class="face-update-frame">
-          <video
-            v-show="cameraState === 'ready' && !capturedPreview"
-            ref="videoEl"
-            class="face-update-video"
-            autoplay
-            playsinline
-            webkit-playsinline
-            disablePictureInPicture
-            disableRemotePlayback
-            controlslist="nodownload noplaybackrate noremoteplayback"
-            muted
-          />
+          <div class="face-update-frame-container">
+            <!-- Pulsing Ring -->
+            <div class="face-update-ring" :class="{ 'face-update-ring--active': cameraState === 'ready' && !capturedPreview }"></div>
+            
+            <div class="face-update-frame">
+              <!-- Scanning Beam -->
+              <div v-if="statusState === 'detecting' || statusState === 'capturing'" class="face-update-beam"></div>
 
-          <img
-            v-if="capturedPreview"
-            :src="capturedPreview"
-            alt="Updated face preview"
-            class="face-update-photo"
-          >
+              <video
+                v-show="cameraState === 'ready' && !capturedPreview"
+                ref="videoEl"
+                class="face-update-video"
+                autoplay
+                playsinline
+                webkit-playsinline
+                disablePictureInPicture
+                disableRemotePlayback
+                controlslist="nodownload noplaybackrate noremoteplayback"
+                muted
+              />
 
-          <div
-            v-else-if="cameraState !== 'ready'"
-            class="face-update-photo face-update-photo--placeholder"
-            aria-hidden="true"
-          >
-            <UserRound :size="52" />
+              <img
+                v-if="capturedPreview"
+                :src="capturedPreview"
+                alt="Updated face preview"
+                class="face-update-photo"
+              >
+
+              <div
+                v-else-if="cameraState !== 'ready' && statusState !== 'submitting'"
+                class="face-update-placeholder"
+              >
+                <UserRound :size="64" stroke-width="1.2" />
+              </div>
+              
+              <!-- Submitting overlay -->
+              <div v-if="statusState === 'submitting'" class="face-update-overlay">
+                <LoaderCircle class="spinner" :size="48" />
+              </div>
+            </div>
+          </div>
+
+          <div class="scan-status">
+            <div class="status-icon-wrap" :class="statusState">
+              <Scan v-if="statusState === 'detecting' || statusState === 'idle'" class="pulse" :size="20" />
+              <CheckCircle2 v-else-if="statusState === 'success'" :size="20" />
+              <AlertCircle v-else-if="statusState === 'error'" :size="20" />
+              <LoaderCircle v-else class="spinner" :size="20" />
+            </div>
+            <p class="status-message" :class="{ 'error': statusState === 'error', 'success': statusState === 'success' }">
+              {{ statusMessage }}
+            </p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="scan-actions">
+            <button
+              v-if="statusState === 'error'"
+              class="scan-primary-btn"
+              @click="retryEnrollment"
+            >
+              <RotateCcw :size="18" />
+              Try Again
+            </button>
+
+            <div v-if="statusState !== 'submitting' && statusState !== 'success'" class="upload-option">
+              <span class="upload-divider">OR</span>
+              <button class="upload-btn" @click="triggerFileUpload" :disabled="isUploading">
+                <Upload :size="18" />
+                Upload a Photo
+              </button>
+              <input
+                ref="fileInputEl"
+                type="file"
+                accept="image/jpeg,image/png"
+                class="hidden-input"
+                @change="handlePhotoUpload"
+              >
+            </div>
+          </div>
+
+          <!-- Tips Section -->
+          <div v-if="statusState !== 'success'" class="scan-tips">
+            <h3 class="tips-title">Registration Tips</h3>
+            <ul class="tips-list">
+              <li><div class="tip-dot"></div> Ensure your face is well-lit</li>
+              <li><div class="tip-dot"></div> Remove masks or heavy glasses</li>
+              <li><div class="tip-dot"></div> Keep a neutral expression</li>
+            </ul>
           </div>
         </div>
-
-        <p class="face-update-feedback" :class="{
-          'face-update-feedback--error': statusState === 'error',
-          'face-update-feedback--success': statusState === 'success',
-        }">
-          {{ statusMessage }}
-        </p>
-
-        <button
-          v-if="statusState === 'error'"
-          class="face-update-retry"
-          type="button"
-          @click="retryEnrollment"
-        >
-          Try Again
-        </button>
 
         <div class="face-update-brand">
           <img :src="activeAuraLogo" alt="NEXUS AI" class="face-update-brand__logo">
           <span>Powered by NEXUS Ai</span>
         </div>
-
-        <p class="face-update-footnote">Learn more about NEXUS Project</p>
       </section>
     </main>
   </div>
@@ -116,13 +165,27 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowLeft, ArrowRight, Eye, EyeOff, UserRound } from 'lucide-vue-next'
+import { 
+  ArrowLeft, 
+  ArrowRight, 
+  Eye, 
+  EyeOff, 
+  UserRound, 
+  ShieldCheck, 
+  Scan, 
+  CheckCircle2, 
+  AlertCircle, 
+  LoaderCircle,
+  RotateCcw,
+  Upload
+} from 'lucide-vue-next'
 import SecurityActionPill from '@/components/security/SecurityActionPill.vue'
 import { activeAuraLogo, applyTheme, loadTheme } from '@/config/theme.js'
 import { useDashboardSession } from '@/composables/useDashboardSession.js'
 import { initFaceScanDetector, resetFaceScanDetector } from '@/composables/useFaceScanDetector.js'
 import {
   registerStudentFace,
+  registerStudentFaceUpload,
   resolveApiBaseUrl,
   verifyPasswordForUser,
 } from '@/services/backendApi.js'
@@ -140,12 +203,14 @@ const currentPassword = ref('')
 const showPassword = ref(false)
 const isVerifyingPassword = ref(false)
 const passwordError = ref('')
-const statusState = ref('idle')
+const statusState = ref('idle') // idle, starting, detecting, capturing, submitting, success, error
 const statusMessage = ref('')
 const capturedPreview = ref('')
 const videoEl = ref(null)
+const fileInputEl = ref(null)
 const mediaStream = ref(null)
 const cameraState = ref('idle')
+const isUploading = ref(false)
 
 let detectorInstance = null
 let detectRaf = null
@@ -170,9 +235,11 @@ const authEmail = computed(() =>
   currentUser.value?.email || getStoredAuthMeta()?.email || ''
 )
 const authUserId = computed(() => Number(currentUser.value?.id ?? getStoredAuthMeta()?.userId ?? NaN))
-const scanCaption = computed(() => {
-  if (statusState.value === 'success') return 'Face updated successfully.'
-  return 'Scanning Face...'
+
+const scanTitle = computed(() => {
+  if (statusState.value === 'success') return 'Success'
+  if (statusState.value === 'error') return 'Scan Failed'
+  return 'Face Registration'
 })
 
 function applySecurityTheme() {
@@ -476,25 +543,59 @@ async function captureAndRegister() {
     statusMessage.value = 'Updating your Face ID...'
 
     const imageDataUrl = captureVideoFrame()
-    const rawBase64 = imageDataUrl.includes(',') ? imageDataUrl.split(',')[1] : imageDataUrl
     capturedPreview.value = imageDataUrl
     stopCamera()
 
     const token = localStorage.getItem('nexus_token')
-    try {
-      await registerStudentFace(resolveApiBaseUrl(), token, imageDataUrl)
-    } catch {
-      await registerStudentFace(resolveApiBaseUrl(), token, rawBase64)
-    }
+    await registerStudentFace(resolveApiBaseUrl(), token, imageDataUrl)
 
     markCurrentUserFaceRegistered()
     statusState.value = 'success'
     statusMessage.value = 'Face ID updated successfully.'
     redirectTimeout = setTimeout(() => {
       router.replace({ name: 'ProfileSecurity', query: { done: 'face' } })
-    }, 900)
+    }, 1500)
   } catch (error) {
     setEnrollmentError(error?.message || 'Unable to update your Face ID right now.')
+  }
+}
+
+function triggerFileUpload() {
+  fileInputEl.value?.click()
+}
+
+async function handlePhotoUpload(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  stopFaceDetection()
+  stopCamera()
+  
+  isUploading.value = true
+  statusState.value = 'submitting'
+  statusMessage.value = 'Uploading photo...'
+
+  // Preview the file
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    capturedPreview.value = e.target.result
+  }
+  reader.readAsDataURL(file)
+
+  try {
+    const token = localStorage.getItem('nexus_token')
+    await registerStudentFaceUpload(resolveApiBaseUrl(), token, file)
+
+    markCurrentUserFaceRegistered()
+    statusState.value = 'success'
+    statusMessage.value = 'Photo uploaded and Face ID updated.'
+    redirectTimeout = setTimeout(() => {
+      router.replace({ name: 'ProfileSecurity', query: { done: 'face' } })
+    }, 1500)
+  } catch (error) {
+    setEnrollmentError(error?.message || 'Unable to register face from photo.')
+  } finally {
+    isUploading.value = false
   }
 }
 
@@ -511,119 +612,139 @@ function setEnrollmentError(message) {
 .face-update-page {
   min-height: 100vh;
   background: var(--color-bg, #ebebeb);
-  padding: 48px 24px 36px;
+  padding: 24px;
   font-family: 'Manrope', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .face-update-shell {
-  width: min(100%, 400px);
-  margin: 0 auto;
+  width: min(100%, 420px);
 }
 
-.face-update-auth {
+/* ── Auth Card ── */
+.auth-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-radius: 32px;
+  padding: 40px 32px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.auth-icon-wrap {
+  width: 80px;
+  height: 80px;
+  background: var(--color-primary, #aaff00);
+  color: var(--color-primary-text, #0a0a0a);
+  border-radius: 24px;
   display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding-top: 72px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
 }
 
 .face-update-auth__title {
-  margin: 0;
-  font-size: clamp(44px, 14vw, 58px);
-  line-height: 0.94;
-  letter-spacing: -0.06em;
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   color: #0a0a0a;
 }
 
 .face-update-auth__copy {
-  margin: 0;
-  max-width: 286px;
+  margin: 0 0 32px;
   font-size: 15px;
-  line-height: 1.3;
-  color: #262621;
-}
-
-.face-update-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-top: 8px;
-}
-
-.face-update-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.face-update-field {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.face-update-input {
-  width: 100%;
-  min-height: 60px;
-  padding: 0 56px 0 20px;
-  border-radius: 999px;
-  border: 1.5px solid rgba(10, 10, 10, 0.92);
-  background: rgba(255, 255, 255, 0.7);
-  color: #111111;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.face-update-input::placeholder {
-  color: #171717;
-  opacity: 1;
-}
-
-.face-update-input:focus {
-  border-color: color-mix(in srgb, var(--color-primary, #aaff00) 42%, #0a0a0a 58%);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary, #aaff00) 18%, transparent);
-}
-
-.face-update-visibility {
-  position: absolute;
-  right: 18px;
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
+  line-height: 1.5;
   color: #555550;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.face-update-scan {
-  min-height: calc(100vh - 84px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 22px;
-}
-
-.face-update-scan__caption {
-  margin: 0;
-  font-size: 17px;
+.face-update-cancel-btn {
+  background: transparent;
+  border: none;
+  color: #6d6d69;
+  font-size: 14px;
   font-weight: 500;
-  color: #101010;
+  margin-top: 12px;
+  cursor: pointer;
+}
+
+/* ── Scan Card ── */
+.scan-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-radius: 32px;
+  padding: 32px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.scan-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.scan-back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #f4f4f1;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.scan-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ── Camera Frame ── */
+.face-update-frame-container {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.face-update-ring {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  transition: all 0.5s ease;
+}
+
+.face-update-ring--active {
+  border: 3px solid var(--color-primary, #aaff00);
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 0.8; }
 }
 
 .face-update-frame {
-  width: min(100%, 240px);
-  aspect-ratio: 1;
+  width: 220px;
+  height: 220px;
   border-radius: 50%;
   overflow: hidden;
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  background: #000;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
 }
 
 .face-update-video,
@@ -631,80 +752,246 @@ function setEnrollmentError(message) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 50%;
 }
 
-.face-update-video {
-  background: #000000;
-}
-
-.face-update-photo--placeholder {
-  color: #8d8d88;
-  background: #f4f4f1;
-}
-
-.face-update-feedback {
-  min-height: 18px;
-  margin: 0;
-  font-size: 12px;
-  font-weight: 500;
-  color: #6d6d69;
-}
-
-.face-update-feedback--error {
-  color: #e23636;
-}
-
-.face-update-feedback--success {
-  color: color-mix(in srgb, var(--color-primary, #aaff00) 52%, #111111 48%);
-}
-
-.face-update-retry {
-  min-width: 208px;
-  min-height: 56px;
-  padding: 0 28px;
-  border-radius: 999px;
-  border: 1.4px solid rgba(10, 10, 10, 0.86);
-  background: transparent;
-  color: #171717;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.face-update-brand {
-  margin-top: 22px;
-  display: inline-flex;
+.face-update-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  background: #f4f4f1;
+  color: #8d8d88;
+}
+
+/* ── Scanning Beam ── */
+.face-update-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--color-primary, #aaff00), transparent);
+  box-shadow: 0 0 15px var(--color-primary, #aaff00);
+  z-index: 10;
+  animation: scan-beam 2.5s infinite ease-in-out;
+}
+
+@keyframes scan-beam {
+  0% { top: 0%; }
+  50% { top: 100%; }
+  100% { top: 0%; }
+}
+
+.face-update-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  z-index: 20;
+}
+
+/* ── Status ── */
+.scan-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.status-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f4f1;
+  color: #555550;
+}
+
+.status-icon-wrap.success { background: #e7f7ed; color: #2ecc71; }
+.status-icon-wrap.error { background: #fdeaea; color: #e74c3c; }
+
+.status-message {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555550;
+}
+
+.status-message.error { color: #e74c3c; }
+.status-message.success { color: #2ecc71; }
+
+/* ── Actions ── */
+.scan-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scan-primary-btn {
+  width: 100%;
+  min-height: 56px;
+  background: var(--color-primary, #aaff00);
+  color: var(--color-primary-text, #0a0a0a);
+  border: none;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
-  color: #161616;
+  cursor: pointer;
+}
+
+.upload-option {
+  text-align: center;
+}
+
+.upload-divider {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #b5b5b0;
+  margin-bottom: 12px;
+  letter-spacing: 0.1em;
+}
+
+.upload-btn {
+  background: transparent;
+  border: 1.5px solid #dcdcd8;
+  border-radius: 16px;
+  min-height: 50px;
+  width: 100%;
+  color: #171717;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.hidden-input {
+  display: none;
+}
+
+/* ── Tips ── */
+.scan-tips {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0ed;
+  text-align: left;
+}
+
+.tips-title {
+  margin: 0 0 12px;
   font-size: 13px;
+  font-weight: 700;
+  color: #8d8d88;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tips-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tips-list li {
+  font-size: 13px;
+  color: #555550;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tip-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary, #aaff00);
+}
+
+/* ── Brand ── */
+.face-update-brand {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0.6;
 }
 
 .face-update-brand__logo {
-  width: 34px;
-  height: auto;
+  height: 24px;
 }
 
-.face-update-footnote {
-  margin: 44px 0 0;
+.face-update-brand span {
   font-size: 12px;
-  color: #161616;
+  font-weight: 600;
+  color: #111;
 }
 
-@media (min-width: 900px) {
-  .face-update-page {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 36px 24px;
-  }
+/* ── Helpers ── */
+.spinner { animation: spin 1s linear infinite; }
+.pulse { animation: pulse 1.5s ease-in-out infinite; }
 
-  .face-update-auth {
-    padding-top: 0;
-  }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
 
-  .face-update-scan {
-    min-height: 720px;
-  }
+.face-update-field {
+  position: relative;
+  display: block;
+}
+
+.face-update-input {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 20px;
+  border-radius: 16px;
+  border: 1.5px solid #dcdcd8;
+  background: #fdfdfc;
+  font-size: 15px;
+  outline: none;
+}
+
+.face-update-input:focus {
+  border-color: var(--color-primary, #aaff00);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary, #aaff00) 15%, transparent);
+}
+
+.face-update-input::-ms-reveal,
+.face-update-input::-ms-clear {
+  display: none;
+}
+
+.face-update-visibility {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #8d8d88;
+}
+
+.face-update-actions {
+  margin-top: 12px;
 }
 </style>

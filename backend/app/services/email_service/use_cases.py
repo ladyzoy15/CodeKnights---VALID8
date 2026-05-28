@@ -67,7 +67,7 @@ def send_import_onboarding_email(
 
 def send_password_reset_email(
     recipient_email: str,
-    temporary_password: str,
+    reset_token: str,
     first_name: str | None = None,
     system_name: str | None = None,
     login_url: str | None = None,
@@ -77,14 +77,21 @@ def send_password_reset_email(
 
     resolved_first_name = (first_name or "").strip() or "User"
     resolved_system_name = (system_name or "").strip() or "NEXUS"
-    resolved_login_url = _resolve_email_login_url(login_url)
+    
+    # Resolve the base URL for the reset link. 
+    # Usually this points to the frontend reset page.
+    base_url = _resolve_email_login_url(login_url)
+    # Strip any trailing login path if present and append reset-password
+    if "/login" in base_url:
+        base_url = base_url.replace("/login", "")
+    
+    reset_url = f"{base_url.rstrip('/')}/reset-password?token={reset_token}"
 
     subject, body, html_body = build_password_reset_email_content(
         recipient_email=recipient_email,
-        temporary_password=temporary_password,
+        reset_url=reset_url,
         first_name=resolved_first_name,
         system_name=resolved_system_name,
-        login_url=resolved_login_url,
     )
     _send_email(
         subject=subject,

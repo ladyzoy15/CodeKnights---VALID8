@@ -1306,6 +1306,16 @@ export async function forgotPassword(baseUrl, email) {
     })
 }
 
+export async function confirmPasswordReset(baseUrl, token, newPassword) {
+    return request(baseUrl, '/auth/reset-password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, new_password: newPassword }),
+    })
+}
+
 function normalizeStudentAttendanceResponsePayload(payload = []) {
     if (!Array.isArray(payload)) return []
 
@@ -1474,6 +1484,17 @@ export async function registerStudentFace(baseUrl, token, imageBase64) {
         body: JSON.stringify({
             image_base64: imageBase64,
         }),
+    }))
+}
+
+export async function registerStudentFaceUpload(baseUrl, token, file) {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return normalizeStudentFaceRegistrationResponse(await requestWithFallback(baseUrl, ['/api/face/register-upload', '/face/register-upload'], {
+        method: 'POST',
+        token,
+        body: formData,
     }))
 }
 

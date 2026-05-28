@@ -157,8 +157,18 @@ class InsightFaceEngine(BaseFaceEngine):
             ) from exc
 
     @classmethod
+    def _model_home(cls) -> Path:
+        configured_home = (os.getenv("INSIGHTFACE_HOME") or "").strip()
+        if configured_home:
+            return Path(configured_home).expanduser()
+        container_app_dir = Path("/app")
+        if container_app_dir.exists():
+            return container_app_dir / ".insightface"
+        return Path.home() / ".insightface"
+
+    @classmethod
     def _model_root(cls) -> Path:
-        return Path.home() / ".insightface" / "models"
+        return cls._model_home() / "models"
 
     @classmethod
     def _model_bundle_dir(cls) -> Path:
@@ -277,6 +287,7 @@ class InsightFaceEngine(BaseFaceEngine):
     def _build_face_analysis(self, runtime: Any) -> Any:
         kwargs: dict[str, object] = {
             "name": self.model_name,
+            "root": str(type(self)._model_home()),
             "providers": [self.provider_target],
         }
         if self.allowed_modules:
@@ -607,7 +618,12 @@ class InsightFaceEngine(BaseFaceEngine):
         runtime_status = self.runtime_status_payload(mode=self.mode)
         if runtime_status.get("state") == "failed":
             code = "face_runtime_failed"
-            message = "Face runtime initialization failed."
+            last_error = runtime_status.get("last_error")
+            message = (
+                f"Face runtime initialization failed: {last_error}"
+                if last_error
+                else "Face runtime initialization failed."
+            )
         else:
             code = "face_runtime_initializing"
             message = "Face runtime is still initializing."

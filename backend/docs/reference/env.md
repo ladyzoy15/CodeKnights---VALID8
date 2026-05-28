@@ -56,7 +56,7 @@ Conditional email rules:
 
 Required in `backend/.env`:
 
-- `DATABASE_URL=postgresql://postgres:<password>@127.0.0.1:5432/fastapi_db`
+- `DATABASE_URL=postgresql://postgres:<password>@127.0.0.1:5432/codeknightsdb`
 - `CELERY_BROKER_URL=redis://127.0.0.1:6379/0`
 - `CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0`
 - `LOGIN_URL=http://localhost:5173`

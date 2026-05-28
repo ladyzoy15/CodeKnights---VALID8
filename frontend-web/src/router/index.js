@@ -150,6 +150,12 @@ const routes = [
         meta: { requiresGuest: true },
     },
     {
+        path: '/reset-password',
+        name: 'ResetPassword',
+        component: authView('ResetPasswordView'),
+        meta: { requiresGuest: true },
+    },
+    {
         path: '/api-lab',
         name: 'ApiLab',
         component: toolsView('ApiLabView'),

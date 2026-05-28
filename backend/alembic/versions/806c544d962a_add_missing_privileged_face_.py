@@ -19,9 +19,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Use server_default='false' to prevent NotNullViolation on existing rows
-    op.add_column('school_event_policies', sa.Column('privileged_face_verification_enabled', sa.Boolean(), server_default='false', nullable=False))
+    # Check if column already exists before adding
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('school_event_policies')]
+    
+    if 'privileged_face_verification_enabled' not in columns:
+        # Use server_default='false' to prevent NotNullViolation on existing rows
+        op.add_column('school_event_policies', sa.Column('privileged_face_verification_enabled', sa.Boolean(), server_default='false', nullable=False))
 
 
 def downgrade() -> None:
-    op.drop_column('school_event_policies', 'privileged_face_verification_enabled')
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('school_event_policies')]
+    
+    if 'privileged_face_verification_enabled' in columns:
+        op.drop_column('school_event_policies', 'privileged_face_verification_enabled')

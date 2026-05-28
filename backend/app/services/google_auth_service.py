@@ -54,6 +54,7 @@ def verify_google_id_token(
             token,
             google_requests.Request(),
             audience=audiences,
+            clock_skew_in_seconds=10,
         )
     except ValueError as exc:
         raise GoogleAuthInvalidTokenError(str(exc)) from exc

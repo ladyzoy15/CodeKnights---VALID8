@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.core.timezones import utc_now
 from app.models.attendance import Attendance
 from app.models.event import Event
+from app.models.governance_hierarchy import GovernanceAnnouncement
 from app.models.platform_features import UserNotificationPreference
 from app.models.notifications import NotificationLog, NotificationLogAttribute
 from app.models.user import StudentProfile, User
@@ -689,4 +690,72 @@ def get_notification_inbox_for_user(
         .limit(max(1, min(limit, 200)))
         .all()
     )
+
+
+def dispatch_governance_announcement_notifications(
+    db: Session,
+    *,
+    announcement: GovernanceAnnouncement,
+) -> dict[str, int]:
+    """Notify all students in the school (or specific unit scope) about a new governance announcement."""
+    if announcement.status != "published":
+        return {"processed_users": 0, "sent": 0, "failed": 0, "skipped": 0}
+
+    unit = announcement.governance_unit
+    school_id = unit.school_id
+
+    # Base query for active students in the same school
+    query = (
+        db.query(User)
+        .join(StudentProfile, StudentProfile.user_id == User.id)
+        .filter(
+            User.school_id == school_id,
+            StudentProfile.student_status == StudentStatus.ACTIVE,
+        )
+    )
+
+    # Scoping by unit's department or program if applicable
+    if unit.program_id:
+        query = query.filter(StudentProfile.program_id == unit.program_id)
+    elif unit.department_id:
+        query = query.filter(StudentProfile.department_id == unit.department_id)
+
+    recipients = query.all()
+    if not recipients:
+        return {"processed_users": 0, "sent": 0, "failed": 0, "skipped": 0}
+
+    statuses: list[str] = []
+    for user in recipients:
+        subject = f"Announcement: {announcement.title}"
+        message = (
+            f"Hi {user.first_name or 'Student'},\n\n"
+            f"The {unit.unit_name} has posted a new announcement: {announcement.title}\n\n"
+            f"{announcement.body[:200]}{'...' if len(announcement.body) > 200 else ''}\n\n"
+            "Open the NEXUS app to read the full message.\n\n"
+            f"Regards,\n{unit.unit_name}"
+        )
+        statuses.append(
+            send_notification_to_user(
+                db,
+                user=user,
+                school_id=school_id,
+                category="governance_announcement",
+                subject=subject,
+                message=message,
+                deliver_in_app=True,
+                metadata_json={
+                    "announcement_id": announcement.id,
+                    "unit_id": unit.id,
+                    "unit_name": unit.unit_name,
+                },
+            )
+        )
+
+    sent, failed, skipped = _summarize_statuses(statuses)
+    return {
+        "processed_users": len(statuses),
+        "sent": sent,
+        "failed": failed,
+        "skipped": skipped,
+    }
 

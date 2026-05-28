@@ -6,22 +6,54 @@ Role: Service layer. It abstracts feature gating logic.
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
-from app.models.school import School
+from app.models.school import School, SchoolEventPolicy
+
+
+def _get_school_event_policy(db: Session, school_id: int) -> SchoolEventPolicy:
+    """Load or create the event policy (settings) for a school."""
+    policy = db.query(SchoolEventPolicy).filter(SchoolEventPolicy.school_id == school_id).first()
+    if policy:
+        return policy
+    
+    # Create default policy if missing
+    policy = SchoolEventPolicy(school_id=school_id)
+    db.add(policy)
+    db.flush()
+    return policy
 
 
 def privileged_face_verification_enabled_for_school(
     db: Session,
     school_id: int | None,
 ) -> bool:
-    """Check if a school has privileged face verification enabled.
-    
-    Currently, this returns True for all schools if the global setting is enabled.
-    In the future, this can be linked to subscription plans or specific school overrides.
-    """
+    """Check if a school has privileged face verification enabled."""
     if school_id is None:
         # Platform admins (global) are always allowed if the global flag is on.
         return True
         
-    # We can eventually query a SchoolFeatureFlag table or check subscription here.
-    # For now, we return True to maintain parity with the global setting.
-    return True
+    policy = _get_school_event_policy(db, school_id)
+    return bool(policy.privileged_face_verification_enabled)
+
+
+def attendance_face_recognition_enabled_for_school(
+    db: Session,
+    school_id: int | None,
+) -> bool:
+    """Check if a school has attendance face recognition enabled."""
+    if school_id is None:
+        return True
+        
+    policy = _get_school_event_policy(db, school_id)
+    return bool(policy.attendance_face_recognition_enabled)
+
+
+def first_time_face_registration_required_for_school(
+    db: Session,
+    school_id: int | None,
+) -> bool:
+    """Check if a school requires face registration on first login."""
+    if school_id is None:
+        return True
+        
+    policy = _get_school_event_policy(db, school_id)
+    return bool(policy.first_time_face_registration_required)

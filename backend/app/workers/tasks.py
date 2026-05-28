@@ -20,7 +20,13 @@ from app.services.event_workflow_status import (
     summarize_event_workflow_status_sync,
     sync_scope_event_workflow_statuses,
 )
-from app.services.notification_center_service import send_account_security_notification
+from app.services.notification_center_service import (
+    dispatch_event_announcement_notifications,
+    dispatch_governance_announcement_notifications,
+    send_account_security_notification,
+)
+from app.models.event import Event as EventModel
+from app.models.governance_hierarchy import GovernanceAnnouncement
 from app.services.student_import_service import StudentImportService
 from app.workers.celery_app import celery_app
 
@@ -325,7 +331,53 @@ send_login_security_notification = celery_app.task(
 )(_send_login_security_notification)
 
 
+def _dispatch_governance_announcement(announcement_id: int) -> dict[str, int]:
+    with SessionLocal() as db:
+        announcement = db.query(GovernanceAnnouncement).filter(GovernanceAnnouncement.id == announcement_id).first()
+        if not announcement:
+            logger.warning("Skipped governance announcement dispatch because announcement %s was not found.", announcement_id)
+            return {"processed_users": 0, "sent": 0, "failed": 0, "skipped": 0}
+
+        try:
+            result = dispatch_governance_announcement_notifications(db, announcement=announcement)
+            db.commit()
+            logger.info("Governance announcement dispatch completed for ID %s: %s", announcement_id, result)
+            return result
+        except Exception:
+            db.rollback()
+            raise
+
+
+dispatch_governance_announcement = celery_app.task(
+    name="app.workers.tasks.dispatch_governance_announcement",
+)(_dispatch_governance_announcement)
+
+
+def _dispatch_event_announcement(event_id: int) -> dict[str, int]:
+    with SessionLocal() as db:
+        event = db.query(EventModel).filter(EventModel.id == event_id).first()
+        if not event:
+            logger.warning("Skipped event announcement dispatch because event %s was not found.", event_id)
+            return {"processed_users": 0, "sent": 0, "failed": 0, "skipped": 0}
+
+        try:
+            result = dispatch_event_announcement_notifications(db, event=event)
+            db.commit()
+            logger.info("Event announcement dispatch completed for ID %s: %s", event_id, result)
+            return result
+        except Exception:
+            db.rollback()
+            raise
+
+
+dispatch_event_announcement = celery_app.task(
+    name="app.workers.tasks.dispatch_event_announcement",
+)(_dispatch_event_announcement)
+
+
 __all__ = [
+    "dispatch_event_announcement",
+    "dispatch_governance_announcement",
     "process_student_import_job",
     "send_clearance_deadline_warning_email",
     "send_login_security_notification",

@@ -13,7 +13,7 @@ if LIB_DIR not in sys.path:
 from app_settings import APP_SETTINGS, get_backend_api_base_url
 
 # Initialize FastMCP Server
-mcp = FastMCP("Aura Reporting Server")
+mcp = FastMCP("NEXUS Reporting Server")
 
 @mcp.tool()
 async def mcp_report(
@@ -83,7 +83,7 @@ async def mcp_visualize(
     """
     import json
     return json.dumps({
-        "__aura_visual__": True,
+        "__nexus_visual__": True,
         "type": type,
         "title": title,
         "payload": payload,

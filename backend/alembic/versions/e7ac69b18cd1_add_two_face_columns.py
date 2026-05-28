@@ -19,10 +19,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column('school_event_policies', sa.Column('attendance_face_recognition_enabled', sa.Boolean(), server_default='false', nullable=False))
-    op.add_column('school_event_policies', sa.Column('first_time_face_registration_required', sa.Boolean(), server_default='false', nullable=False))
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('school_event_policies')]
+
+    if 'attendance_face_recognition_enabled' not in columns:
+        op.add_column('school_event_policies', sa.Column('attendance_face_recognition_enabled', sa.Boolean(), server_default='false', nullable=False))
+    if 'first_time_face_registration_required' not in columns:
+        op.add_column('school_event_policies', sa.Column('first_time_face_registration_required', sa.Boolean(), server_default='false', nullable=False))
 
 
 def downgrade() -> None:
-    op.drop_column('school_event_policies', 'first_time_face_registration_required')
-    op.drop_column('school_event_policies', 'attendance_face_recognition_enabled')
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c['name'] for c in inspector.get_columns('school_event_policies')]
+
+    if 'first_time_face_registration_required' in columns:
+        op.drop_column('school_event_policies', 'first_time_face_registration_required')
+    if 'attendance_face_recognition_enabled' in columns:
+        op.drop_column('school_event_policies', 'attendance_face_recognition_enabled')

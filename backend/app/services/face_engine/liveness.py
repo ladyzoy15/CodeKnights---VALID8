@@ -10,6 +10,8 @@ from fastapi import HTTPException, status
 
 from app.core.config import Settings, get_settings
 
+logger = logging.getLogger(__name__)
+
 try:
     import cv2
 except Exception:  # pragma: no cover - optional dependency
@@ -19,8 +21,6 @@ try:
     import onnxruntime as ort
 except Exception:  # pragma: no cover - optional dependency
     ort = None
-
-logger = logging.getLogger(__name__)
 
 
 class LivenessChecker:
@@ -33,20 +33,12 @@ class LivenessChecker:
         self._output_name: str | None = None
         self._input_size: tuple[int, int] | None = None
         self._initialized = False
-        self._session_error_reason: str | None = None
-        self._session_error_detail: str | None = None
-
-    def _backend_root(self) -> Path:
-        return Path(__file__).resolve().parents[3]
 
     def _default_model_path(self) -> Path:
         configured = self.settings.anti_spoof_model_path.strip()
         if configured:
-            configured_path = Path(configured).expanduser()
-            if configured_path.is_absolute():
-                return configured_path
-            return (self._backend_root() / configured_path).resolve()
-        return self._backend_root() / "models" / "MiniFASNetV2.onnx"
+            return Path(configured)
+        return Path(__file__).resolve().parents[3] / "models" / "MiniFASNetV2.onnx"
 
     def _expand_crop_with_context(self, face_crop_rgb: np.ndarray) -> np.ndarray:
         """Fallback context expansion for crops that do not have the original frame."""
@@ -143,17 +135,8 @@ class LivenessChecker:
             return
 
         self._initialized = True
-        self._session_error_reason = None
-        self._session_error_detail = None
         model_path = self._default_model_path()
-        if ort is None:
-            self._session_error_reason = "onnxruntime_unavailable"
-            return
-        if cv2 is None:
-            self._session_error_reason = "opencv_unavailable"
-            return
-        if not model_path.exists():
-            self._session_error_reason = "model_missing"
+        if ort is None or cv2 is None or not model_path.exists():
             return
 
         providers = ["CPUExecutionProvider"]
@@ -166,33 +149,29 @@ class LivenessChecker:
 
         try:
             session = ort.InferenceSession(str(model_path), providers=providers)
+            input_meta = session.get_inputs()[0]
+            output_meta = session.get_outputs()[0]
+            self._session = session
+            self._input_name = input_meta.name
+            self._output_name = output_meta.name
+            self._input_size = (int(input_meta.shape[2]), int(input_meta.shape[3]))
         except Exception as exc:
-            detail = str(exc)
-            normalized_detail = detail.lower()
-            self._session_error_reason = (
-                "invalid_model"
-                if "protobuf" in normalized_detail
-                or "parse" in normalized_detail
-                or "invalid" in normalized_detail
-                else "session_unavailable"
-            )
-            self._session_error_detail = detail
-            logger.exception("Unable to initialize liveness model at %s", model_path)
-            return
-
-        input_meta = session.get_inputs()[0]
-        output_meta = session.get_outputs()[0]
-        self._session = session
-        self._input_name = input_meta.name
-        self._output_name = output_meta.name
-        self._input_size = (int(input_meta.shape[2]), int(input_meta.shape[3]))
+            logger.error(f"Unable to initialize liveness model at {model_path}: {exc}")
+            self._session = None
 
     def status(self) -> tuple[bool, str | None]:
         self._init_session()
         if self._session is not None:
             return True, None
 
-        return False, self._session_error_reason or "session_unavailable"
+        model_path = self._default_model_path()
+        if ort is None:
+            return False, "onnxruntime_unavailable"
+        if cv2 is None:
+            return False, "opencv_unavailable"
+        if not model_path.exists():
+            return False, "model_missing"
+        return False, "invalid_model"
 
     def is_real(self, score: float) -> bool:
         return float(score) >= self.settings.liveness_threshold
@@ -206,8 +185,10 @@ class LivenessChecker:
     ) -> float:
         ready, reason = self.status()
         if not ready:
+            # If the model is missing or corrupted, and bypass is enabled, skip the check.
             if self.settings.allow_liveness_bypass_when_model_missing:
                 return 1.0
+            
             detail = "Liveness model is not available."
             if reason:
                 detail = f"Liveness model is not available ({reason})."
@@ -236,7 +217,7 @@ class LivenessChecker:
         input_height, input_width = self._input_size or (80, 80)
         crop_bgr = crop[:, :, ::-1].copy()
         resized = cv2.resize(crop_bgr, (input_width, input_height))
-        model_input = resized.astype(np.float32) / 255.0
+        model_input = resized.astype(np.float32)
         model_input = np.transpose(model_input, (2, 0, 1))
         model_input = np.expand_dims(model_input, axis=0)
 
@@ -245,8 +226,4 @@ class LivenessChecker:
             {self._input_name: model_input},
         )[0]
         probabilities = self._softmax(logits)
-        if probabilities.shape[1] >= 3:
-            return float(1.0 - probabilities[0, 1:].sum())
-        if probabilities.shape[1] >= 2:
-            return float(probabilities[0, 1])
-        return float(probabilities[0, 0])
+        return float(probabilities[0, 1])

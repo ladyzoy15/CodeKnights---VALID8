@@ -41,7 +41,7 @@ docker compose --profile dev up --build
 
 ## Notes
 
-- Both `fastapi_db` and `ai_assistant` databases are created automatically by `docker-init/init.sql` on first container startup.
+- Both `codeknightsdb` and `ai_assistant` databases are created automatically by `docker-init/init.sql` on first container startup.
 - Alembic migrations live in `backend/alembic/` since they depend on the SQLAlchemy models in `backend/app/models/`.
 - To run migrations: `cd ../backend && alembic upgrade head`
 - pgAdmin is available at `http://localhost:5050` when running standalone or in the dev profile.

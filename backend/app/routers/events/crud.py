@@ -256,6 +256,11 @@ def create_event(
 
         db.commit()
         db.refresh(db_event)
+
+        if db_event.status == ModelEventStatus.UPCOMING:
+            from app.workers.tasks import dispatch_event_announcement
+            dispatch_event_announcement.delay(db_event.id)
+
         return db_event
 
     except HTTPException:

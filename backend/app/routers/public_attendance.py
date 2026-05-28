@@ -41,6 +41,10 @@ from app.services.face_recognition import FaceRecognitionService
 from app.services.event_workflow_status import sync_event_workflow_status
 
 
+from app.services.school_feature_flags import (
+    attendance_face_recognition_enabled_for_school,
+)
+
 router = APIRouter(prefix="/public-attendance", tags=["public-attendance"])
 face_service = FaceRecognitionService()
 settings = get_settings()
@@ -279,6 +283,13 @@ def scan_public_attendance_event(
     _enforce_public_scan_throttle(request, event_id)
 
     event = _get_public_event_or_404(db, event_id)
+
+    if not attendance_face_recognition_enabled_for_school(db, event.school_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Face recognition for attendance is disabled for this school.",
+        )
+
     phase = resolve_public_attendance_phase(event)
     if phase is None:
         raise HTTPException(

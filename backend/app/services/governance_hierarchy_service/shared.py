@@ -2529,6 +2529,10 @@ def create_governance_announcement(
     db.add(announcement)
     db.commit()
 
+    if announcement.status == GovernanceAnnouncementStatus.PUBLISHED.value:
+        from app.workers.tasks import dispatch_governance_announcement
+        dispatch_governance_announcement.delay(announcement.id)
+
     return _get_announcement_in_school_or_404(
         db,
         school_id=school_id,
@@ -2563,6 +2567,7 @@ def update_governance_announcement(
         detail="You do not have permission to manage governance announcements for this unit",
     )
 
+    previous_status = announcement.status
     payload_fields_set = _get_payload_fields_set(payload)
     if "title" in payload_fields_set and payload.title is not None:
         announcement.title = _normalize_announcement_title(payload.title)
@@ -2573,6 +2578,13 @@ def update_governance_announcement(
 
     announcement.updated_by_user_id = current_user.id
     db.commit()
+
+    if (
+        announcement.status == GovernanceAnnouncementStatus.PUBLISHED.value
+        and previous_status != GovernanceAnnouncementStatus.PUBLISHED.value
+    ):
+        from app.workers.tasks import dispatch_governance_announcement
+        dispatch_governance_announcement.delay(announcement.id)
 
     return _get_announcement_in_school_or_404(
         db,

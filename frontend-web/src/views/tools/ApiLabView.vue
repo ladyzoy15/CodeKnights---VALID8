@@ -2109,14 +2109,7 @@ async function handleRegisterFace() {
 
   try {
     const dataUrl = await readFileAsDataUrl(selectedImageFile.value)
-    const rawBase64 = normalizeImagePayload(dataUrl)
-
-    try {
-      faceSaveResult.value = await registerStudentFace(apiBaseUrl.value, studentToken.value, dataUrl)
-    } catch (primaryError) {
-      faceSaveResult.value = await registerStudentFace(apiBaseUrl.value, studentToken.value, rawBase64)
-      pushLog('Face save fallback', `Full data URL was rejected, raw base64 succeeded: ${extractErrorMessage(primaryError)}`)
-    }
+    faceSaveResult.value = await registerStudentFace(apiBaseUrl.value, studentToken.value, dataUrl)
 
     await refreshStudentState()
     pushLog('Face reference saved', 'The selected student now has an enrolled face reference through the student face endpoint.')
