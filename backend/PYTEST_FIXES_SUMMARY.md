@@ -150,7 +150,7 @@ All 404 errors were due to **path mismatches**:
 
 ### Database Connection
 Tests require PostgreSQL running at `127.0.0.1:5432` with:
-- Database: `fastapi_db`
+- Database: `codeknightsdb`
 - User: `postgres`
 - Password: `cmpjdatabase`
 

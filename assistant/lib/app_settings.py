@@ -22,7 +22,7 @@ class AssistantAppSettings:
     report_request_timeout_seconds: int = 60
     import_request_timeout_seconds: int = 120
     default_cors_allowed_origins: tuple[str, ...] = (
-        "https://nexus-test.coeofjrmsu.com",
+        "http://localhost:5173",
         "http://18.142.190.80",
         "http://18.142.190.80:5173",
         "http://localhost:5173",
